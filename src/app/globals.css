@@ -5,22 +5,33 @@
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  font-family: var(--font-pretendard);
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
+
+/* ------------------------------------------------------------- */
+.visual-swiper .swiper-button-next,
+.visual-swiper .swiper-button-prev {
+  @apply text-white bg-gray-800/50 hover:bg-gray-800/80 transition duration-300 rounded-full flex justify-center items-center w-8 h-8 lg:w-10 lg:h-10 text-xl z-20;
+}
+
+.visual-swiper .swiper-button-next svg,
+.visual-swiper .swiper-button-prev svg {
+  width: 10px;
+}
+
+.visual-swiper .swiper-pagination-bullet {
+  @apply w-2 h-2 mx-1 opacity-50 transition duration-500;
+  background: white;
+}
+
+.visual-swiper .swiper-pagination-bullet-active {
+  @apply w-6 opacity-100 rounded-full;
+  background: white;
+}
+
+/* ------------------------------------------------------------- */
