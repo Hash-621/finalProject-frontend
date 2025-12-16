@@ -11,35 +11,16 @@ import {
   TabGroup,
   TabPanel,
   TabPanels,
-  Field,
-  Select,
-  Input,
 } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import clsx from "clsx";
-
-const header = {
-  pages: [
-    { name: "뉴스", href: "/news" },
-    { name: "구인구직", href: "/jobs" },
-    { name: "관광지", href: "/attractions" },
-    { name: "맛집", href: "/restaurants" },
-    { name: "병원", href: "/hospitals" },
-    {
-      name: "커뮤니티",
-      children: [
-        { name: "자유게시판", href: "/community/free" },
-        { name: "추천게시판", href: "/community/recommend" },
-      ],
-    },
-  ],
-};
+import SearchBar from "@/components/common/SearchBar";
+import { menuData } from "@/data/menuData";
 
 export default function Header() {
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
-  const router = useRouter();
+  const pages = menuData.pages;
+
   return (
     <>
       <Dialog
@@ -61,14 +42,14 @@ export default function Header() {
                 <div className="flex flex-1 items-center justify-end space-x-3 mr-1">
                   <Link
                     href="/sign-in"
-                    className="text-sm font-medium text-gray-700 hover:text-gray-400 transition-colors duration-200"
+                    className="text-sm font-medium text-gray-700"
                   >
                     로그인
                   </Link>
                   <span aria-hidden="true" className="h-4 w-px bg-gray-200" />
                   <Link
                     href="/sign-up"
-                    className="text-sm font-medium text-gray-700 hover:text-gray-400 transition-colors duration-200"
+                    className="text-sm font-medium text-gray-700"
                   >
                     회원가입
                   </Link>
@@ -84,33 +65,28 @@ export default function Header() {
               </button>
             </div>
 
-            <Field className="bg-gray-200 h-14 text-sm flex gap-2 items-center px-2">
-              <Select
-                name="status"
-                className="data-disabled:bg-gray-100 outline-0"
-              >
-                <option value="all">전체검색</option>
-                <option value="title">제목</option>
-                <option value="text">내용</option>
-              </Select>
-              <Input
-                type="text"
-                name="full_name"
-                className="border border-gray-200 outline-0"
-              />
-            </Field>
+            <SearchBar
+              idPrefix="sidebar"
+              className="h-14 border-t border-gray-200 bg-gray-100 text-sm"
+              inputClassName=""
+              buttonClassName=""
+              iconClassName="w-5"
+            />
 
-            {header.pages.map((page) => (
+            {pages.map((page) => (
               <Fragment key={page.name}>
                 {page.children && page.children.length > 0 ? (
-                  <TabGroup className="mt-2">
+                  <TabGroup>
                     <TabPanels as={Fragment}>
                       <TabPanel className="space-y-10 px-4 pt-6 pb-8 border-t border-gray-200">
                         <div>
                           <p className="font-medium text-gray-900">
                             {page.name}
                           </p>
-                          <ul role="list" className="flex flex-col space-y-6">
+                          <ul
+                            role="list"
+                            className="mt-6 flex flex-col space-y-6"
+                          >
                             {page.children.map((child) => (
                               <li key={child.name} className="flow-root">
                                 <Link
@@ -118,7 +94,7 @@ export default function Header() {
                                   onClick={() => setOpenMobileMenu(false)}
                                   className="-m-2 block p-2 text-gray-500"
                                 >
-                                  {child.name}{" "}
+                                  {child.name}
                                 </Link>
                               </li>
                             ))}
@@ -171,7 +147,7 @@ export default function Header() {
               <PopoverGroup className="hidden lg:ml-8 lg:block lg:self-stretch">
                 <div className="flex w-full justify-center">
                   <div className="flex">
-                    {header.pages.map((page) => (
+                    {pages.map((page) => (
                       <Popover key={page.name} className="relative">
                         {!page.children ? (
                           <PopoverButton className="focus:outline-none">

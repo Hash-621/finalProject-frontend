@@ -35,3 +35,32 @@ body {
 }
 
 /* ------------------------------------------------------------- */
+
+.quick-swiper .swiper-button-next,
+.quick-swiper .swiper-button-prev {
+  @apply text-white bg-gray-800/50 hover:bg-gray-800/80 transition duration-300 rounded-full flex justify-center items-center w-6 h-6 text-xl z-20;
+}
+
+.quick-swiper .swiper-button-next svg,
+.quick-swiper .swiper-button-prev svg {
+  width: 6px;
+}
+
+/* 1024이하일때 */
+@media (max-width: 1023px) {
+  .quick-swiper {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}
+
+/* 1024이상일때 */
+@media (min-width: 1024px) {
+  .quick-swiper .swiper-button-next {
+    display: none !important;
+  }
+
+  .quick-swiper .swiper-button-prev {
+    display: none !important;
+  }
+}
