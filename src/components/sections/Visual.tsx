@@ -59,7 +59,6 @@ export default function Visual() {
   return (
     <section>
       <Swiper
-        spaceBetween={30}
         effect={"fade"}
         loop={true}
         navigation={true}
@@ -73,7 +72,7 @@ export default function Visual() {
         onSwiper={handleSlideChange}
         onSlideChange={handleSlideChange}
         modules={[Autoplay, EffectFade, Navigation, Pagination]}
-        className="mySwiper h-[500px] visual-swiper"
+        className="mySwiper h-96 lg:h-[500px] visual-swiper"
       >
         {slideData.map((item, index) => (
           <SwiperSlide key={index} className="overflow-hidden">
