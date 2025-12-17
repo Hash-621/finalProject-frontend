@@ -64,3 +64,21 @@ body {
     display: none !important;
   }
 }
+
+/* ------------------------------------------------------------- */
+
+.tour-swiper {
+  padding-bottom: 30px !important;
+}
+.tour-swiper .swiper-pagination {
+  @apply flex justify-center;
+}
+.tour-swiper .swiper-pagination-bullet {
+  @apply w-2 h-2 mx-1 opacity-50 transition duration-500;
+  background: white;
+}
+
+.tour-swiper .swiper-pagination-bullet-active {
+  @apply opacity-100;
+}
+/* ------------------------------------------------------------- */

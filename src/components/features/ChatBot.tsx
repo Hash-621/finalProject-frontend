@@ -51,10 +51,10 @@ export default function ChatBot() {
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+        className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
       >
         {isOpen ? (
-          <XMarkIcon className="w-6 h-6" />
+          <XMarkIcon className=" w-6 h-6" />
         ) : (
           <ChatBubbleLeftRightIcon className="w-8 h-8" />
         )}
@@ -66,9 +66,9 @@ export default function ChatBot() {
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-24 right-6 z-50 w-80 md:w-96 h-[500px] bg-white border border-gray-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-24 right-6 z-50 w-[80%] sm:w-96 h-[500px] bg-white border border-gray-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
-            <div className="bg-blue-600 p-4 text-white flex items-center gap-2">
+            <div className="bg-green-500 p-4 text-white flex items-center gap-2">
               <div className="bg-white/20 p-1.5 rounded-full">
                 <ChatBubbleLeftRightIcon className="w-5 h-5" />
               </div>
@@ -86,7 +86,7 @@ export default function ChatBot() {
                   <div
                     className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
                       msg.role === "user"
-                        ? "bg-blue-500 text-white rounded-tr-none"
+                        ? "bg-green-500 text-white rounded-tr-none"
                         : "bg-white text-gray-800 border border-gray-200 rounded-tl-none"
                     }`}
                   >
@@ -106,19 +106,19 @@ export default function ChatBot() {
 
             <form
               onSubmit={handleSend}
-              className="p-3 bg-white border-t border-gray-100 flex gap-2"
+              className="p-3 bg-white border-t border-gray-100 flex gap-2 @container"
             >
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="궁금한 것을 물어보세요..."
-                className="flex-1 bg-gray-100 text-gray-900 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-[calc(100%-40px)] @sm:w-auto @sm:flex-1 bg-gray-100 text-gray-900 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
               <button
                 type="submit"
                 disabled={isLoading}
-                className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:bg-gray-300 transition"
+                className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600 disabled:bg-gray-300 transition"
               >
                 <PaperAirplaneIcon className="w-5 h-5" />
               </button>

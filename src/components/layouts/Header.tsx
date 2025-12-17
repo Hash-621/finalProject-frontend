@@ -204,10 +204,6 @@ export default function Header() {
                   >
                     회원가입
                   </Link>
-                  <span aria-hidden="true" className="h-4 w-px bg-gray-200" />
-                  <button className="text-sm cursor-pointer font-medium text-gray-700 hover:text-gray-400 transition-colors duration-200">
-                    검색
-                  </button>
                 </div>
               </div>
             </div>
