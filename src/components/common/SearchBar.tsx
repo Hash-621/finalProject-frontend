@@ -46,7 +46,7 @@ export default function SearchBar({
 
   return (
     <form onSubmit={handleSubmit} role="search" className={className}>
-      <Field className="flex gap-3 items-center px-2 h-full">
+      <Field className="flex gap-3 items-center h-full w-full">
         <Select name="status" id={`${idPrefix}-status`} className="outline-0">
           <option value="all">전체검색</option>
           <option value="title">제목</option>
@@ -57,7 +57,7 @@ export default function SearchBar({
           type="text"
           name="full_name"
           id={`${idPrefix}-fullname`}
-          className={`outline-0 ${inputClassName}`}
+          className={`outline-0 flex-1 min-w-0 ${inputClassName}`}
           placeholder="검색어를 입력하세요"
         />
 
