@@ -7,6 +7,8 @@ import Restaurant from "@/components/sections/Restaurant";
 import TourCurse from "@/components/sections/TourCurse";
 import Utils from "@/components/sections/Utils";
 import Visual from "@/components/sections/Visual";
+import HospitalMap from "@/components/sections/HospitalMap";
+import BoardSection from "@/components/sections/BoardSection";
 
 // 애니메이션 설정을 Variants 형식으로 정의하면 타입 에러가 깔끔하게 사라집니다.
 const fadeInUp: Variants = {
@@ -60,6 +62,22 @@ export default function Home() {
         viewport={{ once: true, margin: "-100px" }}
       >
         <Restaurant />
+      </motion.div>
+      <motion.div
+        variants={fadeInUp}
+        initial="initial"
+        whileInView="whileInView"
+        viewport={{ once: true, margin: "-100px" }}
+      >
+        <HospitalMap />
+      </motion.div>
+      <motion.div
+        variants={fadeInUp}
+        initial="initial"
+        whileInView="whileInView"
+        viewport={{ once: true, margin: "-100px" }}
+      >
+        <BoardSection />
       </motion.div>
     </DefaultLayout>
   );

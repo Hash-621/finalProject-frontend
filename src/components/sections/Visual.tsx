@@ -9,6 +9,7 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 import { Autoplay, EffectFade, Navigation, Pagination } from "swiper/modules";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 export default function Visual() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -16,15 +17,14 @@ export default function Visual() {
   const handleSlideChange = (swiper: SwiperCore) => {
     setActiveIndex(swiper.realIndex);
   };
-
   const slideData = [
     {
-      category: "Daejeon Life",
+      category: "Travel Guide", // 'Tour/Route' 대신 더 포괄적인 느낌으로 변경
       src: "/images/visual1.png",
-      title: "대전의 모든 정보,\n한 곳에서 다잇슈",
+      title: "대전의 숨은 명소,\n테마별 추천 코스",
       description:
-        "뉴스부터 구인구직·병원·맛집까지\n실시간으로 확인하는 대전 생활 가이드.",
-      href: "/search/results?searchStatus=all&searchKeyword=", // 검색 전체 페이지나 메인 서비스
+        "가족, 연인, 친구와 함께 떠나는\n대전만의 매력 넘치는 관광 가이드.",
+      href: "/tour/route",
     },
     {
       category: "Realtime News",
@@ -32,19 +32,19 @@ export default function Visual() {
       title: "대전 생활에 필요한\n모든 순간의 기록",
       description:
         "지금 가장 핫한 지역 소식과\n꼭 필요한 정보를 가장 빠르게 전달합니다.",
-      href: "/news", // 뉴스/소식 페이지
+      href: "/news",
     },
     {
-      category: "Community",
+      category: "Job & Career", // 단순히 'Job'보다 전문적인 느낌 부여
       src: "/images/visual3.png",
-      title: "대전 사람들의\n진솔한 이야기 공간",
+      title: "내 일을 찾는 즐거움,\n대전 맞춤형 일자리",
       description:
-        "우리 동네 사람들과 나누는\n따뜻한 정보와 일자리 소식을 만나보세요.",
-      href: "/community", // 커뮤니티/게시판 페이지
+        "우리 동네 구인 소식부터 취업 정보까지\n당신의 새로운 시작을 함께합니다.",
+      href: "/job",
     },
   ];
 
-  const startScale = 1.15; // 너무 과하지 않게 조절
+  const startScale = 1.15;
   const durationMs = 6000;
 
   return (
@@ -69,7 +69,6 @@ export default function Visual() {
       >
         {slideData.map((item, index) => (
           <SwiperSlide key={index} className="relative overflow-hidden">
-            {/* 📸 이미지 레이어 & Ken Burns 효과 */}
             <div className="absolute inset-0">
               <img
                 className="w-full h-full object-cover transition-transform ease-out"
@@ -81,12 +80,11 @@ export default function Visual() {
                 }}
                 alt={item.title}
               />
-              {/* 시네마틱 오버레이 그라데이션 */}
+
               <div className="absolute inset-0 bg-linear-to-r from-black/70 via-black/30 to-transparent" />
               <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent" />
             </div>
 
-            {/* ✍️ 컨텐츠 레이어 */}
             <div className="relative h-full max-w-7xl mx-auto px-6 flex flex-col justify-center">
               <AnimatePresence mode="wait">
                 {activeIndex === index && (
@@ -97,27 +95,29 @@ export default function Visual() {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="max-w-3xl"
                   >
-                    {/* 상단 배지 */}
                     <motion.span
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
-                      className="inline-block px-4 py-1.5 rounded-full bg-green-500 text-white text-xs font-bold tracking-widest uppercase mb-6 shadow-lg shadow-green-500/30"
+                      className="inline-flex items-center gap-2 px-3 py-1 bg-green-50/30 text-green-400 rounded-full text-xs font-black tracking-tight mb-3 uppercase"
                     >
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      </span>
+
                       {item.category}
                     </motion.span>
 
-                    {/* 메인 타이틀 (개행 적용) */}
                     <motion.h2
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 }}
-                      className="text-4xl md:text-6xl font-black text-white mb-6 leading-[1.15] whitespace-pre-line tracking-tight"
+                      className="text-4xl md:text-6xl font-bold text-white mb-6 leading-[1.15] whitespace-pre-line tracking-tight"
                     >
                       {item.title}
                     </motion.h2>
 
-                    {/* 서브 텍스트 */}
                     <motion.p
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -126,25 +126,55 @@ export default function Visual() {
                     >
                       {item.description}
                     </motion.p>
-                    {/* CTA 버튼 영역 */}
+
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.8 }}
                       className="flex gap-4 @container"
                     >
-                      <Link
-                        href={item.href}
-                        className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all shadow-xl shadow-green-500/20 active:scale-95 flex items-center justify-center  @max-[350px]:hidden"
-                      >
-                        자세히 보기
+                      {/* 자세히 보기 버튼 */}
+                      <Link href={item.href}>
+                        <motion.div
+                          whileHover="hover" // 호버 시 아래 'hover' 상태 실행
+                          className="inline-flex items-center gap-2 text-white font-bold bg-green-600 hover:bg-green-500 px-6 py-3 rounded-full transition-colors duration-300 shadow-lg shadow-green-900/40 cursor-pointer"
+                        >
+                          자세히 보기
+                          <motion.div
+                            variants={{
+                              hover: { x: 6 }, // 호버 시 x축으로 6px 이동
+                            }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 10,
+                            }}
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </motion.div>
+                        </motion.div>
                       </Link>
 
-                      <Link
-                        href="/community"
-                        className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl backdrop-blur-md transition-all border border-white/20 flex items-center justify-center  @max-[350px]:hidden"
-                      >
-                        커뮤니티 이동
+                      {/* 커뮤니티 버튼 */}
+                      <Link href="/community/free">
+                        <motion.div
+                          whileHover="hover"
+                          className="inline-flex items-center gap-2 text-white font-bold bg-white/10 hover:bg-white/20 px-6 py-3 rounded-full transition-all duration-300 border border-white/20 backdrop-blur-md cursor-pointer"
+                        >
+                          커뮤니티
+                          <motion.div
+                            variants={{
+                              hover: { x: 6 },
+                            }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 10,
+                            }}
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </motion.div>
+                        </motion.div>
                       </Link>
                     </motion.div>
                   </motion.div>
@@ -154,39 +184,6 @@ export default function Visual() {
           </SwiperSlide>
         ))}
       </Swiper>
-
-      {/* 커스텀 네비게이션 스타일링을 위한 CSS (글로벌 CSS나 스탠다드 CSS에 추가 권장) */}
-      <style jsx global>{`
-        .visual-swiper .swiper-pagination-bullet {
-          width: 40px;
-          height: 4px;
-          border-radius: 2px;
-          background: rgba(255, 255, 255, 0.3);
-          opacity: 1;
-          transition: all 0.3s;
-        }
-        .visual-swiper .swiper-pagination-bullet-active {
-          background: #22c55e !important;
-          width: 60px;
-        }
-        .visual-swiper .swiper-button-next,
-        .visual-swiper .swiper-button-prev {
-          color: white !important;
-          opacity: 0;import { Link } from 'next/link';
-import { Link } from 'next/link';
-import { Link } from 'next/link';
-
-          transition: all 0.3s;
-        }
-        .group:hover .swiper-button-next,
-        .group:hover .swiper-button-prev {
-          opacity: 0.5;
-        }
-        .group:hover .swiper-button-next:hover,
-        .group:hover .swiper-button-prev:hover {
-          opacity: 1;
-        }
-      `}</style>
     </section>
   );
 }

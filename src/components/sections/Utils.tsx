@@ -43,17 +43,24 @@ export default function Utils() {
           <div className="space-y-4">
             <h5 className="font-bold text-gray-800 text-lg">로그인</h5>
             <Link
-              href="/login"
-              className="bg-green-500 w-full h-12 rounded-2xl text-white font-bold flex items-center justify-center text-center hover:bg-green-600 transition-colors shadow-md shadow-green-100"
+              href="/sign-in"
+              className="bg-linear-to-r from-green-600 to-green-400 w-full h-12 rounded-2xl text-white font-bold flex items-center justify-center text-center shadow-md shadow-green-100 
+  transition-all duration-300 ease-in-out hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
             >
               다잇슈 시작하기
             </Link>
             <div className="flex justify-center gap-4 text-xs text-gray-400 font-medium py-1">
-              <Link href="" className="hover:text-green-500 transition-colors">
+              <Link
+                href="/find-account"
+                className="hover:text-green-500 transition-colors"
+              >
                 아이디 찾기
               </Link>
               <span className="text-gray-200">|</span>
-              <Link href="" className="hover:text-green-500 transition-colors">
+              <Link
+                href="/sign-up"
+                className="hover:text-green-500 transition-colors"
+              >
                 회원가입
               </Link>
             </div>
@@ -90,7 +97,7 @@ export default function Utils() {
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white rounded-[2.5rem] p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex items-center">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex items-center">
           <Swiper
             breakpoints={{
               0: { slidesPerView: 3, spaceBetween: 15 },

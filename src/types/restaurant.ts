@@ -13,4 +13,5 @@ export interface RestaurantData {
   price: string[] | null;
   url: string | null;
   imagePath: string;
+  isFavorite: boolean;
 }

@@ -24,3 +24,12 @@ export interface TourCurse {
 export interface CurseStructure {
   tours: TourCurse[];
 }
+
+export interface Tour {
+  id: number;
+  name: string;
+  address: string;
+  phone: string;
+  description: string;
+  image: string;
+}

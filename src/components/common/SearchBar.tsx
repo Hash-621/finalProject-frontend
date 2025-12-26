@@ -1,9 +1,10 @@
-"user client";
+"use client";
 
 import React from "react";
 import { useRouter } from "next/navigation";
 import { Field, Select, Input } from "@headlessui/react";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+
+import { Search } from "lucide-react";
 
 interface SearchBarProps {
   className?: string;
@@ -47,7 +48,11 @@ export default function SearchBar({
   return (
     <form onSubmit={handleSubmit} role="search" className={className}>
       <Field className="flex gap-3 items-center h-full w-full">
-        <Select name="status" id={`${idPrefix}-status`} className="outline-0">
+        <Select
+          name="status"
+          id={`${idPrefix}-status`}
+          className="outline-0 cursor-pointer text-sm text-gray-700 bg-transparent"
+        >
           <option value="all">전체검색</option>
           <option value="title">제목</option>
           <option value="text">내용</option>
@@ -63,12 +68,13 @@ export default function SearchBar({
 
         <button
           type="submit"
-          className={` ${buttonClassName}`}
+          className={`flex items-center justify-center transition-transform active:scale-90 ${buttonClassName}`}
           aria-label="검색 실행"
         >
-          <MagnifyingGlassIcon
-            className={` ${iconClassName}`}
+          <Search
+            className={`${iconClassName}`}
             aria-hidden="true"
+            strokeWidth={2.5}
           />
         </button>
       </Field>

@@ -1,23 +1,27 @@
+import React from "react";
 import {
   XMarkIcon,
-  ExclamationCircleIcon,
   PaperAirplaneIcon,
-  UserIcon,
-  PhoneIcon,
-  CheckCircleIcon,
-  CalendarDaysIcon,
-  ChevronRightIcon,
-  AcademicCapIcon,
   BriefcaseIcon,
+  AcademicCapIcon,
+  MapPinIcon,
+  CreditCardIcon,
+  CheckCircleIcon,
+  BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
 import { JobData, ApplyFormData, ApplyStep } from "@/types/job";
+import ApplyForm from "@/components/jobTools/ApplyForm";
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedJob: JobData | null;
+  detailContent: {
+    task: string[];
+    qualification: string[];
+    preference: string[];
+  } | null;
   detailLoading: boolean;
-  detailHtml: string;
   applyStep: ApplyStep;
   setApplyStep: (step: ApplyStep) => void;
   applyForm: ApplyFormData;
@@ -30,7 +34,7 @@ export default function JobDetailModal({
   onClose,
   selectedJob,
   detailLoading,
-  detailHtml,
+  detailContent,
   applyStep,
   setApplyStep,
   applyForm,
@@ -41,177 +45,186 @@ export default function JobDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-300 "
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-4xl h-[85vh] md:h-[90vh] rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative"
+        className="bg-white w-full max-w-2xl h-[90vh] rounded-3xl flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 duration-300 relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 헤더 섹션 */}
-        <div className="bg-white border-b border-gray-100 shrink-0 px-8 pt-10 pb-8 flex justify-between items-start">
-          <div className="pr-10 w-full max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              {/* 회사명이 있을 때만 렌더링 */}
-              {selectedJob.companyName &&
-                selectedJob.companyName.length > 0 && (
-                  <>
-                    <span className="bg-green-600 text-white text-[10px] uppercase tracking-widest font-bold px-2.5 py-2 rounded-md shadow-sm">
-                      {selectedJob.companyName}
-                    </span>
-                    <ChevronRightIcon className="w-4 h-4 text-gray-300" />
-                  </>
-                )}
-              <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-2 rounded-md">
-                <BriefcaseIcon className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-gray-600 text-xs font-bold">
-                  {selectedJob.career}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-2 rounded-md">
-                <AcademicCapIcon className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-gray-600 text-xs font-bold">
-                  {selectedJob.education}
-                </span>
-              </div>
-            </div>
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight mb-5 break-keep">
+        {/* --- 헤더 섹션 --- */}
+        <div className="bg-white border-b border-gray-100 px-6 py-5 flex justify-between items-start sticky top-0 z-10">
+          <div className="pr-4">
+            <h3 className="text-xl md:text-2xl font-black text-gray-900 leading-tight mb-2 break-keep">
               {selectedJob.title}
             </h3>
+            <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+              <BuildingOffice2Icon className="w-4 h-4" />
+              <span>{selectedJob.companyName}</span>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-all group shrink-0"
+            className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors shrink-0"
           >
-            <XMarkIcon className="w-6 h-6 text-gray-600 group-hover:rotate-90 transition-transform" />
+            <XMarkIcon className="w-6 h-6 text-gray-500" />
           </button>
         </div>
 
-        {/* 본문 섹션 */}
-        <div className="flex-1 overflow-y-auto bg-gray-50/50 relative">
+        {/* --- 본문 섹션 --- */}
+        <div className="flex-1 overflow-y-auto bg-gray-50 relative custom-scrollbar">
+          {/* [1] 지원 폼 레이어 */}
           {applyStep === "FORM" && (
-            <div className="absolute inset-0 bg-white/95 z-30 flex flex-col items-center justify-center p-6 animate-in fade-in slide-in-from-bottom-8 duration-300">
-              <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl border border-gray-100 text-center">
-                <h4 className="text-2xl font-bold text-gray-900 mb-6">
-                  간편 지원하기
-                </h4>
-                <form
-                  onSubmit={handleApplySubmit}
-                  className="space-y-5 text-left"
-                >
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-700 ml-1">
-                      이름
-                    </label>
-                    <div className="relative group">
-                      <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 w-5 h-5" />
-                      <input
-                        type="text"
-                        required
-                        className="w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all outline-none"
-                        placeholder="지원자 성함"
-                        value={applyForm.name}
-                        onChange={(e) =>
-                          setApplyForm({ ...applyForm, name: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-700 ml-1">
-                      연락처
-                    </label>
-                    <div className="relative group">
-                      <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 w-5 h-5" />
-                      <input
-                        type="tel"
-                        required
-                        className="w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all outline-none"
-                        placeholder="010-0000-0000"
-                        value={applyForm.phone}
-                        onChange={(e) =>
-                          setApplyForm({ ...applyForm, phone: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="pt-4 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setApplyStep("NONE")}
-                      className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold"
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-2 py-4 bg-green-600 text-white rounded-2xl font-bold shadow-lg shadow-green-100"
-                    >
-                      지원 완료
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <ApplyForm
+              applyForm={applyForm}
+              setApplyForm={setApplyForm}
+              onSubmit={handleApplySubmit}
+              onCancel={() => setApplyStep("NONE")}
+            />
           )}
 
+          {/* [2] 지원 완료 레이어 */}
           {applyStep === "DONE" && (
-            <div className="absolute inset-0 bg-white z-40 flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95">
-              <CheckCircleIcon className="w-16 h-16 text-green-500 mb-6" />
-              <h4 className="text-3xl font-bold text-gray-900 mb-2">
+            <div className="absolute inset-0 bg-white z-30 flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95">
+              <CheckCircleIcon className="w-20 h-20 text-green-500 mb-4" />
+              <h4 className="text-2xl font-black text-gray-900 mb-2">
                 지원이 완료되었습니다!
               </h4>
-              <p className="text-gray-500 mb-10">
-                인사담당자가 확인 후 연락드릴 예정입니다.
+              <p className="text-gray-500 mb-8">
+                담당자가 확인 후 빠른 시일 내에 연락드리겠습니다.
               </p>
               <button
                 onClick={onClose}
-                className="px-12 py-4 bg-gray-900 text-white rounded-2xl font-bold"
+                className="px-10 py-3 bg-gray-900 text-white rounded-xl font-bold"
               >
-                모달 닫기
+                확인
               </button>
             </div>
           )}
 
-          {/* 모집 요강 출력 */}
-          <div className="max-w-4xl mx-auto p-4 md:p-10">
-            {detailLoading ? (
-              <div className="h-full flex flex-col items-center justify-center min-h-[400px]">
-                <div className="w-16 h-16 border-4 border-green-100 border-t-green-600 rounded-full animate-spin"></div>
+          {/* [3] 실제 상세 공고 내용 */}
+          <div className="p-6 md:p-8 space-y-8 @container">
+            {/* 상단 요약 카드 그리드 */}
+            <div className="grid grid-cols-2 gap-4 @max-[360px]:flex @max-[360px]:flex-col">
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-start gap-3">
+                <BriefcaseIcon className="w-5 h-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-400 font-medium mb-1">경력</p>
+                  <p className="font-bold text-gray-800 text-sm">
+                    {selectedJob.career}
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="bg-white p-8 md:p-12 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                <div
-                  className="crawled-content"
-                  dangerouslySetInnerHTML={{ __html: detailHtml }}
-                />
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-start gap-3">
+                <AcademicCapIcon className="w-5 h-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-400 font-medium mb-1">학력</p>
+                  <p className="font-bold text-gray-800 text-sm">
+                    {selectedJob.education}
+                  </p>
+                </div>
               </div>
-            )}
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-start gap-3">
+                <MapPinIcon className="w-5 h-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-400 font-medium mb-1">
+                    근무지
+                  </p>
+                  <p className="font-bold text-gray-800 text-sm">
+                    {selectedJob.location || "대전 전체"}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-start gap-3">
+                <CreditCardIcon className="w-5 h-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-400 font-medium mb-1">급여</p>
+                  <p className="font-bold text-gray-800 text-sm">
+                    면접 후 결정
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 상세 텍스트 영역 */}
+            <div className="space-y-6">
+              <section>
+                <h4 className="text-lg font-bold text-gray-900 mb-3 border-l-4 border-green-500 pl-3">
+                  모집 부문 및 상세 내용
+                </h4>
+                <div className="bg-white rounded-xl border border-gray-200 p-6 text-sm text-gray-600 leading-relaxed">
+                  {detailLoading ? (
+                    <div className="py-10 flex justify-center">
+                      <div className="w-8 h-8 border-4 border-green-100 border-t-green-500 rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div>
+                        <strong className="text-base text-gray-800 block mb-2">
+                          📌 담당업무
+                        </strong>
+                        <ul className="list-disc list-inside space-y-1">
+                          {detailContent?.task.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <strong className="text-base text-gray-800 block mb-2">
+                          🎯 지원자격
+                        </strong>
+                        <ul className="list-disc list-inside space-y-1">
+                          {detailContent?.qualification.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <strong className="text-base text-gray-800 block mb-2">
+                          ⭐ 우대사항
+                        </strong>
+                        <ul className="list-disc list-inside space-y-1">
+                          {detailContent?.preference.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-lg font-bold text-gray-900 mb-3 border-l-4 border-green-500 pl-3">
+                  접수 기간
+                </h4>
+                <div className="bg-green-50 rounded-xl p-5 border border-green-100 flex justify-between items-center">
+                  <span className="text-sm font-bold text-gray-600">
+                    남은 기간
+                  </span>
+                  <span className="text-sm font-bold text-red-500">
+                    {selectedJob.deadline} 까지
+                  </span>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
 
-        {/* 푸터 섹션 */}
-        <div className="px-8 py-6 border-t border-gray-100 bg-white shrink-0 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <CalendarDaysIcon className="w-5 h-5 text-green-600" />
-            <span className="text-sm font-bold text-gray-800">
-              마감: {selectedJob.deadline}
-            </span>
-          </div>
-          <div className="flex gap-3 w-full md:w-auto">
-            <button
-              onClick={onClose}
-              className="flex-1 px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold cursor-pointer"
-            >
-              닫기
-            </button>
-            <button
-              onClick={() => setApplyStep("FORM")}
-              className="flex-2 px-12 py-4 bg-green-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200 cursor-pointer"
-            >
-              지원하기 <PaperAirplaneIcon className="w-5 h-5" />
-            </button>
-          </div>
+        {/* --- 푸터 버튼 섹션 --- */}
+        <div className="bg-white border-t border-gray-100 p-5 flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-10">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            닫기
+          </button>
+          <button
+            onClick={() => setApplyStep("FORM")}
+            className="flex-2 py-3.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg flex items-center justify-center gap-2"
+          >
+            지원하기 <PaperAirplaneIcon className="w-5 h-5" />
+          </button>
         </div>
       </div>
     </div>

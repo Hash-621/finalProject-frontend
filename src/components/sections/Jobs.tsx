@@ -13,8 +13,12 @@ import "swiper/css/navigation";
 // 컴포넌트 및 타입
 import JobCard from "@/components/jobTools/JobCard";
 import JobDetailModal from "@/components/jobTools/JobDetailModal";
-import { JobData, ApplyFormData, ApplyStep } from "@/types/job";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { JOB_DETAILS_DB } from "@/data/jobDetailData";
+import { JobData, ApplyFormData, ApplyStep, DetailContent } from "@/types/job";
+
+// lucide-react로 변경
+import { Loader2, ChevronRight, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function Jobs() {
   const [jobs, setJobs] = useState<JobData[]>([]);
@@ -22,7 +26,6 @@ export default function Jobs() {
 
   // 모달 관련 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [detailHtml, setDetailHtml] = useState("");
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobData | null>(null);
   const [applyStep, setApplyStep] = useState<ApplyStep>("NONE");
@@ -32,10 +35,14 @@ export default function Jobs() {
     message: "",
   });
 
-  const fetch20Jobs = useCallback(async () => {
+  const [detailContent, setDetailContent] = useState<DetailContent | null>(
+    null
+  );
+
+  const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const TOTAL_PAGES = 4; // 5개씩 4페이지 = 20개
+      const TOTAL_PAGES = 4;
 
       const requests = Array.from({ length: TOTAL_PAGES }, (_, i) =>
         api.get(`/job/crawl?page=${i + 1}`)
@@ -43,7 +50,10 @@ export default function Jobs() {
 
       const responses = await Promise.all(requests);
 
-      const combined = responses.flatMap((res) => res.data || []);
+      const combined = responses.flatMap((res) =>
+        Array.isArray(res.data) ? res.data : []
+      );
+
       const uniqueJobs = combined
         .filter(
           (item, index, self) =>
@@ -53,37 +63,51 @@ export default function Jobs() {
 
       setJobs(uniqueJobs);
     } catch (e) {
-      console.error("데이터 로드 실패", e);
+      console.error("데이터 로드 실패:", e);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetch20Jobs();
-  }, [fetch20Jobs]);
+    fetchJobs();
+  }, [fetchJobs]);
 
-  // 상세 보기 및 지원 제출 로직 (유지)
+  useEffect(() => {
+    if (isModalOpen) {
+      const scrollBarWidth = window.innerWidth - document.body.clientWidth;
+      document.body.style.overflow = "hidden";
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    } else {
+      document.body.style.overflow = "unset";
+      document.body.style.paddingRight = "0px";
+    }
+
+    return () => {
+      document.body.style.overflow = "unset";
+      document.body.style.paddingRight = "0px";
+    };
+  }, [isModalOpen]);
+
   const handleDetailClick = async (job: JobData) => {
+    setSelectedJob(job);
     setIsModalOpen(true);
     setDetailLoading(true);
-    setSelectedJob(job);
-    setDetailHtml("");
     setApplyStep("NONE");
-    try {
-      const res = await api.get(
-        `/job/detail?url=${encodeURIComponent(job.url)}`
-      );
-      setDetailHtml(
-        res.data === "FAIL" || !res.data || res.data.length < 50
-          ? "FAIL"
-          : res.data
-      );
-    } catch (e) {
-      setDetailHtml("FAIL");
-    } finally {
-      setDetailLoading(false);
+    const matchedDetail = JOB_DETAILS_DB[job.title];
+    if (matchedDetail) {
+      setDetailContent(matchedDetail);
+    } else {
+      setDetailContent({
+        task: ["관련 업무 전반", "팀 내 협업 및 지원"],
+        qualification: [
+          "성실하고 책임감 강하신 분",
+          "원활한 커뮤니케이션 가능자",
+        ],
+        preference: ["유관 업무 경험자 우대", "즉시 출근 가능자"],
+      });
     }
+    setDetailLoading(false);
   };
 
   const handleApplySubmit = async (e: React.FormEvent) => {
@@ -106,29 +130,50 @@ export default function Jobs() {
     <section className="py-12 bg-gray-50/20 overflow-hidden">
       <div className="w-full mx-auto px-4 md:max-w-7xl lg:px-8">
         <div className="flex flex-col lg:flex-row gap-10">
-          <div className="w-full lg:w-[25%] shrink-0">
-            <h4 className="font-bold text-green-600 mb-2">구인구직</h4>
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4 leading-tight">
-              대전 채용 공고
+          <div className="w-full lg:w-[30%] shrink-0 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              LIVE UPDATE
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              대전{" "}
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-emerald-500">
+                채용 공고
+              </span>
               <br />
               최신 업데이트
             </h2>
-            <p className="text-gray-500 mb-8 text-sm">
-              실시간 업데이트되는 대전 지역
-              <br className="hidden lg:block" /> 최신 공고 20개를 확인하세요.
+            <p className="text-slate-500 text-sm font-medium leading-relaxed">
+              실시간으로 업데이트되는 대전 지역의
+              <br className="hidden lg:block" /> 엄선된 최신 공고 20개를
+              확인하세요.
             </p>
-            <Link
-              href="/job"
-              className="inline-flex px-8 py-3 text-white bg-green-500 hover:bg-green-600 transition-all rounded-full font-bold text-sm shadow-md"
-            >
-              전체 공고 보기
+            <Link href="/job">
+              <motion.div
+                whileHover="hover"
+                className="inline-flex px-8 py-3.5 text-white bg-slate-900 hover:bg-green-600 transition-colors duration-300 rounded-full font-bold shadow-lg shadow-slate-100 items-center gap-2 cursor-pointer"
+              >
+                전체 공고 보기
+                <motion.div
+                  variants={{
+                    hover: { x: 5 },
+                  }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </motion.div>
+              </motion.div>
             </Link>
           </div>
 
           <div className="w-full lg:w-[75%] min-w-0 relative">
             {loading ? (
               <div className="h-[360px] flex flex-col items-center justify-center bg-white rounded-4xl border border-gray-100 shadow-sm">
-                <ArrowPathIcon className="animate-spin text-green-500 w-10 h-10 mb-2" />
+                {/* Loader2로 변경 */}
+                <Loader2 className="animate-spin text-green-500 w-10 h-10 mb-2" />
                 <p className="text-gray-400 font-medium">
                   채용 정보를 불러오는 중...
                 </p>
@@ -169,7 +214,7 @@ export default function Jobs() {
         onClose={() => setIsModalOpen(false)}
         selectedJob={selectedJob}
         detailLoading={detailLoading}
-        detailHtml={detailHtml}
+        detailContent={detailContent}
         applyStep={applyStep}
         setApplyStep={setApplyStep}
         applyForm={applyForm}
