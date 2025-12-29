@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import api from "@/api/axios";
 import Link from "next/link";
+import { usePosts } from "@/components/hooks/userPost";
+import Cookies from "js-cookie"; // 쿠키 라이브러리 추가
 
-// Swiper 관련 임포트
+// Swiper 관련
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
 import "swiper/css";
@@ -26,65 +28,77 @@ import {
   MapPin,
   Newspaper,
   UtensilsCrossed,
-  Bell,
   Home,
+  LogOut,
 } from "lucide-react";
 
-// --- 타입 정의 ---
 interface UserInfo {
   loginId?: string;
   nickname?: string;
   email?: string;
 }
 
-interface ListItem {
-  targetId: number;
-  title?: string;
-  content?: string;
-  category?: string;
-  createdAt: string;
-}
-
 export default function MyPage() {
   const [activeTab, setActiveTab] = useState<string>("info");
   const [info, setInfo] = useState<UserInfo>({});
-  const [listData, setListData] = useState<ListItem[]>([]);
+  const [isInfoLoading, setIsInfoLoading] = useState(true);
 
-  // 페이지네이션 상태
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLastPage, setIsLastPage] = useState(false);
+  const {
+    listData,
+    isLoading: isListLoading,
+    currentPage,
+    isLastPage,
+    editingId,
+    editForm,
+    setEditForm,
+    fetchPosts,
+    startEdit,
+    saveEdit,
+    deletePost,
+    setEditingId,
+  } = usePosts();
 
-  // 수정 상태 관리
-  const [editingItem, setEditingItem] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", content: "" });
+  // 유저 정보 불러오기
+  const fetchUserInfo = useCallback(async () => {
+    try {
+      setIsInfoLoading(true);
+      const res = await api.get("/mypage/info");
+      setInfo(res.data);
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        alert("로그인 세션이 만료되었습니다.");
+        Cookies.remove("token"); // 쿠키 삭제
+        window.location.href = "/login";
+      }
+    } finally {
+      setIsInfoLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setCurrentPage(1);
-    fetchData(activeTab, 1);
-    setEditingItem(null);
-  }, [activeTab]);
+    // [수정] localStorage 대신 Cookies 사용
+    const token = Cookies.get("token");
 
-  const fetchData = async (tab: string, page: number) => {
-    try {
-      let url = tab === "info" ? "/mypage/info" : `/mypage/${tab}?page=${page}`;
-      const res = await api.get(url);
-
-      if (tab === "info") {
-        setInfo(res.data);
-      } else {
-        setListData(res.data);
-        setIsLastPage(res.data.length < 10);
-      }
-    } catch (err) {
-      console.error("데이터 조회 실패:", err);
+    if (!token) {
+      alert("로그인이 필요한 페이지입니다.");
+      window.location.href = "/login";
+      return;
     }
-  };
 
-  const handlePageChange = (newPage: number) => {
-    if (newPage < 1) return;
-    setCurrentPage(newPage);
-    fetchData(activeTab, newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (activeTab === "info") {
+      fetchUserInfo();
+    } else {
+      fetchPosts(activeTab, 1);
+    }
+    setEditingId(null);
+  }, [activeTab, fetchUserInfo, fetchPosts, setEditingId]);
+
+  const handleLogout = () => {
+    if (confirm("로그아웃 하시겠습니까?")) {
+      // [수정] localStorage 대신 Cookies 삭제
+      Cookies.remove("token", { path: "/" });
+      window.location.href = "/";
+    }
   };
 
   const handleUpdateInfo = async () => {
@@ -96,49 +110,29 @@ export default function MyPage() {
     }
   };
 
-  const startEdit = (item: ListItem) => {
-    setEditingItem(item.targetId);
-    setEditForm({
-      title: item.title || "",
-      content: item.content || item.title || "",
-    });
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1) return;
+    fetchPosts(activeTab, newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const saveEdit = async (id: number) => {
-    try {
-      const url =
-        activeTab === "posts" ? `/mypage/post/${id}` : `/mypage/comment/${id}`;
-      const payload =
-        activeTab === "posts" ? editForm : { content: editForm.content };
-
-      await api.put(url, payload);
-      setEditingItem(null);
-      fetchData(activeTab, currentPage);
-    } catch (err) {
-      alert("수정에 실패했습니다.");
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("삭제하시겠습니까?")) return;
-    try {
-      let url = "";
-      if (activeTab === "posts") url = `/mypage/post/${id}`;
-      else if (activeTab === "comments") url = `/mypage/comment/${id}`;
-      else if (activeTab === "favorites") url = `/mypage/favorite/${id}`;
-
-      await api.delete(url);
-      fetchData(activeTab, currentPage);
-    } catch (err) {
-      alert("삭제 실패");
-    }
-  };
+  // 로딩 상태 처리
+  if (
+    (isInfoLoading && activeTab === "info") ||
+    (isListLoading && listData.length === 0 && activeTab !== "info")
+  ) {
+    return (
+      <div className="min-h-screen flex items-center justify-center font-black text-slate-400">
+        LOADING DASHBOARD...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fcfdfc] py-16 px-4 lg:px-0">
       <div className="max-w-6xl mx-auto">
         {/* 상단 헤더 */}
-        <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div className="mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black mb-4 tracking-[0.2em]">
             <Settings
               size={12}
@@ -147,38 +141,39 @@ export default function MyPage() {
             />
             USER DASHBOARD
           </div>
-          <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-            MY{" "}
-            <span className="text-green-500 italic font-serif leading-none">
-              PAGE
-            </span>
-          </h1>
+          <div className="flex justify-between items-end">
+            <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
+              MY{" "}
+              <span className="text-green-500 italic font-serif leading-none">
+                PAGE
+              </span>
+            </h1>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-slate-400 hover:text-red-500 font-black text-xs transition-colors mb-2"
+            >
+              <LogOut size={16} /> LOGOUT
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-10">
-          {/* 사이드바 메뉴 */}
+          {/* 사이드바 */}
           <div className="w-full lg:w-72 flex flex-col gap-4">
-            <div className="bg-white rounded-[2.5rem] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)] border border-slate-100 p-6 overflow-hidden relative group">
+            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-6 overflow-hidden relative group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full -mr-16 -mt-16 transition-transform duration-700 group-hover:scale-110" />
-
               <div className="mb-10 px-2 relative">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-green-100">
                     <User size={32} strokeWidth={2.5} />
                   </div>
-                  {/* 추가된 홈 버튼 */}
                   <Link
                     href="/"
-                    className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all duration-300 group/home"
-                    title="홈으로 이동"
+                    className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all"
                   >
-                    <Home
-                      size={20}
-                      className="group-hover/home:scale-110 transition-transform"
-                    />
+                    <Home size={20} />
                   </Link>
                 </div>
-
                 <p className="text-xs font-bold text-slate-400 mb-1">
                   반갑습니다,
                 </p>
@@ -186,7 +181,6 @@ export default function MyPage() {
                   {info.nickname || "사용자"}님
                 </h3>
               </div>
-
               <div className="space-y-1 relative">
                 <p className="text-[10px] font-black text-slate-300 px-4 mb-3 uppercase tracking-[0.3em]">
                   Menu
@@ -228,10 +222,9 @@ export default function MyPage() {
             </div>
           </div>
 
-          {/* 메인 컨텐츠 영역 */}
-          <div className="flex-1 bg-white rounded-[3.5rem] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.04)] border border-slate-50 p-6 md:p-14 min-h-[800px] flex flex-col relative transition-all duration-500">
+          {/* 메인 영역 */}
+          <div className="flex-1 bg-white rounded-[3.5rem] shadow-sm border border-slate-50 p-6 md:p-14 min-h-[800px] flex flex-col relative">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-green-50/30 rounded-full blur-[120px] -mr-40 -mt-40 pointer-events-none" />
-
             <div className="relative h-full flex flex-col">
               <div className="flex justify-between items-center mb-14">
                 <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-4">
@@ -240,21 +233,10 @@ export default function MyPage() {
                     ? "Account Settings"
                     : "Activity History"}
                 </h2>
-                <div className="hidden md:flex items-center gap-2 text-slate-400">
-                  <Bell
-                    size={18}
-                    className="animate-bounce"
-                    style={{ animationDuration: "3s" }}
-                  />
-                  <span className="text-[10px] font-black uppercase tracking-widest">
-                    Live Connect
-                  </span>
-                </div>
               </div>
 
               {activeTab === "info" ? (
                 <div className="flex flex-col xl:flex-row items-start gap-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                  {/* 왼쪽: 폼 영역 */}
                   <div className="w-full xl:max-w-md space-y-10">
                     <InputGroup
                       label="Login ID"
@@ -275,7 +257,7 @@ export default function MyPage() {
                     />
                     <button
                       onClick={handleUpdateInfo}
-                      className="w-full mt-10 bg-slate-900 text-white font-black py-6 rounded-4xl hover:bg-green-600 shadow-2xl shadow-slate-200 hover:shadow-green-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 group"
+                      className="w-full mt-10 bg-slate-900 text-white font-black py-6 rounded-4xl hover:bg-green-600 shadow-2xl shadow-slate-200 transition-all flex items-center justify-center gap-3 group"
                     >
                       저장하기{" "}
                       <ArrowRight
@@ -285,7 +267,7 @@ export default function MyPage() {
                     </button>
                   </div>
 
-                  {/* 오른쪽: Swiper 가이드 슬라이더 */}
+                  {/* Swiper Banner */}
                   <div className="w-full xl:w-80 flex flex-col gap-6">
                     <div className="w-full rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-100 border border-slate-50 relative">
                       <Swiper
@@ -298,33 +280,28 @@ export default function MyPage() {
                       >
                         <SwiperSlide>
                           <div className="bg-green-50 h-full p-8 relative overflow-hidden flex flex-col justify-between">
-                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-green-100 rounded-full blur-2xl opacity-60" />
                             <div>
                               <p className="text-[10px] font-black text-green-700 uppercase tracking-widest mb-6 flex items-center gap-2">
                                 <MapPin size={12} className="fill-green-500" />{" "}
                                 Local Hotplace
                               </p>
                               <h4 className="text-xl font-black text-slate-800 leading-tight mb-4">
-                                우리 동네 <br />
-                                숨은 맛집{" "}
+                                우리 동네 <br /> 숨은 맛집{" "}
                                 <span className="text-green-600 italic">
                                   찾기!
                                 </span>
                               </h4>
                               <p className="text-xs text-slate-500 font-medium leading-relaxed">
                                 이웃들이 검증한 진짜 맛집 후기를 확인해보세요.
-                                실패 없는 나들이를 보장합니다.
                               </p>
                             </div>
-                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-green-500 shadow-sm self-end">
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-green-500 self-end">
                               <UtensilsCrossed size={20} />
                             </div>
                           </div>
                         </SwiperSlide>
-
                         <SwiperSlide>
                           <div className="bg-slate-900 h-full p-8 relative overflow-hidden text-white flex flex-col justify-between">
-                            <div className="absolute bottom-0 right-0 w-32 h-32 bg-green-500 rounded-full blur-[60px] opacity-20" />
                             <div>
                               <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                                 <Newspaper size={12} /> Daily News
@@ -336,8 +313,8 @@ export default function MyPage() {
                                 </span>
                               </h4>
                               <p className="text-xs opacity-50 font-medium leading-relaxed">
-                                생활정보부터 공공기관 소식까지, 필요한 소식을
-                                실시간으로 알려드려요.
+                                생활정보부터 공공기관 소식까지 실시간으로
+                                알려드려요.
                               </p>
                             </div>
                             <div className="flex items-center gap-2 text-green-400 text-[10px] font-black uppercase tracking-tighter">
@@ -345,7 +322,6 @@ export default function MyPage() {
                             </div>
                           </div>
                         </SwiperSlide>
-
                         <SwiperSlide>
                           <div className="bg-white h-full p-8 border-2 border-green-50 relative overflow-hidden flex flex-col justify-between">
                             <div>
@@ -363,8 +339,8 @@ export default function MyPage() {
                                 </span>
                               </h4>
                               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                                커뮤니티 가이드라인을 준수하며 즐거운 지역
-                                문화를 함께 만들어가요.
+                                커뮤니티 가이드라인을 준수하며 즐거운 문화를
+                                만들어요.
                               </p>
                             </div>
                             <MessageSquare
@@ -375,16 +351,6 @@ export default function MyPage() {
                         </SwiperSlide>
                       </Swiper>
                     </div>
-
-                    <div className="px-6 py-5 bg-slate-50 rounded-3xl border border-slate-100">
-                      <p className="text-[11px] text-slate-400 font-bold leading-relaxed">
-                        *{" "}
-                        <span className="text-green-600">
-                          지역 포털 가이드:
-                        </span>{" "}
-                        허위 정보 제보는 고객센터 1:1 문의를 통해 접수됩니다.
-                      </p>
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -392,22 +358,20 @@ export default function MyPage() {
                 <div className="flex-1 flex flex-col justify-between animate-in fade-in duration-500">
                   {listData.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-300 py-24">
-                      <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-                        <Bookmark size={40} className="opacity-10" />
-                      </div>
-                      <p className="font-black text-xl tracking-tight text-slate-400">
+                      <Bookmark size={40} className="opacity-10 mb-6" />
+                      <p className="font-black text-xl text-slate-400">
                         활동 내역이 없습니다.
                       </p>
                     </div>
                   ) : (
                     <div>
                       <div className="grid gap-6">
-                        {listData.map((item, index) => (
+                        {listData.map((item) => (
                           <div
-                            key={item.targetId || index}
+                            key={item.id}
                             className="group p-7 bg-slate-50/50 rounded-[2.5rem] border border-transparent hover:border-green-200 hover:bg-white hover:shadow-2xl hover:shadow-green-900/5 transition-all duration-300"
                           >
-                            {editingItem === item.targetId ? (
+                            {editingId === item.id ? (
                               <div className="space-y-4">
                                 <textarea
                                   value={editForm.content}
@@ -421,13 +385,13 @@ export default function MyPage() {
                                 />
                                 <div className="flex justify-end gap-3">
                                   <button
-                                    onClick={() => setEditingItem(null)}
+                                    onClick={() => setEditingId(null)}
                                     className="px-6 py-2 text-slate-400 font-bold"
                                   >
                                     취소
                                   </button>
                                   <button
-                                    onClick={() => saveEdit(item.targetId)}
+                                    onClick={() => saveEdit(activeTab)}
                                     className="px-8 py-2 bg-green-500 text-white font-black rounded-xl"
                                   >
                                     저장
@@ -442,7 +406,7 @@ export default function MyPage() {
                                       {item.category || activeTab}
                                     </span>
                                     <span className="text-xs text-slate-400 font-bold tracking-tighter">
-                                      {item.createdAt}
+                                      {item.createdAt?.split("T")[0]}
                                     </span>
                                   </div>
                                   <h3 className="text-xl font-black text-slate-800 group-hover:text-green-600 transition-colors truncate pr-10">
@@ -461,7 +425,9 @@ export default function MyPage() {
                                     </button>
                                   )}
                                   <button
-                                    onClick={() => handleDelete(item.targetId)}
+                                    onClick={() =>
+                                      deletePost(activeTab, item.id)
+                                    }
                                     className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
                                   >
                                     <Trash2 size={18} />
@@ -472,7 +438,6 @@ export default function MyPage() {
                           </div>
                         ))}
                       </div>
-
                       <div className="flex justify-center items-center gap-4 mt-20">
                         <PageBtn
                           onClick={() => handlePageChange(currentPage - 1)}
@@ -496,46 +461,18 @@ export default function MyPage() {
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        .swiper-pagination-bullet {
-          background: #cbd5e1 !important;
-          opacity: 1 !important;
-          width: 8px !important;
-          height: 8px !important;
-          transition: all 0.3s !important;
-        }
-        .swiper-pagination-bullet-active {
-          background: #22c55e !important;
-          width: 24px !important;
-          border-radius: 4px !important;
-        }
-      `}</style>
     </div>
   );
 }
 
-// --- 서브 컴포넌트 ---
-
-const TabBtn = ({
-  id,
-  label,
-  icon,
-  active,
-  onClick,
-}: {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  active: string;
-  onClick: (id: string) => void;
-}) => (
+// 하위 컴포넌트 생략 방지 (전체 포함)
+const TabBtn = ({ id, label, icon, active, onClick }: any) => (
   <button
     onClick={() => onClick(id)}
     className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black transition-all mb-2 ${
       active === id
-        ? "bg-green-500 text-white shadow-[0_15px_30px_-10px_rgba(34,197,94,0.4)]"
-        : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+        ? "bg-green-500 text-white shadow-lg"
+        : "text-slate-400 hover:bg-slate-50"
     }`}
   >
     <span className={active === id ? "scale-110" : ""}>{icon}</span>
@@ -543,17 +480,7 @@ const TabBtn = ({
   </button>
 );
 
-const InputGroup = ({
-  label,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value?: string;
-  disabled?: boolean;
-  onChange?: (v: string) => void;
-}) => (
+const InputGroup = ({ label, value, disabled, onChange }: any) => (
   <div className="flex flex-col gap-3">
     <label className="text-[11px] font-black text-slate-400 ml-4 uppercase tracking-[0.2em]">
       {label}
@@ -564,22 +491,14 @@ const InputGroup = ({
       onChange={(e) => onChange?.(e.target.value)}
       className={`w-full p-6 rounded-4xl border border-slate-100 outline-none transition-all font-black text-slate-700 ${
         disabled
-          ? "bg-slate-50/50 text-slate-300 border-none shadow-inner"
-          : "focus:border-green-400 focus:ring-8 focus:ring-green-50/50 bg-slate-50/30"
+          ? "bg-slate-50/50 text-slate-300"
+          : "focus:border-green-400 bg-slate-50/30"
       }`}
     />
   </div>
 );
 
-const PageBtn = ({
-  onClick,
-  disabled,
-  icon,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-  icon: React.ReactNode;
-}) => (
+const PageBtn = ({ onClick, disabled, icon }: any) => (
   <button
     onClick={onClick}
     disabled={disabled}
