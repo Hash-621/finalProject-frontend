@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+
 import {
   Mail,
   User,
@@ -12,6 +13,9 @@ import {
   Smartphone,
   CheckCircle2,
 } from "lucide-react";
+import axios from "axios";
+import { form } from "framer-motion/client";
+import { name } from "./../../../node_modules/estree-util-is-identifier-name/lib/index";
 
 // --- 타입 정의 ---
 type FindMode = "id" | "pw";
@@ -41,6 +45,90 @@ export default function Page() {
       formData
     );
     setIsSubmitted(true);
+  };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // 정규식을 사용하여 숫자가 아닌 문자는 제거 (빈 문자열로 치환)
+    const onlyNumbers = value.replace(/[^0-9]/g, "");
+    setCode(onlyNumbers);
+  };
+  const [code, setCode] = useState("");
+  const handleVerify = () => {
+    if (code.length === 0) {
+      alert("인증번호를 입력해주세요.");
+      return;
+    }
+    axios
+      .post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id`, {
+        name: formData.name,
+        email: formData.email,
+        token: code,
+      })
+      .then((response) => {
+        const responseData = response.data;
+        const koreanRegex = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/;
+        if (
+          typeof responseData === "string" &&
+          koreanRegex.test(responseData)
+        ) {
+          console.warn(
+            "응답이 한글로 왔습니다 (에러 메시지일 가능성):",
+            responseData
+          );
+          alert("아이디 찾기 실패: " + responseData);
+          return;
+        }
+
+        console.log("찾은 아이디:", responseData);
+        alert(`찾은 아이디는: ${responseData} 입니다.`);
+      })
+      .catch((error) => {
+        alert("인증번호 확인에 실패했습니다. 다시 시도해주세요.");
+      });
+  };
+  const submitButtonClick = () => {
+    if (mode === "id") {
+      if (formData.name.length === 0) {
+        alert("이름을 입력해주세요.");
+        return;
+      }
+      if (formData.email.length === 0) {
+        alert("이메일을 입력해주세요.");
+        return;
+      }
+      axios
+        .post(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id/get-token?addr=${formData.email}`
+        )
+        .then((response) => {
+          // alert("인증번호가 이메일로 발송되었습니다.");
+        })
+        .catch((error) => {
+          alert("인증번호 발송에 실패했습니다. 다시 시도해주세요.");
+        });
+    }
+    if (mode === "pw") {
+      if (formData.loginId.length === 0) {
+        alert("아이디를 입력해주세요.");
+        return;
+      }
+      if (formData.email.length === 0) {
+        alert("이메일을 입력해주세요.");
+        return;
+      }
+      axios
+        .post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/getResetPw`, {
+          loginId: formData.loginId,
+          name: formData.name,
+          email: formData.email,
+        })
+        .then((response) => {
+          // alert("인증번호가 이메일로 발송되었습니다.");
+        })
+        .catch((error) => {
+          alert("발송에 실패했습니다. 다시 시도해주세요.");
+        });
+    }
   };
 
   return (
@@ -126,6 +214,14 @@ export default function Page() {
                 ) : (
                   <>
                     <FindInput
+                      id="find-name"
+                      label="이름"
+                      icon={<User size={18} />}
+                      placeholder="가입한 이름 입력"
+                      value={formData.name}
+                      onChange={(v) => setFormData({ ...formData, name: v })}
+                    />
+                    <FindInput
                       id="find-id"
                       label="아이디"
                       icon={<User size={18} />}
@@ -146,9 +242,10 @@ export default function Page() {
 
                 <button
                   type="submit"
+                  onClick={submitButtonClick}
                   className="w-full bg-slate-900 text-white font-black py-5 rounded-4xl shadow-2xl shadow-slate-200 hover:bg-green-600 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-6 group"
                 >
-                  {mode === "id" ? "아이디 확인하기" : "임시 비밀번호 발송"}
+                  {mode === "id" ? "아이디 확인하기" : "재설정 링크 발송"}
                   <ArrowRight
                     size={18}
                     className="group-hover:translate-x-1 transition-transform"
@@ -165,14 +262,41 @@ export default function Page() {
               <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">
                 요청 완료!
               </h3>
-              <p className="text-slate-500 text-sm font-bold leading-relaxed mb-10 px-4">
-                입력하신 이메일(
-                <span className="text-slate-900">{formData.email}</span>)로{" "}
-                <br />
-                관련 정보를 안전하게 발송해 드렸습니다.
-              </p>
+              {mode === "id" ? (
+                <>
+                  <p className="text-slate-500 text-sm font-bold leading-relaxed mb-10 px-4">
+                    입력하신 이메일로 인증번호를 발송해 드렸습니다. <br />
+                    이메일을 확인하시고 인증번호를 입력해 주세요.
+                  </p>
+                  <input
+                    type="text"
+                    id="code"
+                    placeholder="인증번호 입력"
+                    value={code}
+                    onChange={handleInputChange}
+                    inputMode="numeric"
+                    maxLength={6}
+                    className="w-full mb-6 px-4 py-3 border border-slate-200 rounded-2xl text-center font-black text-slate-700 placeholder:text-slate-300 focus:border-green-400 focus:ring-[6px] focus:ring-green-50/50 outline-none transition-all"
+                  />
+                  <button
+                    onClick={handleVerify}
+                    type="button"
+                    className="w-full bg-slate-900 text-white font-black py-5 rounded-4xl shadow-2xl shadow-slate-200 hover:bg-green-600 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-6 group"
+                  >
+                    인증번호 확인
+                  </button>
+                </>
+              ) : (
+                <p className="text-slate-500 text-sm font-bold leading-relaxed mb-10 px-4">
+                  입력하신 이메일
+                  <span className="text-slate-900">
+                    {formData.email}
+                  </span>로 <br />
+                  재설정링크를 보냈습니다.
+                </p>
+              )}
               <Link
-                href="/login"
+                href="/sign-in"
                 className="block w-full bg-slate-50 text-slate-900 font-black py-5 rounded-4xl hover:bg-slate-100 transition-all"
               >
                 로그인 화면으로 돌아가기
