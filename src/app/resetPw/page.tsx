@@ -21,7 +21,7 @@ export default function resetPwPage() {
     const pageLoad = async () => {
       try {
         const response = await axios.get(
-          `${proxyUrl}${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw?token=${token}&email=${email}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw?token=${token}&email=${email}`
         );
         console.log("비밀번호 재설정 요청 성공:", response.data);
         setIsVerified(true);
@@ -50,7 +50,7 @@ export default function resetPwPage() {
     }
     try {
       const response = await axios.post(
-        `${proxyUrl}${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw`,
         {
           email: email,
           password: password,

@@ -18,6 +18,7 @@ export interface SubPostData {
   createdAt: string;
   viewCount: number;
   commentCount?: number;
+  filePath?: string;
 }
 
 export interface CommonBoardListProps {
