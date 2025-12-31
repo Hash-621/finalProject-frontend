@@ -45,6 +45,54 @@ export default function Page() {
       `${mode === "id" ? "아이디" : "비밀번호"} 찾기 요청:`,
       formData
     );
+    if (mode === "id") {
+      if (formData.name.length === 0) {
+        alert("이름을 입력해주세요.");
+        router.replace("/find-account");
+        return;
+      }
+      if (formData.email.length === 0) {
+        alert("이메일을 입력해주세요.");
+
+        return;
+      }
+      axios
+        .post(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id/get-token?addr=${formData.email}`
+        )
+        .then((response) => {
+          // alert("인증번호가 이메일로 발송되었습니다.");
+        })
+        .catch((error) => {
+          alert("인증번호 발송에 실패했습니다. 다시 시도해주세요.");
+        });
+    }
+    if (mode === "pw") {
+      if (formData.loginId.length === 0) {
+        alert("아이디를 입력해주세요.");
+        return;
+      }
+      if (formData.email.length === 0) {
+        alert("이메일을 입력해주세요.");
+        return;
+      }
+      if (formData.name.length === 0) {
+        alert("이름을 입력해주세요.");
+        return;
+      }
+      axios
+        .post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/getResetPw`, {
+          loginId: formData.loginId,
+          name: formData.name,
+          email: formData.email,
+        })
+        .then((response) => {
+          // alert("인증번호가 이메일로 발송되었습니다.");
+        })
+        .catch((error) => {
+          alert("발송에 실패했습니다. 다시 시도해주세요.");
+        });
+    }
     setIsSubmitted(true);
   };
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,50 +135,6 @@ export default function Page() {
         alert("인증번호 확인에 실패했습니다. 다시 시도해주세요.");
       });
     router.push("/sign-in");
-  };
-  const submitButtonClick = () => {
-    if (mode === "id") {
-      if (formData.name.length === 0) {
-        alert("이름을 입력해주세요.");
-        return;
-      }
-      if (formData.email.length === 0) {
-        alert("이메일을 입력해주세요.");
-        return;
-      }
-      axios
-        .post(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id/get-token?addr=${formData.email}`
-        )
-        .then((response) => {
-          // alert("인증번호가 이메일로 발송되었습니다.");
-        })
-        .catch((error) => {
-          alert("인증번호 발송에 실패했습니다. 다시 시도해주세요.");
-        });
-    }
-    if (mode === "pw") {
-      if (formData.loginId.length === 0) {
-        alert("아이디를 입력해주세요.");
-        return;
-      }
-      if (formData.email.length === 0) {
-        alert("이메일을 입력해주세요.");
-        return;
-      }
-      axios
-        .post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/getResetPw`, {
-          loginId: formData.loginId,
-          name: formData.name,
-          email: formData.email,
-        })
-        .then((response) => {
-          // alert("인증번호가 이메일로 발송되었습니다.");
-        })
-        .catch((error) => {
-          alert("발송에 실패했습니다. 다시 시도해주세요.");
-        });
-    }
   };
 
   return (
@@ -244,7 +248,6 @@ export default function Page() {
 
                 <button
                   type="submit"
-                  onClick={submitButtonClick}
                   className="w-full bg-slate-900 text-white font-black py-5 rounded-4xl shadow-2xl shadow-slate-200 hover:bg-green-600 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-6 group"
                 >
                   {mode === "id" ? "아이디 확인하기" : "재설정 링크 발송"}
