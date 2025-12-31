@@ -24,7 +24,7 @@ import Cookies from "js-cookie";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 
-// 1. 에러를 해결한 Dynamic Import 정의
+// 1. Dynamic Import 설정 (SSR 에러 방지)
 const ReactQuillEditor = dynamic(
   async () => {
     const { default: RQ } = await import("react-quill-new");
@@ -56,6 +56,7 @@ function WriteContent() {
     nickname: string;
   } | null>(null);
 
+  // 초기 유저 정보 로드
   useEffect(() => {
     const fetchUserInfo = async () => {
       const token = Cookies.get("token");
@@ -87,6 +88,7 @@ function WriteContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 임시 저장된 글 확인
   const checkSavedPost = () => {
     const savedPost = localStorage.getItem("local-hub-temp-post");
     if (savedPost) {
@@ -111,6 +113,7 @@ function WriteContent() {
     }
   };
 
+  // 임시 저장 기능
   const saveTemporary = useCallback(() => {
     if (!title.trim() && !content.trim()) {
       alert("저장할 내용이 없습니다.");
@@ -126,6 +129,7 @@ function WriteContent() {
     alert("임시 저장되었습니다.");
   }, [title, content, category]);
 
+  // 이미지 핸들러 (Base64 방식)
   const imageHandler = useCallback(() => {
     const input = document.createElement("input");
     input.setAttribute("type", "file");
@@ -141,7 +145,6 @@ function WriteContent() {
         return;
       }
 
-      // 서버 업로드 로직이 없다면 아래 Base64 방식 사용
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
@@ -173,7 +176,7 @@ function WriteContent() {
     [imageHandler]
   );
 
-  // ▼▼▼▼▼ [수정된 부분] handleSubmit 함수 ▼▼▼▼▼
+  // ▼▼▼▼▼ [핵심 수정] handleSubmit 함수 ▼▼▼▼▼
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -199,15 +202,25 @@ function WriteContent() {
         title: title,
         content: content,
         category: category,
-        // ✅ [핵심 수정] 서버 에러 방지를 위해 숫자 필드 0으로 초기화
         viewCount: 0,
         likeCount: 0,
         commentCount: 0,
       };
 
-      console.log("전송 데이터(Payload):", payload); // 디버깅용 로그
+      // 1. FormData 생성
+      const formData = new FormData();
 
-      const response = await api.post(endpoint, payload);
+      // 2. JSON 데이터를 Blob으로 변환하여 'data' 파트에 추가
+      // application/json 타입을 명시해야 백엔드가 DTO로 인식함
+      const jsonBlob = new Blob([JSON.stringify(payload)], {
+        type: "application/json",
+      });
+      formData.append("data", jsonBlob);
+
+      console.log("🚀 전송 시작:", endpoint);
+
+      // 3. 전송 (Axios가 Content-Type을 multipart/form-data로 자동 설정함)
+      const response = await api.post(endpoint, formData);
 
       if (response.status === 200 || response.status === 201) {
         alert("게시글이 성공적으로 등록되었습니다!");
@@ -217,8 +230,11 @@ function WriteContent() {
         );
       }
     } catch (error: any) {
-      console.error("발행 실패:", error);
-      alert(`글 작성 실패: ${error.response?.data?.message || "서버 오류"}`);
+      console.error("❌ 발행 실패:", error);
+      const errorMessage =
+        error.response?.data?.message || error.message || "서버 오류";
+      alert(`글 작성 실패: ${errorMessage}`);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -227,6 +243,7 @@ function WriteContent() {
   return (
     <div className="min-h-screen bg-[#fcfdfc] p-4 md:py-12">
       <div className="max-w-5xl mx-auto">
+        {/* 상단 툴바 */}
         <div className="flex items-center justify-between mb-8 px-4">
           <button
             onClick={() => router.back()}
@@ -271,6 +288,7 @@ function WriteContent() {
           </div>
         </div>
 
+        {/* 에디터 영역 */}
         <div className="bg-white rounded-[3rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.06)] border border-slate-50 overflow-hidden">
           <div className="px-8 md:px-12 pt-10 flex items-center gap-3">
             <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-500">
@@ -303,7 +321,6 @@ function WriteContent() {
           </div>
 
           <div className="custom-editor-wrapper">
-            {/* 2. ref 대신 forwardedRef 사용 */}
             <ReactQuillEditor
               forwardedRef={quillRef}
               theme="snow"
@@ -316,6 +333,7 @@ function WriteContent() {
           </div>
         </div>
 
+        {/* 하단 정보 */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-slate-300">
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
             <Sparkles size={14} className="text-green-500" />
@@ -329,6 +347,7 @@ function WriteContent() {
         </div>
       </div>
 
+      {/* Quill 에디터 커스텀 스타일 */}
       <style jsx global>{`
         .ql-toolbar.ql-snow {
           border: none !important;
