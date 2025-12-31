@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import api from "@/api/axios";
 import {
@@ -19,18 +19,25 @@ import { JOB_DETAILS_DB } from "@/data/jobDetailData";
 import { JobData, ApplyFormData, ApplyStep, DetailContent } from "@/types/job";
 
 export default function Page() {
+  const searchParams = useSearchParams();
+
+  const initialKeyword = searchParams.get("keyword") || "";
+
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
+  // [수정 2] tempFilters (검색창) 초기값 설정
   const [tempFilters, setTempFilters] = useState({
-    keyword: "",
+    keyword: initialKeyword,
     career: "",
     education: "",
   });
+
+  // [수정 3] activeFilters (실제 검색 쿼리) 초기값 설정
   const [activeFilters, setActiveFilters] = useState({
-    keyword: "",
+    keyword: initialKeyword,
     career: "",
     education: "",
   });

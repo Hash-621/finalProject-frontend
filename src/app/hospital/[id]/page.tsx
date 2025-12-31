@@ -205,13 +205,25 @@ export default function HospitalDetail() {
                     </div>
                   </div>
 
-                  {hospital.phoneNumber ? (
-                    <Link
-                      href={`tel:${hospital.phoneNumber}`}
-                      className="flex items-center justify-center w-full py-5 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black text-lg transition-all active:scale-95 shadow-lg shadow-green-950/20"
-                    >
-                      전화 문의 및 예약
-                    </Link>
+                  {hospital.tel ? (
+                    <>
+                      <div className="space-y-2 text-green-400">
+                        <p className="text-white/40 text-xs font-black uppercase tracking-widest">
+                          TEL Number
+                        </p>
+                        <p className="text-sm font-black uppercase">
+                          {hospital.tel}
+                        </p>
+                      </div>
+                      <div className="mt-5">
+                        <Link
+                          href={`tel:${hospital.tel}`}
+                          className="flex items-center justify-center w-full py-5 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black text-lg transition-all active:scale-95 shadow-lg shadow-green-950/20"
+                        >
+                          전화 문의 및 예약
+                        </Link>
+                      </div>
+                    </>
                   ) : (
                     <div className="w-full py-5 bg-slate-800 text-slate-400 rounded-2xl font-bold text-center text-sm border border-slate-700">
                       전화번호 정보 없음
@@ -219,7 +231,7 @@ export default function HospitalDetail() {
                   )}
                 </div>
 
-                {!hospital.phoneNumber && (
+                {hospital.tel && (
                   <p className="px-4 text-[11px] text-slate-400 text-center leading-tight font-medium">
                     진료 중일 경우 전화 연결이 어려울 수 있습니다.
                     <br />

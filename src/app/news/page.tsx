@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation"; // 1. 훅 임포트
 import api from "@/api/axios";
 import { NewsResponse, NewsItem } from "@/types/news";
 import { ArrowRight, Loader2, Newspaper, Search, X } from "lucide-react";
@@ -16,21 +17,29 @@ const cleanText = (text: string) => {
     .replace(/&nbsp;/g, " ");
 };
 
-export default function NewsPage() {
+function NewsPageContent() {
+  const searchParams = useSearchParams(); // 2. URL 파라미터 가져오기
+
+  // 3. URL에서 'searchKeyword'가 있으면 가져오고 없으면 빈 문자열
+  const initialKeyword = searchParams.get("searchKeyword") || "";
+
   const [allFetchedNews, setAllFetchedNews] = useState<NewsItem[]>([]);
   const [displayCount, setDisplayCount] = useState(4);
   const [page, setPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeSearch, setActiveSearch] = useState("");
+
+  // 4. useState 초기값에 URL에서 가져온 키워드를 넣어줍니다.
+  // 이렇게 하면 페이지가 열리자마자 검색창에 글자가 채워져 있고, activeSearch가 설정됩니다.
+  const [searchTerm, setSearchTerm] = useState(initialKeyword);
+  const [activeSearch, setActiveSearch] = useState(initialKeyword);
+
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // 📡 데이터 가져오기 로직 (검색어 포함, 가요대전 필터 삭제)
+  // 📡 데이터 가져오기 로직
   const fetchNews = useCallback(
     async (pageNum: number, isNewSearch: boolean = false) => {
       setIsLoading(true);
       try {
-        // 검색어가 있으면 query 파라미터 추가, 없으면 기본 대전 뉴스
         const queryParam = activeSearch
           ? `&query=${encodeURIComponent(activeSearch)}`
           : "";
@@ -40,7 +49,7 @@ export default function NewsPage() {
         const newItems = response.data.items || [];
 
         setAllFetchedNews((prev) => {
-          if (isNewSearch) return newItems; // 새 검색 시 리스트 초기화
+          if (isNewSearch) return newItems;
 
           const existingLinks = new Set(prev.map((item) => item.link));
           const uniqueNewItems = newItems.filter(
@@ -49,7 +58,6 @@ export default function NewsPage() {
           return [...prev, ...uniqueNewItems];
         });
 
-        // 백엔드에서 8개씩 가져오므로 8개 미만이면 끝으로 간주
         if (newItems.length < 8) setHasMore(false);
         else setHasMore(true);
       } catch (err) {
@@ -62,34 +70,28 @@ export default function NewsPage() {
     [activeSearch]
   );
 
-  // 검색어가 바뀌거나 초기 로드 시 실행
+  // 5. activeSearch(초기값 포함)가 있으면 useEffect가 실행되어 fetchNews를 호출합니다.
   useEffect(() => {
     setPage(1);
     setDisplayCount(4);
     fetchNews(1, true);
   }, [activeSearch, fetchNews]);
 
-  // 검색창 엔터 및 버튼 클릭
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setActiveSearch(searchTerm);
   };
 
-  // 더보기 클릭
   const handleLoadMore = async () => {
     const nextDisplayCount = displayCount + 4;
-
-    // 보여줄 데이터가 부족하면 서버에서 다음 페이지(8개) 호출
     if (nextDisplayCount > allFetchedNews.length && hasMore) {
       const nextPage = page + 1;
       setPage(nextPage);
       await fetchNews(nextPage);
     }
-
     setDisplayCount(nextDisplayCount);
   };
 
-  // 실제로 화면에 보일 뉴스 (4개씩 끊어서)
   const visibleNews = useMemo(() => {
     return allFetchedNews.slice(0, displayCount);
   }, [allFetchedNews, displayCount]);
@@ -102,7 +104,7 @@ export default function NewsPage() {
         {/* 헤더 섹션 */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
           <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -115,9 +117,6 @@ export default function NewsPage() {
                 핵심 뉴스
               </span>
             </h2>
-            <p className="text-slate-500 text-sm font-medium leading-relaxed">
-              24시간 쉬지 않고 업데이트되는 대전의 실시간 타임라인입니다.
-            </p>
           </div>
 
           {/* 검색 폼 */}
@@ -185,7 +184,7 @@ export default function NewsPage() {
                         href={item.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-bold text-green-600 flex items-center gap-1 group/btn"
+                        className="text-xs font-black text-green-600 flex items-center gap-1 group/btn"
                       >
                         READ MORE{" "}
                         <ArrowRight
@@ -204,7 +203,7 @@ export default function NewsPage() {
                 <button
                   onClick={handleLoadMore}
                   disabled={isLoading}
-                  className="px-10 py-5 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:scale-105 transition-all shadow-xl active:scale-95 flex items-center gap-2 disabled:bg-slate-400"
+                  className="px-10 py-5 bg-slate-900 text-white rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl active:scale-95 flex items-center gap-2 disabled:bg-slate-400"
                 >
                   {isLoading ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -218,7 +217,7 @@ export default function NewsPage() {
           !isLoading && (
             <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-slate-200 rounded-[3rem]">
               <Newspaper className="w-12 h-12 text-slate-200 mb-6" />
-              <h3 className="text-2xl font-bold mb-2 text-slate-900">
+              <h3 className="text-2xl font-black mb-2 text-slate-900">
                 {activeSearch
                   ? `'${activeSearch}'에 대한 뉴스가 없습니다.`
                   : "뉴스가 없습니다."}
@@ -228,5 +227,14 @@ export default function NewsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// 6. Suspense로 감싸주기 (useSearchParams 사용 시 필수)
+export default function NewsPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
+      <NewsPageContent />
+    </Suspense>
   );
 }
