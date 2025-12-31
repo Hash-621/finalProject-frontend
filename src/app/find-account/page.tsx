@@ -14,8 +14,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import axios from "axios";
-import { form } from "framer-motion/client";
-import { name } from "./../../../node_modules/estree-util-is-identifier-name/lib/index";
 
 // --- 타입 정의 ---
 type FindMode = "id" | "pw";
@@ -30,6 +28,7 @@ interface FindInputProps {
 }
 
 export default function Page() {
+  const proxyUrl = process.env.NEXT_PUBLIC_PROXY_URL;
   const [mode, setMode] = useState<FindMode>("id");
   const [formData, setFormData] = useState({
     name: "",
@@ -59,11 +58,14 @@ export default function Page() {
       return;
     }
     axios
-      .post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id`, {
-        name: formData.name,
-        email: formData.email,
-        token: code,
-      })
+      .post(
+        `${proxyUrl}${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id`,
+        {
+          name: formData.name,
+          email: formData.email,
+          token: code,
+        }
+      )
       .then((response) => {
         const responseData = response.data;
         const koreanRegex = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/;
@@ -98,7 +100,7 @@ export default function Page() {
       }
       axios
         .post(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id/get-token?addr=${formData.email}`
+          `${proxyUrl}${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id/get-token?addr=${formData.email}`
         )
         .then((response) => {
           // alert("인증번호가 이메일로 발송되었습니다.");

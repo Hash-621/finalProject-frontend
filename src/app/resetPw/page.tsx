@@ -6,6 +6,7 @@ import axios from "axios";
 import router from "next/router";
 
 export default function resetPwPage() {
+  const proxyUrl = process.env.NEXT_PUBLIC_PROXY_URL;
   const [isVerified, setIsVerified] = useState(false);
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -20,7 +21,7 @@ export default function resetPwPage() {
     const pageLoad = async () => {
       try {
         const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw?token=${token}&email=${email}`
+          `${proxyUrl}${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw?token=${token}&email=${email}`
         );
         console.log("비밀번호 재설정 요청 성공:", response.data);
         setIsVerified(true);
@@ -49,7 +50,7 @@ export default function resetPwPage() {
     }
     try {
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw`,
+        `${proxyUrl}${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw`,
         {
           email: email,
           password: password,
