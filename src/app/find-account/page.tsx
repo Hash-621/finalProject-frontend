@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   Mail,
@@ -28,6 +29,7 @@ interface FindInputProps {
 }
 
 export default function Page() {
+  const router = useRouter();
   const proxyUrl = process.env.NEXT_PUBLIC_PROXY_URL;
   const [mode, setMode] = useState<FindMode>("id");
   const [formData, setFormData] = useState({
@@ -84,6 +86,7 @@ export default function Page() {
       .catch((error) => {
         alert("인증번호 확인에 실패했습니다. 다시 시도해주세요.");
       });
+    router.push("/sign-in");
   };
   const submitButtonClick = () => {
     if (mode === "id") {
