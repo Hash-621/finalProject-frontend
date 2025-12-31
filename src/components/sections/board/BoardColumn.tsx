@@ -9,6 +9,8 @@ import { PostCard } from "./PostCard";
 
 interface BoardColumnProps {
   title: string;
+  posts: PostData[];
+  loading: boolean;
   type: "free" | "recommend"; // API 엔드포인트와 매칭되는 값
   cardClassName?: string;
 }

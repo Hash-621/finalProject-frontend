@@ -1,17 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Script from "next/script";
 import { tourService } from "@/api/services";
 import { Tour } from "@/types/tour";
-import { MapPin, Phone, X, ChevronLeft, Map as MapIcon } from "lucide-react";
+import {
+  MapPin,
+  Phone,
+  X,
+  ChevronLeft,
+  Map as MapIcon,
+  Search,
+} from "lucide-react";
 import Pagination from "@/components/common/Pagination";
 
 export default function TourPage() {
+  const searchParams = useSearchParams();
+
+  const initialKeyword = searchParams.get("keyword") || "";
+
   const [tours, setTours] = useState<Tour[]>([]);
   const [filteredTours, setFilteredTours] = useState<Tour[]>([]);
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [keyword, setKeyword] = useState(initialKeyword);
 
   const [selectedCategory, setSelectedCategory] = useState("전체");
 
@@ -35,6 +49,43 @@ export default function TourPage() {
     };
     fetchTours();
   }, []);
+
+  useEffect(() => {
+    // 데이터가 아직 로드되지 않았으면 중단
+    if (tours.length === 0) return;
+
+    let result = tours;
+
+    // (1) 지역 카테고리 필터
+    if (selectedCategory !== "전체") {
+      result = result.filter((tour) => tour.address.includes(selectedCategory));
+    }
+
+    // (2) 검색어 필터 (Null Safety & 다중 키워드 지원)
+    const trimmedKeyword = keyword.trim();
+    if (trimmedKeyword !== "") {
+      // 공백으로 단어를 쪼개서 모든 단어가 포함되어야 검색됨 (AND 조건)
+      const searchTerms = trimmedKeyword.split(/\s+/);
+
+      result = result.filter((tour) => {
+        const name = tour.name || "";
+        const address = tour.address || "";
+
+        return searchTerms.every(
+          (term) => name.includes(term) || address.includes(term)
+        );
+      });
+    }
+
+    setFilteredTours(result);
+    // 검색어가 바뀌면 페이지네이션(더보기) 초기화할지 결정 (여기서는 유지하거나 리셋하거나 선택)
+    // setDisplayCount(8); // 필요하면 주석 해제하여 리셋
+  }, [tours, selectedCategory, keyword]);
+
+  const handleReset = () => {
+    setKeyword("");
+    setSelectedCategory("전체");
+  };
 
   const initMap = (address: string, name: string) => {
     const { kakao } = window as any;
@@ -130,16 +181,46 @@ export default function TourPage() {
 
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight w-fit">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight w-fit">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
             DAEJEON TOUR
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-10 tracking-tight">
-            맞춤형 <span className="text-green-500">대전 명소</span> 큐레이션
-          </h2>
+
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
+            <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-10 tracking-tight">
+              맞춤형{" "}
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
+                대전 명소
+              </span>{" "}
+              큐레이션
+            </h2>
+
+            {/* 검색창 UI (실시간 검색 적용) */}
+            <div className="relative w-full lg:w-96 mb-10">
+              <Search
+                className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="관광지 이름이나 주소 검색..."
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)} // 입력 즉시 keyword 변경 -> useEffect 발동
+                className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-3xl text-sm font-bold shadow-sm focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all"
+              />
+              {keyword && (
+                <button
+                  onClick={() => setKeyword("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {categories.map((cat) => (

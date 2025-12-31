@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { restaurantService } from "@/api/services";
 import { RestaurantData } from "@/types/restaurant";
-import { MapPin, Loader2, Heart } from "lucide-react";
+import { MapPin, Loader2, Heart, Search, X } from "lucide-react";
 import Pagination from "@/components/common/Pagination";
 
 export default function RestaurantListPage() {
@@ -12,6 +12,8 @@ export default function RestaurantListPage() {
   const [filteredList, setFilteredList] = useState<RestaurantData[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [loading, setLoading] = useState(true);
+
+  const [keyword, setKeyword] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -31,6 +33,42 @@ export default function RestaurantListPage() {
     };
     fetchRestaurants();
   }, []);
+
+  useEffect(() => {
+    let result = restaurants;
+
+    // 1. 카테고리 필터
+    if (selectedCategory !== "전체") {
+      result = result.filter((item) => item.restCategory === selectedCategory);
+    }
+
+    // 2. 검색어 필터 (다중 키워드 + Null Safety)
+    const trimmedKeyword = keyword.trim();
+    if (trimmedKeyword !== "") {
+      const searchTerms = trimmedKeyword.split(/\s+/);
+
+      result = result.filter((item) => {
+        const name = item.name || "";
+        const category = item.restCategory || ""; // restCategory 사용 확인 필요
+        const address = item.address || "";
+        const menu = (item.menu || []).join(" ");
+        const bestMenu = item.bestMenu || "";
+
+        return searchTerms.every((term) => {
+          return (
+            name.includes(term) ||
+            category.includes(term) ||
+            address.includes(term) ||
+            menu.includes(term) ||
+            bestMenu.includes(term)
+          );
+        });
+      });
+    }
+
+    setFilteredList(result);
+    setCurrentPage(1);
+  }, [restaurants, selectedCategory, keyword]);
 
   const toggleFavorite = async (e: React.MouseEvent, id: number) => {
     e.preventDefault();
@@ -82,28 +120,62 @@ export default function RestaurantListPage() {
     <div className="w-full bg-[#fcfcfc] min-h-screen pb-24">
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              DAEJEON NOW
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-3 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight w-fit">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            DAEJEON NOW
+          </div>
+
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.1] mb-2">
+                <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
+                  대전의 맛
+                </span>
+                을 찾아서
+              </h1>
+              <p className="text-slate-500 font-medium">
+                현지인이 추천하는 진짜 맛집 리스트를 카테고리별로 확인하세요.
+              </p>
             </div>
-            <h2 className="text-3xl lg:text-5xl font-extrabold tracking-tight leading-[1.1]">
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
-                대전의 맛
-              </span>
-              을 찾아서
-            </h2>
-            <p className="text-slate-500 text-sm font-medium leading-relaxed">
-              현지인이 추천하는 진짜 맛집 리스트를 카테고리별로 확인하세요.
-            </p>
+
+            <div className="relative w-full lg:w-96 mb-10">
+              <Search
+                className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="맛집 이름, 메뉴 검색..."
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-3xl text-sm font-bold shadow-sm focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all"
+              />
+              {keyword && (
+                <button
+                  onClick={() => setKeyword("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* 카테고리 탭 */}
           <div className="flex flex-wrap items-center gap-3 mt-16">
-            {["전체", "한식", "일식", "중식", "양식", "카페"].map((cat) => (
+            {[
+              "전체",
+              "한식",
+              "일식",
+              "중식",
+              "양식",
+              "분식",
+              "치킨",
+              "카페·디저트",
+            ].map((cat) => (
               <button
                 key={cat}
                 onClick={() => handleFilter(cat)}

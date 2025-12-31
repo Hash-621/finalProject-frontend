@@ -11,7 +11,7 @@ import { Tour } from "@/types/tour";
 import { HospitalResponse } from "@/types/hospital";
 import { JobData } from "@/types/job";
 import { NewsItem } from "@/types/news";
-import { PostItem } from "@/types/post";
+import { PostItem } from "@/types/board";
 
 // --------------------------------------------------------
 // 1. 설정 및 타입
@@ -357,7 +357,13 @@ function SearchResultsContent() {
                       const imgSrc = getSafeImageSrc("", item.image);
                       return (
                         <div
-                          onClick={() => router.push(`/tour/attraction`)}
+                          onClick={() =>
+                            router.push(
+                              `/tour/attraction?keyword=${encodeURIComponent(
+                                item.name
+                              )}`
+                            )
+                          }
                           className="cursor-pointer border border-gray-100 rounded-2xl overflow-hidden hover:border-green-500 hover:shadow-lg transition-all duration-300 bg-white h-full flex flex-col group"
                         >
                           <div
@@ -500,7 +506,7 @@ function SearchResultsContent() {
                           </p>
                         </div>
                         <p className="text-xs text-gray-400 mt-3 text-right">
-                          by {item.userId}
+                          by {item.userNickname}
                         </p>
                       </div>
                     );

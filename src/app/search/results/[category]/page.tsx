@@ -13,7 +13,7 @@ import { Tour } from "@/types/tour";
 import { HospitalResponse } from "@/types/hospital";
 import { JobData } from "@/types/job";
 import { NewsItem } from "@/types/news";
-import { PostItem } from "@/types/post";
+import { PostItem } from "@/types/board";
 
 // 페이지당 아이템 개수
 const ITEMS_PER_PAGE = 12;

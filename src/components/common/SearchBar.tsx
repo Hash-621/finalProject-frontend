@@ -1,9 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Field, Select, Input } from "@headlessui/react";
-
 import { Search } from "lucide-react";
 
 interface SearchBarProps {
@@ -12,6 +11,9 @@ interface SearchBarProps {
   buttonClassName?: string;
   iconClassName?: string;
   idPrefix: string;
+
+  initialValue?: string;
+  initialStatus?: string;
 }
 
 export default function SearchBar({
@@ -20,16 +22,26 @@ export default function SearchBar({
   buttonClassName = "",
   iconClassName = "",
   idPrefix,
+
+  initialValue = "",
+  initialStatus = "all",
 }: SearchBarProps) {
   const router = useRouter();
 
+  const [keyword, setKeyword] = useState(initialValue);
+  const [status, setStatus] = useState(initialStatus);
+
+  useEffect(() => {
+    setKeyword(initialValue);
+  }, [initialValue]);
+
+  // Status도 동일하게 처리
+  useEffect(() => {
+    setStatus(initialStatus);
+  }, [initialStatus]);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-
-    const status = formData.get("status") as string;
-    const keyword = formData.get("full_name") as string;
 
     if (!keyword.trim()) {
       alert("검색어를 입력해 주세요.");
@@ -51,6 +63,9 @@ export default function SearchBar({
         <Select
           name="status"
           id={`${idPrefix}-status`}
+          // [UI] Headless UI Select와 State 연결
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
           className="outline-0 cursor-pointer text-sm text-gray-700 bg-transparent"
         >
           <option value="all">전체검색</option>
@@ -62,13 +77,15 @@ export default function SearchBar({
           type="text"
           name="full_name"
           id={`${idPrefix}-fullname`}
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
           className={`outline-0 flex-1 min-w-0 ${inputClassName}`}
           placeholder="검색어를 입력하세요"
         />
 
         <button
           type="submit"
-          className={`flex items-center justify-center transition-transform active:scale-90 ${buttonClassName}`}
+          className={`flex items-center justify-center transition-transform active:scale-90 cursor-pointer ${buttonClassName}`}
           aria-label="검색 실행"
         >
           <Search

@@ -11,6 +11,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { hospitalService } from "@/api/services"; // 서비스 레이어
 import {
+  Search,
   MapPin,
   Loader2,
   Plus,
@@ -31,10 +32,13 @@ export default function Page() {
 
   const [map, setMap] = useState<kakao.maps.Map | null>(null);
   const [hospitals, setHospitals] = useState<any[]>([]);
+  const [filteredHospitals, setFilteredHospitals] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [visibleCount, setVisibleCount] = useState(6);
   const [filterCategory, setFilterCategory] = useState("전체");
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [keyword, setKeyword] = useState("");
 
   const [isRoadviewOpen, setIsRoadviewOpen] = useState(false);
   const [roadviewPos, setRoadviewPos] = useState({ lat: 0, lng: 0 });
@@ -84,16 +88,39 @@ export default function Page() {
     return ["전체", ...Array.from(sets)];
   }, [hospitals]);
 
-  const filteredHospitals = useMemo(() => {
-    return hospitals.filter((h) => {
-      const matchesCategory =
-        filterCategory === "전체" || h.treatCategory === filterCategory;
-      const matchesSearch = h.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [hospitals, filterCategory, searchTerm]);
+  // [수정] 통합 필터링 로직 (카테고리 + 검색어)
+  useEffect(() => {
+    let result = hospitals;
+
+    // 1. 카테고리 필터
+    if (filterCategory !== "전체") {
+      result = result.filter((h) => h.treatCategory === filterCategory);
+    }
+
+    // 2. 검색어 필터 (다중 키워드 + Null Safety)
+    const trimmedKeyword = keyword.trim();
+    if (trimmedKeyword !== "") {
+      const searchTerms = trimmedKeyword.split(/\s+/);
+
+      result = result.filter((h) => {
+        const name = h.name || "";
+        const address = h.address || "";
+        const category = h.treatCategory || "";
+
+        return searchTerms.every((term) => {
+          return (
+            name.toLowerCase().includes(term.toLowerCase()) ||
+            address.includes(term) ||
+            category.includes(term)
+          );
+        });
+      });
+    }
+
+    setFilteredHospitals(result);
+    // 필터 변경 시 더보기 카운트 초기화 (선택 사항)
+    // setVisibleCount(6);
+  }, [hospitals, filterCategory, keyword]);
 
   // 리스트 클릭 시 지도 이동 및 마커 활성화
   const handleHospitalClick = (h: any) => {
@@ -108,6 +135,12 @@ export default function Page() {
   const handleOpenRoadview = (h: any) => {
     setRoadviewPos({ lat: h.lat, lng: h.lng });
     setIsRoadviewOpen(true);
+  };
+
+  const handleFilter = (cat: string) => {
+    setFilterCategory(cat);
+    setVisibleCount(6);
+    setSelectedId(null);
   };
 
   if (loading)
@@ -132,17 +165,39 @@ export default function Page() {
                 VERIFIED SPECIALISTS
               </div>
               <h2 className="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
-                대전{" "}
                 <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
-                  전문의를 찾아서
+                  대전 전문의를{" "}
                 </span>
+                찾아서
               </h2>
               <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-2xl">
                 보건복지부 인증 전문의가 상주하는 대전의 믿을 수 있는 병원
                 리스트입니다.
               </p>
             </div>
+            <div className="relative w-full lg:w-96 mb-15">
+              <Search
+                className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="병원명, 진료과목, 주소 검색..."
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-3xl text-sm font-bold shadow-sm focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all"
+              />
+              {keyword && (
+                <button
+                  onClick={() => setKeyword("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
           </div>
+
           <div className="flex flex-wrap items-center gap-3">
             {categories.map((cat) => (
               <button
@@ -169,6 +224,14 @@ export default function Page() {
         <div className="flex flex-col lg:flex-row gap-8 items-start relative">
           {/* 좌측 리스트 - 디자인 유지 */}
           <div className="w-full lg:w-[60%] space-y-6">
+            {filteredHospitals.length === 0 && (
+              <div className="py-20 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 border-dashed">
+                <Search className="w-10 h-10 text-slate-300 mb-3" />
+                <p className="text-slate-400 font-bold">
+                  검색 결과가 없습니다.
+                </p>
+              </div>
+            )}
             {filteredHospitals.slice(0, visibleCount).map((h) => (
               <div
                 key={h.id}

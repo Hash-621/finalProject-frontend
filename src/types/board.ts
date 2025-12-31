@@ -33,10 +33,11 @@ export interface CommonBoardListProps {
 
 export interface PostItem {
   id: number;
-  title: string; // 게시글 제목
-  content: string; // 게시글 또는 댓글 내용
-  createdAt: string; // 생성일
-  userNickname: string; // 작성자 닉네임
-  viewCount?: number; // 조회수 (선택적)
-  commentCount?: number; // 댓글수 (선택적)
+  title: string;
+  content: string;
+  category: string;
+  createdAt: string;
+  userId?: string;
+  viewCount?: number;
+  updatedAt?: string;
 }
