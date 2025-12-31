@@ -2,25 +2,142 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --foreground: #333333;
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  font-family: var(--font-pretendard);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+  letter-spacing: -0.05em;
+}
+
+/* ------------------------------------------------------------- */
+.visual-swiper .swiper-button-next,
+.visual-swiper .swiper-button-prev {
+  @apply text-white bg-gray-800/50 hover:bg-gray-800/80 transition duration-300 rounded-full flex justify-center items-center w-8 h-8 lg:w-10 lg:h-10 text-xl z-20;
+}
+
+.visual-swiper .swiper-button-next svg,
+.visual-swiper .swiper-button-prev svg {
+  width: 10px;
+}
+
+.visual-swiper .swiper-pagination-bullet {
+  @apply w-2 h-2 mx-1 opacity-50 transition duration-500;
+  background: white;
+}
+
+.visual-swiper .swiper-pagination-bullet-active {
+  @apply w-6 opacity-100 rounded-full;
+  background: white;
+}
+
+/* ------------------------------------------------------------- */
+
+.quick-swiper .swiper-button-next,
+.quick-swiper .swiper-button-prev {
+  @apply text-white  bg-gray-800/50 hover:bg-gray-800/80 transition duration-300 rounded-full flex justify-center items-center w-6 h-6 text-xl z-20;
+  transform: translateY(50%);
+}
+
+.quick-swiper .swiper-button-next svg,
+.quick-swiper .swiper-button-prev svg {
+  width: 6px;
+}
+
+/* 1024이하일때 */
+@media (max-width: 1023px) {
+  .quick-swiper {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}
+
+/* 1024이상일때 */
+@media (min-width: 1024px) {
+  .quick-swiper .swiper-button-next {
+    display: none !important;
+  }
+
+  .quick-swiper .swiper-button-prev {
+    display: none !important;
+  }
+}
+/* ------------------------------------------------------------- */
+.tour-swiper .swiper-pagination-bullet {
+  background-color: #fff;
+}
+
+/* ------------------------------------------------------------- */
+div[style*="border: 1px solid rgb(118, 129, 168)"],
+div[style*="border: 1px solid #7681a8"] {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  z-index: 999 !important;
+}
+/* ------------------------------------------------------------- */
+
+@media (max-width: 639px) {
+  .custom-toast-responsive {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: fit-content !important;
+
+    margin-right: 24px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .Toastify__toast-container--bottom-right {
+    bottom: 80px !important;
+    right: 0 !important;
+  }
+}
+
+@media (min-width: 640px) {
+  .custom-toast-responsive {
+    background: white !important;
+    min-width: 350px !important;
+    padding: 12px !important;
+    border-radius: 24px !important; /* 챗봇과 같은 느낌의 둥근 모서리 */
+    border: 1px solid rgba(243, 244, 246, 1) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+      0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  }
+}
+/* ------------------------------------------------------------- */
+
+@media screen and (min-width: 640px) {
+  .Toastify__toast {
+    margin-bottom: 80px !important;
+  }
+}
+
+/* ------------------------------------------------------------- */
+
+.advertise .swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background-color: #e2e8f0;
+  opacity: 1 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 9999px;
+}
+
+.advertise .swiper-pagination-bullet-active {
+  width: 24px; /* 가로로 길어짐 */
+  background-color: #22c55e !important;
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4);
+}
+
+.advertise .swiper-button-next,
+.advertise .swiper-button-prev {
+  color: #16a34a !important;
+  transform: scale(0.7);
+  font-weight: bold;
 }
