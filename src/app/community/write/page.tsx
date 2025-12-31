@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,39 +17,51 @@ import {
   Save,
   LayoutList,
   History,
+  Loader2,
 } from "lucide-react";
 import api from "@/api/axios";
 import Cookies from "js-cookie";
-
-const ReactQuill = dynamic(() => import("react-quill-new"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[400px] bg-slate-50 animate-pulse rounded-[3rem] border border-slate-100" />
-  ),
-});
-
+import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
+
+// 1. 에러를 해결한 Dynamic Import 정의
+const ReactQuillEditor = dynamic(
+  async () => {
+    const { default: RQ } = await import("react-quill-new");
+    return function Comp({ forwardedRef, ...props }: any) {
+      return <RQ ref={forwardedRef} {...props} />;
+    };
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[400px] bg-slate-50 animate-pulse rounded-[3rem] border border-slate-100" />
+    ),
+  }
+);
 
 function WriteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const quillRef = useRef<ReactQuill | null>(null);
+
   const initialCategory = searchParams.get("category") || "FREE";
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(initialCategory);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [userData, setUserData] = useState<{
     userId: any;
     nickname: string;
   } | null>(null);
 
-  // 1. 유저 정보 가져오기 (마운트 시 한 번만 실행)
   useEffect(() => {
     const fetchUserInfo = async () => {
       const token = Cookies.get("token");
       if (!token) {
         alert("로그인이 필요한 서비스입니다.");
-        router.push("/login");
+        router.push("/sign-in");
         return;
       }
 
@@ -65,18 +78,19 @@ function WriteContent() {
         }
       } catch (err) {
         console.error("유저 정보 로드 실패:", err);
-        // 에러 시 강제 로그아웃 처리 등을 방지하기 위해 alert 후 이동
-        router.replace("/login");
+        router.replace("/sign-in");
       }
     };
 
     fetchUserInfo();
+    checkSavedPost();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // 임시 저장 확인
+  const checkSavedPost = () => {
     const savedPost = localStorage.getItem("local-hub-temp-post");
     if (savedPost) {
       const { title: sTitle, savedAt } = JSON.parse(savedPost);
-      // setTimeout을 사용하여 렌더링 사이클이 끝난 후 confirm 창을 띄움
       setTimeout(() => {
         if (
           window.confirm(
@@ -95,8 +109,7 @@ function WriteContent() {
         }
       }, 100);
     }
-    // 의존성 배열을 완전히 비우거나, router가 확실히 고정되도록 설정
-  }, []);
+  };
 
   const saveTemporary = useCallback(() => {
     if (!title.trim() && !content.trim()) {
@@ -113,22 +126,57 @@ function WriteContent() {
     alert("임시 저장되었습니다.");
   }, [title, content, category]);
 
+  const imageHandler = useCallback(() => {
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert("이미지 용량은 5MB를 초과할 수 없습니다.");
+        return;
+      }
+
+      // 서버 업로드 로직이 없다면 아래 Base64 방식 사용
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const quill = quillRef.current?.getEditor();
+        const range = quill?.getSelection()?.index;
+        if (range !== undefined && range !== null) {
+          quill?.insertEmbed(range, "image", reader.result);
+        }
+      };
+    };
+  }, []);
+
   const modules = useMemo(
     () => ({
-      toolbar: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline", "strike"],
-        [{ color: [] }, { background: [] }],
-        [{ list: "ordered" }, { list: "bullet" }],
-        ["link", "image"],
-        ["clean"],
-      ],
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ color: [] }, { background: [] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link", "image"],
+          ["clean"],
+        ],
+        handlers: {
+          image: imageHandler,
+        },
+      },
     }),
-    []
+    [imageHandler]
   );
 
+  // ▼▼▼▼▼ [수정된 부분] handleSubmit 함수 ▼▼▼▼▼
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!userData?.userId) {
       alert("유저 정보를 확인 중입니다. 잠시만 기다려주세요.");
@@ -140,15 +188,24 @@ function WriteContent() {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       const endpoint =
         category === "RECOMMEND" ? "/community/recommend" : "/community/free";
+
       const payload = {
         userId: userData.userId,
         title: title,
         content: content,
         category: category,
+        // ✅ [핵심 수정] 서버 에러 방지를 위해 숫자 필드 0으로 초기화
+        viewCount: 0,
+        likeCount: 0,
+        commentCount: 0,
       };
+
+      console.log("전송 데이터(Payload):", payload); // 디버깅용 로그
 
       const response = await api.post(endpoint, payload);
 
@@ -162,8 +219,10 @@ function WriteContent() {
     } catch (error: any) {
       console.error("발행 실패:", error);
       alert(`글 작성 실패: ${error.response?.data?.message || "서버 오류"}`);
+      setIsSubmitting(false);
     }
   };
+  // ▲▲▲▲▲ [수정 완료] ▲▲▲▲▲
 
   return (
     <div className="min-h-screen bg-[#fcfdfc] p-4 md:py-12">
@@ -183,20 +242,31 @@ function WriteContent() {
           <div className="flex gap-3">
             <button
               onClick={saveTemporary}
-              className="flex items-center gap-2 px-6 py-3 bg-white text-slate-400 border border-slate-100 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 px-6 py-3 bg-white text-slate-400 border border-slate-100 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm disabled:opacity-50"
             >
               <Save size={18} />
               <span className="hidden sm:inline">임시저장</span>
             </button>
             <button
               onClick={handleSubmit}
-              className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 hover:bg-green-600 transition-all flex items-center gap-2 group active:scale-95"
+              disabled={isSubmitting}
+              className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 hover:bg-green-600 transition-all flex items-center gap-2 group active:scale-95 disabled:bg-slate-400 disabled:scale-100 disabled:cursor-not-allowed"
             >
-              <span>발행하기</span>
-              <Send
-                size={18}
-                className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
-              />
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>발행 중...</span>
+                </>
+              ) : (
+                <>
+                  <span>발행하기</span>
+                  <Send
+                    size={18}
+                    className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
+                  />
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -227,17 +297,21 @@ function WriteContent() {
               placeholder="제목을 입력하세요"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-4xl md:text-5xl font-bold outline-none placeholder:text-slate-100 text-slate-900"
+              disabled={isSubmitting}
+              className="w-full text-4xl md:text-5xl font-bold outline-none placeholder:text-slate-100 text-slate-900 disabled:opacity-50"
             />
           </div>
 
           <div className="custom-editor-wrapper">
-            <ReactQuill
+            {/* 2. ref 대신 forwardedRef 사용 */}
+            <ReactQuillEditor
+              forwardedRef={quillRef}
               theme="snow"
               value={content}
               onChange={setContent}
               modules={modules}
               placeholder="당신의 이야기를 이웃들과 나누어 보세요..."
+              readOnly={isSubmitting}
             />
           </div>
         </div>
@@ -304,8 +378,9 @@ export default function WritePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          에디터 로딩 중...
+        <div className="min-h-screen flex items-center justify-center text-slate-400">
+          <Loader2 className="animate-spin mr-2" />
+          에디터 준비 중...
         </div>
       }
     >

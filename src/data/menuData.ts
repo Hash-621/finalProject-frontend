@@ -3,7 +3,7 @@ import { MenuStructure } from "@/types/menu";
 export const menuData: MenuStructure = {
   pages: [
     { name: "뉴스", href: "/news", src: "/images/quick-menu1.png" },
-    { name: "구인구직", href: "/job", src: "/images/quick-menu2.png" },
+    { name: "구인구직", href: "/job", src: "/images/quick-menu7.png" },
     {
       name: "관광지",
       href: "/tour/attraction",

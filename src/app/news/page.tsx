@@ -102,7 +102,7 @@ export default function NewsPage() {
         {/* 헤더 섹션 */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
           <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -115,6 +115,9 @@ export default function NewsPage() {
                 핵심 뉴스
               </span>
             </h2>
+            <p className="text-slate-500 text-sm font-medium leading-relaxed">
+              24시간 쉬지 않고 업데이트되는 대전의 실시간 타임라인입니다.
+            </p>
           </div>
 
           {/* 검색 폼 */}
@@ -182,7 +185,7 @@ export default function NewsPage() {
                         href={item.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-black text-green-600 flex items-center gap-1 group/btn"
+                        className="text-xs font-bold text-green-600 flex items-center gap-1 group/btn"
                       >
                         READ MORE{" "}
                         <ArrowRight
@@ -201,7 +204,7 @@ export default function NewsPage() {
                 <button
                   onClick={handleLoadMore}
                   disabled={isLoading}
-                  className="px-10 py-5 bg-slate-900 text-white rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl active:scale-95 flex items-center gap-2 disabled:bg-slate-400"
+                  className="px-10 py-5 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:scale-105 transition-all shadow-xl active:scale-95 flex items-center gap-2 disabled:bg-slate-400"
                 >
                   {isLoading ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -215,7 +218,7 @@ export default function NewsPage() {
           !isLoading && (
             <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-slate-200 rounded-[3rem]">
               <Newspaper className="w-12 h-12 text-slate-200 mb-6" />
-              <h3 className="text-2xl font-black mb-2 text-slate-900">
+              <h3 className="text-2xl font-bold mb-2 text-slate-900">
                 {activeSearch
                   ? `'${activeSearch}'에 대한 뉴스가 없습니다.`
                   : "뉴스가 없습니다."}

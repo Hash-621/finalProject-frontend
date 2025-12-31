@@ -12,7 +12,7 @@ export default function Footer() {
           <div className="space-y-6">
             <Link href="/">
               <span className="text-2xl font-black text-white tracking-tighter transition hover:opacity-80">
-                다잇슈
+                다잇슈{" "}
                 <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
                   대전
                 </span>

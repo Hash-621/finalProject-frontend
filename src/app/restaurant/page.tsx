@@ -2,15 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import api from "@/api/axios";
+import { restaurantService } from "@/api/services";
 import { RestaurantData } from "@/types/restaurant";
-import {
-  MapPin,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-  Heart,
-} from "lucide-react";
+import { MapPin, Loader2, Heart } from "lucide-react";
+import Pagination from "@/components/common/Pagination";
 
 export default function RestaurantListPage() {
   const [restaurants, setRestaurants] = useState<RestaurantData[]>([]);
@@ -18,7 +13,6 @@ export default function RestaurantListPage() {
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [loading, setLoading] = useState(true);
 
-  // --- 페이지네이션 상태 ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -26,8 +20,7 @@ export default function RestaurantListPage() {
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
-        const response = await api.get("/restaurant");
-        // 백엔드에서 데이터 로드 시 각 아이템에 isFavorite 상태가 포함되어 있어야 합니다.
+        const response = await restaurantService.getRestaurants();
         setRestaurants(response.data);
         setFilteredList(response.data);
       } catch (error) {
@@ -39,32 +32,20 @@ export default function RestaurantListPage() {
     fetchRestaurants();
   }, []);
 
-  // 📡 즐겨찾기 토글 API 연동
   const toggleFavorite = async (e: React.MouseEvent, id: number) => {
-    e.preventDefault(); // 카드 클릭 이동 방지
+    e.preventDefault();
     e.stopPropagation();
 
     try {
-      // 알려주신 엔드포인트로 POST 요청
-      await api.post(`/restaurant/${id}/favorite`);
+      await restaurantService.toggleFavorite(id);
 
-      // 화면 UI 즉시 업데이트 (로컬 상태 반영)
-      const updatedList = restaurants.map((item) => {
-        if (item.id === id) {
-          return { ...item, isFavorite: !item.isFavorite };
-        }
-        return item;
-      });
-      setRestaurants(updatedList);
+      const updateState = (list: RestaurantData[]) =>
+        list.map((item) =>
+          item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
+        );
 
-      // 필터링된 리스트도 함께 업데이트
-      const updatedFiltered = filteredList.map((item) => {
-        if (item.id === id) {
-          return { ...item, isFavorite: !item.isFavorite };
-        }
-        return item;
-      });
-      setFilteredList(updatedFiltered);
+      setRestaurants(updateState(restaurants));
+      setFilteredList(updateState(filteredList));
     } catch (error) {
       console.error("즐겨찾기 요청 실패:", error);
       alert("즐겨찾기 처리에 실패했습니다. 로그인을 확인해주세요.");
@@ -77,34 +58,17 @@ export default function RestaurantListPage() {
     if (category === "전체") {
       setFilteredList(restaurants);
     } else {
-      const filtered = restaurants.filter(
-        (item) => item.restCategory === category
+      setFilteredList(
+        restaurants.filter((item) => item.restCategory === category)
       );
-      setFilteredList(filtered);
     }
   };
 
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredList.slice(indexOfFirstItem, indexOfLastItem);
-
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
-    } else {
-      pageNumbers.push(1);
-      if (currentPage > 3) pageNumbers.push("...");
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      for (let i = start; i <= end; i++) pageNumbers.push(i);
-      if (currentPage < totalPages - 2) pageNumbers.push("...");
-      pageNumbers.push(totalPages);
-    }
-    return pageNumbers;
-  };
+  const currentItems = filteredList.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   if (loading) {
     return (
@@ -118,13 +82,27 @@ export default function RestaurantListPage() {
     <div className="w-full bg-[#fcfcfc] min-h-screen pb-24">
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
-          <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">
-            대전의 맛을 찾아서
-          </h1>
-          <p className="text-slate-500 font-medium mb-10">
-            현지인이 추천하는 진짜 맛집 리스트를 카테고리별로 확인하세요.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="space-y-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+              DAEJEON NOW
+            </div>
+            <h2 className="text-3xl lg:text-5xl font-extrabold tracking-tight leading-[1.1]">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
+                대전의 맛
+              </span>
+              을 찾아서
+            </h2>
+            <p className="text-slate-500 text-sm font-medium leading-relaxed">
+              현지인이 추천하는 진짜 맛집 리스트를 카테고리별로 확인하세요.
+            </p>
+          </div>
+
+          {/* 카테고리 탭 */}
+          <div className="flex flex-wrap items-center gap-3 mt-16">
             {["전체", "한식", "일식", "중식", "양식", "카페"].map((cat) => (
               <button
                 key={cat}
@@ -146,7 +124,7 @@ export default function RestaurantListPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {currentItems.map((item) => (
             <div key={item.id} className="relative group">
-              {/* 즐겨찾기 하트 버튼 */}
+              {/* 즐겨찾기 버튼 */}
               <button
                 onClick={(e) => toggleFavorite(e, item.id)}
                 className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm transition-all hover:scale-110 active:scale-90 border border-slate-100"
@@ -182,6 +160,7 @@ export default function RestaurantListPage() {
                       <MapPin size={12} className="text-slate-300" />
                       <span className="line-clamp-1">{item.address}</span>
                     </div>
+
                     <div className="mt-auto pt-4 border-t border-slate-50 flex flex-col gap-1">
                       <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
                         Best Menu
@@ -205,46 +184,12 @@ export default function RestaurantListPage() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-16">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="p-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronLeft size={20} className="text-slate-600" />
-            </button>
-            <div className="flex gap-2 items-center">
-              {getPageNumbers().map((pageNum, index) => (
-                <React.Fragment key={index}>
-                  {pageNum === "..." ? (
-                    <span className="px-2 text-slate-400 font-bold">...</span>
-                  ) : (
-                    <button
-                      onClick={() => setCurrentPage(pageNum as number)}
-                      className={`w-10 h-10 rounded-full text-sm font-bold transition-all ${
-                        currentPage === pageNum
-                          ? "bg-slate-900 text-white shadow-md shadow-slate-200"
-                          : "bg-white border border-slate-200 text-slate-500 hover:border-slate-900 hover:text-slate-900"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="p-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronRight size={20} className="text-slate-600" />
-            </button>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+          themeColor="black"
+        />
       </div>
     </div>
   );

@@ -5,30 +5,27 @@ import {
   Map,
   MapMarker,
   MarkerClusterer,
-  Roadview, // 추가
+  Roadview,
 } from "react-kakao-maps-sdk";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/api/axios";
+import { hospitalService } from "@/api/services"; // 서비스 레이어
 import {
-  Search,
   MapPin,
-  Navigation,
   Loader2,
-  Phone,
-  Stethoscope,
   Plus,
   Map as MapIcon,
   ArrowRight,
-  Camera, // 추가
+  Camera,
   X,
-  LayoutGrid, // 추가
 } from "lucide-react";
 
 export default function Page() {
   const router = useRouter();
+
+  // 1. 환경 변수 적용 및 카카오 로더 설정
   const [loading] = useKakaoLoader({
-    appkey: "be76d4639aed306a8922278ef72751be",
+    appkey: process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "", // .env.local 값 사용
     libraries: ["services", "clusterer"],
   });
 
@@ -39,10 +36,10 @@ export default function Page() {
   const [filterCategory, setFilterCategory] = useState("전체");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- 로드뷰 관련 상태 추가 ---
   const [isRoadviewOpen, setIsRoadviewOpen] = useState(false);
   const [roadviewPos, setRoadviewPos] = useState({ lat: 0, lng: 0 });
 
+  // 2. .wrap 요소 스크롤 제어 로직 추가
   useEffect(() => {
     const wrapElement = document.querySelector(".wrap") as HTMLElement;
     if (wrapElement) wrapElement.style.overflow = "visible";
@@ -51,10 +48,11 @@ export default function Page() {
     };
   }, []);
 
+  // 데이터 로드 및 좌표 변환 (서비스 레이어 사용)
   useEffect(() => {
-    const fetchHospitals = async () => {
+    const fetchAndGeocodeHospitals = async () => {
       try {
-        const response = await api.get("/hospital");
+        const response = await hospitalService.getHospitals();
         const dbData = response.data;
         const geocoder = new window.kakao.maps.services.Geocoder();
 
@@ -75,10 +73,10 @@ export default function Page() {
         const results = await Promise.all(promises);
         setHospitals(results.filter((h) => h !== null));
       } catch (err) {
-        console.error(err);
+        console.error("데이터 로드 실패:", err);
       }
     };
-    if (!loading) fetchHospitals();
+    if (!loading) fetchAndGeocodeHospitals();
   }, [loading]);
 
   const categories = useMemo(() => {
@@ -97,12 +95,16 @@ export default function Page() {
     });
   }, [hospitals, filterCategory, searchTerm]);
 
+  // 리스트 클릭 시 지도 이동 및 마커 활성화
   const handleHospitalClick = (h: any) => {
     setSelectedId(h.id);
-    map?.panTo(new kakao.maps.LatLng(h.lat, h.lng));
+    if (map) {
+      const moveLatLon = new kakao.maps.LatLng(h.lat, h.lng);
+      map.panTo(moveLatLon);
+      map.setLevel(3); // 상세 레벨로 확대
+    }
   };
 
-  // --- 로드뷰 열기 함수 추가 ---
   const handleOpenRoadview = (h: any) => {
     setRoadviewPos({ lat: h.lat, lng: h.lng });
     setIsRoadviewOpen(true);
@@ -117,12 +119,11 @@ export default function Page() {
 
   return (
     <div className="w-full bg-[#fbfcfd] min-h-screen pb-24">
-      {/* 헤더 섹션 */}
+      {/* 헤더 섹션 - 디자인 유지 */}
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
             <div className="space-y-5">
-              {/* 뱃지 섹션 */}
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -130,23 +131,18 @@ export default function Page() {
                 </span>
                 VERIFIED SPECIALISTS
               </div>
-
-              <h2 className="text-3xl lg:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.1]">
+              <h2 className="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
                 대전{" "}
                 <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
-                  전문의를 찾아서{" "}
+                  전문의를 찾아서
                 </span>
               </h2>
-
               <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-2xl">
                 보건복지부 인증 전문의가 상주하는 대전의 믿을 수 있는 병원
                 리스트입니다.
-                <br className="hidden md:block" />
-                정확한 정보를 바탕으로 가까운 전문 의료진을 확인해 보세요.
               </p>
             </div>
           </div>
-
           <div className="flex flex-wrap items-center gap-3">
             {categories.map((cat) => (
               <button
@@ -158,7 +154,7 @@ export default function Page() {
                 }}
                 className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
                   filterCategory === cat
-                    ? "bg-green-600 text-white shadow-lg shadow-green-100"
+                    ? "bg-green-600 text-white shadow-lg"
                     : "bg-white border border-slate-200 text-slate-600 hover:border-slate-900"
                 }`}
               >
@@ -171,22 +167,8 @@ export default function Page() {
 
       <div className="w-full lg:max-w-7xl mx-auto px-4 lg:px-5 mt-10">
         <div className="flex flex-col lg:flex-row gap-8 items-start relative">
-          {/* 좌측 리스트 */}
+          {/* 좌측 리스트 - 디자인 유지 */}
           <div className="w-full lg:w-[60%] space-y-6">
-            <div className="flex items-center justify-between px-2 mb-4">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                  Medical List
-                </span>
-                <p className="text-sm font-bold text-slate-500">
-                  {filterCategory}
-                </p>
-              </div>
-              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
-                {filteredHospitals.length}개
-              </span>
-            </div>
-
             {filteredHospitals.slice(0, visibleCount).map((h) => (
               <div
                 key={h.id}
@@ -197,16 +179,15 @@ export default function Page() {
                     : "border-slate-100 hover:border-green-200 shadow-sm"
                 }`}
               >
-                {/* 리스트 아이템 내용은 기존과 동일 */}
                 <div className="flex justify-between items-start mb-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-[10px] font-black rounded-md mb-4 uppercase tracking-widest shadow-lg shadow-green-200">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-[10px] font-bold rounded-md mb-4 uppercase tracking-widest shadow-lg shadow-green-200">
                     {h.treatCategory}
                   </div>
                   <div
                     className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
                       selectedId === h.id
-                        ? "bg-green-600 text-white shadow-lg shadow-green-200"
-                        : "bg-slate-50 text-slate-300 group-hover:bg-slate-100"
+                        ? "bg-green-600 text-white"
+                        : "bg-slate-50 text-slate-300"
                     }`}
                   >
                     <MapIcon size={20} />
@@ -215,11 +196,9 @@ export default function Page() {
                 <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tight line-clamp-1">
                   {h.name}
                 </h4>
-                <div className="flex flex-col gap-3 mb-8 text-slate-500 text-sm font-medium">
-                  <div className="flex items-center gap-2.5">
-                    <MapPin size={16} className="text-green-500 shrink-0" />
-                    <span className="line-clamp-1">{h.address}</span>
-                  </div>
+                <div className="flex items-center gap-2.5 text-slate-500 text-sm font-medium mb-8">
+                  <MapPin size={16} className="text-green-500 shrink-0" />
+                  <span className="line-clamp-1">{h.address}</span>
                 </div>
                 <div className="pt-6 border-t border-dashed border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -233,14 +212,13 @@ export default function Page() {
                       e.stopPropagation();
                       router.push(`/hospital/${h.id}`);
                     }}
-                    className="flex items-center gap-2 px-7 py-3.5 bg-slate-900 text-white rounded-2xl text-[13px] font-black hover:bg-green-600 transition-all shadow-xl shadow-slate-200"
+                    className="flex items-center gap-2 px-7 py-3.5 bg-slate-900 text-white rounded-2xl text-[13px] font-bold hover:bg-green-600 transition-all shadow-xl shadow-slate-200"
                   >
                     진료 정보 보기 <ArrowRight size={16} />
                   </button>
                 </div>
               </div>
             ))}
-
             {visibleCount < filteredHospitals.length && (
               <button
                 onClick={() => setVisibleCount((v) => v + 5)}
@@ -251,7 +229,7 @@ export default function Page() {
             )}
           </div>
 
-          {/* --- 우측 지도 섹션 (업데이트 부분) --- */}
+          {/* 우측 지도 섹션 - 디자인 유지 + 마커 렌더링 최적화 */}
           <div className="hidden lg:block lg:flex-1 sticky top-[100px] self-start h-[calc(100vh-140px)]">
             <div className="w-full h-full rounded-[3.5rem] overflow-hidden border-12px border-white shadow-2xl relative bg-slate-50">
               <Map
@@ -260,18 +238,21 @@ export default function Page() {
                 level={7}
                 onCreate={setMap}
               >
-                <MarkerClusterer averageCenter={true}>
+                {/* Clusterer에 key를 주어 필터링 시 마커가 즉시 업데이트 되도록 함 */}
+                <MarkerClusterer averageCenter={true} key={filterCategory}>
                   {filteredHospitals.map((h) => (
                     <MapMarker
-                      key={h.id}
+                      key={`marker-${h.id}`}
                       position={{ lat: h.lat, lng: h.lng }}
                       onClick={() => setSelectedId(h.id)}
                       image={{
-                        src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
-                        size: { width: 24, height: 35 },
+                        src:
+                          selectedId === h.id
+                            ? "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png"
+                            : "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
+                        size: { width: 32, height: 44 },
                       }}
                     >
-                      {/* --- 마커 클릭 시 나타나는 커스텀 팝업 --- */}
                       {selectedId === h.id && (
                         <div className="p-0 min-w-64 overflow-hidden rounded-2xl shadow-2xl bg-white border-none">
                           <div className="bg-slate-900 p-5 text-white">
@@ -285,7 +266,7 @@ export default function Page() {
                           <div className="p-4 space-y-2">
                             <button
                               onClick={() => handleOpenRoadview(h)}
-                              className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-xl text-xs font-black hover:bg-green-700 transition-all shadow-lg shadow-green-100"
+                              className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-xl text-xs font-black hover:bg-green-700 transition-all shadow-lg"
                             >
                               <Camera size={14} /> 로드뷰 보기
                             </button>
@@ -302,14 +283,14 @@ export default function Page() {
                   ))}
                 </MarkerClusterer>
 
-                {/* --- 로드뷰 오버레이 레이어 --- */}
+                {/* 로드뷰 레이어 */}
                 {isRoadviewOpen && (
                   <div className="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center">
                     <div className="w-full h-full bg-white rounded-3xl overflow-hidden relative shadow-2xl">
                       <div className="absolute top-6 right-6 z-60">
                         <button
                           onClick={() => setIsRoadviewOpen(false)}
-                          className="p-3 bg-slate-900 text-white rounded-full shadow-xl hover:scale-110 transition-transform active:scale-95"
+                          className="p-3 bg-slate-900 text-white rounded-full"
                         >
                           <X size={20} />
                         </button>

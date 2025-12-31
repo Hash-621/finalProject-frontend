@@ -1,4 +1,5 @@
 import DefaultLayout from "@/components/layouts/DefaultLayout";
+import Link from "next/link";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,12 +10,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="max-w-4xl mx-auto mt-10 text-center">
-          <a
+          <Link
             href="/"
             className="text-slate-400 hover:text-green-600 font-bold text-sm transition-colors"
           >
-            © 대전 꿀잼 투어 — 메인으로 돌아가기
-          </a>
+            © 다잇슈 대전 — 메인으로 돌아가기
+          </Link>
         </div>
       </div>
     </DefaultLayout>

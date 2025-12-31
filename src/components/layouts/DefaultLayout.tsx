@@ -21,7 +21,7 @@ export default function DefaultLayout({
         autoClose={5000}
         hideProgressBar={true}
         theme="light"
-        style={{ marginBottom: "80px", zIndex: 9999 }}
+        style={{ zIndex: 9999 }}
       />
       <ChatBot />
       <Footer />

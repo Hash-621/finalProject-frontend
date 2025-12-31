@@ -4,23 +4,19 @@ import Link from "next/link";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import api from "@/api/axios";
 import {
-  Loader2, // ArrowPathIcon 대신 사용
+  Loader2,
   RefreshCw,
-  Briefcase,
-  GraduationCap,
   Search,
   Filter,
-  ChevronLeft,
-  ChevronRight,
   ChevronRightIcon,
 } from "lucide-react";
 
 // 컴포넌트 및 타입
 import JobCard from "@/components/jobTools/JobCard";
 import JobDetailModal from "@/components/jobTools/JobDetailModal";
+import Pagination from "@/components/common/Pagination";
 import { JOB_DETAILS_DB } from "@/data/jobDetailData";
 import { JobData, ApplyFormData, ApplyStep, DetailContent } from "@/types/job";
-// import { ArrowPathIcon } from "@heroicons/react/24/outline"; // 삭제
 
 export default function Page() {
   const [jobs, setJobs] = useState<JobData[]>([]);
@@ -82,6 +78,7 @@ export default function Page() {
     setTempFilters((prev) => ({ ...prev, [name]: value }));
   };
 
+  // 페이지네이션용 데이터 계산
   const totalPages = useMemo(
     () => Math.ceil(jobs.length / itemsPerPage) || 1,
     [jobs]
@@ -90,19 +87,6 @@ export default function Page() {
     const start = (currentPage - 1) * itemsPerPage;
     return jobs.slice(start, start + itemsPerPage);
   }, [jobs, currentPage]);
-
-  const pageNumbers = useMemo(() => {
-    const range = 2;
-    const nums = [];
-    for (
-      let i = Math.max(1, currentPage - range);
-      i <= Math.min(totalPages, currentPage + range);
-      i++
-    ) {
-      nums.push(i);
-    }
-    return nums;
-  }, [currentPage, totalPages]);
 
   useEffect(() => {
     if (isModalOpen) {
@@ -155,7 +139,7 @@ export default function Page() {
     <section className="py-16 bg-gray-50/30 overflow-hidden">
       <div className="w-full lg:max-w-7xl mx-auto px-4 lg:px-5">
         <div className="w-full shrink-0 space-y-5 relative mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -169,7 +153,7 @@ export default function Page() {
             </span>
             큐레이션
           </h2>
-          <p className="text-slate-500 text-sm font-medium leading-relaxed">
+          <p className="text-slate-500 text-sm font-medium leading-relaxed pr-16 md:pr-0 max-w-[85%] md:max-w-none">
             사람인과 잡코리아의 실시간 데이터를 분석하여 가장 적합한 일자리를
             한눈에 보여드립니다.
           </p>
@@ -180,21 +164,24 @@ export default function Page() {
               setTempFilters(reset);
               setActiveFilters(reset);
             }}
-            className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-green-600 hover:border-green-200 transition-all shadow-sm text-sm font-bold group absolute right-0 bottom-0"
+            className="flex items-center gap-2 p-3 md:px-6 md:py-3 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-green-600 hover:border-green-200 transition-all shadow-sm text-sm font-bold group absolute right-0 bottom-0"
+            title="필터 초기화 및 새로고침"
           >
             <RefreshCw
-              size={16}
+              size={18}
               className={
                 loading
                   ? "animate-spin"
                   : "group-hover:rotate-180 transition-transform duration-500"
               }
             />
-            필터 초기화 및 새로고침
+            {/* 모바일에서는 숨기고, md(768px) 이상에서만 텍스트 노출 */}
+            <span className="hidden md:inline">필터 초기화 및 새로고침</span>
           </button>
         </div>
 
         <div className="flex-1 min-w-0 space-y-8">
+          {/* 검색/필터 바 */}
           <div className="bg-white p-4 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-1 relative">
@@ -235,7 +222,6 @@ export default function Page() {
           {/* 결과 리스트 */}
           {loading ? (
             <div className="py-32 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 shadow-sm">
-              {/* ArrowPathIcon 대신 Loader2 사용 */}
               <Loader2 className="animate-spin text-green-500 w-12 h-12 mb-4" />
               <p className="text-slate-400 font-semibold text-lg">
                 최적의 공고를 선별하고 있습니다...
@@ -263,46 +249,13 @@ export default function Page() {
                 ))}
               </div>
 
-              {/* 페이지네이션 */}
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-3 pt-6">
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
-                    disabled={currentPage === 1}
-                    className="w-12 h-12 flex items-center justify-center rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 transition-all shadow-sm"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-
-                  <div className="flex gap-2">
-                    {pageNumbers.map((number) => (
-                      <button
-                        key={number}
-                        onClick={() => setCurrentPage(number)}
-                        className={`w-12 h-12 rounded-2xl font-bold text-sm transition-all shadow-sm ${
-                          currentPage === number
-                            ? "bg-slate-900 text-white scale-110 shadow-slate-300"
-                            : "bg-white border border-slate-200 text-slate-500 hover:border-green-400 hover:text-green-600"
-                        }`}
-                      >
-                        {number}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="w-12 h-12 flex items-center justify-center rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 transition-all shadow-sm"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-              )}
+              {/* 🔹 공통 페이지네이션 컴포넌트 적용 */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+                themeColor="green"
+              />
             </div>
           )}
         </div>

@@ -9,7 +9,6 @@ export default function TalentListPage() {
   const [talents, setTalents] = useState([]);
 
   useEffect(() => {
-    // API 호출: JobUserPost 데이터를 가져옴
     api
       .get("/job/user/list")
       .then((res) => setTalents(res.data))

@@ -2,7 +2,7 @@ import PlainLayout from "@/components/layouts/PlainLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "NextShop | Sign-In",
+  title: "다잇슈대전 | Sign-In",
 };
 
 export default function Layout({

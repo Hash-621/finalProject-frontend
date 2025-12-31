@@ -9,7 +9,7 @@ export default function TourRouteSubPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
           <div className="space-y-5">
             {/* 뱃지 섹션 */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -49,7 +49,7 @@ export default function TourRouteSubPage() {
                   alt={tour.title}
                 />
                 <div className="absolute top-4 left-4">
-                  <span className="bg-white/90 backdrop-blur-md text-slate-900 text-[11px] font-black px-3 py-1 rounded-full shadow-sm">
+                  <span className="bg-white/90 backdrop-blur-md text-slate-900 text-[11px] font-bold px-3 py-1 rounded-full shadow-sm">
                     COURSE 0{tour.number}
                   </span>
                 </div>
@@ -57,7 +57,7 @@ export default function TourRouteSubPage() {
 
               {/* 텍스트 영역: 여백과 디테일 */}
               <div className="p-7 flex flex-col flex-1">
-                <div className="flex items-center gap-1 text-green-600 text-[10px] font-black uppercase tracking-wider mb-3">
+                <div className="flex items-center gap-1 text-green-600 text-[10px] font-bold uppercase tracking-wider mb-3">
                   <MapPin size={12} /> Daejeon Tour
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-green-600 transition-colors">

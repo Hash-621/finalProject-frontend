@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Pusher from "pusher-js";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-// Lucide 아이콘으로 변경
 import { Megaphone, X } from "lucide-react";
 
 interface NotificationData {

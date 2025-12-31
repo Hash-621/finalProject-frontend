@@ -111,3 +111,33 @@ div[style*="border: 1px solid #7681a8"] {
   }
 }
 /* ------------------------------------------------------------- */
+
+@media screen and (min-width: 640px) {
+  .Toastify__toast {
+    margin-bottom: 80px !important;
+  }
+}
+
+/* ------------------------------------------------------------- */
+
+.advertise .swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background-color: #e2e8f0;
+  opacity: 1 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 9999px;
+}
+
+.advertise .swiper-pagination-bullet-active {
+  width: 24px; /* 가로로 길어짐 */
+  background-color: #22c55e !important;
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.4);
+}
+
+.advertise .swiper-button-next,
+.advertise .swiper-button-prev {
+  color: #16a34a !important;
+  transform: scale(0.7);
+  font-weight: bold;
+}

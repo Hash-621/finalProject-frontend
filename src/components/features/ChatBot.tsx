@@ -2,8 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import api from "@/api/axios";
-import { SendHorizontal, X, MessageCircleMore, User, Bot } from "lucide-react";
+import { SendHorizontal, X, MessageCircleMore, Bot } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import Link from "next/link";
 
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,7 +51,6 @@ export default function ChatBot() {
 
   return (
     <>
-      {/* 플로팅 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`cursor-pointer fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white p-4 rounded-2xl transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center
@@ -76,7 +78,6 @@ export default function ChatBot() {
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[400px] h-[650px] bg-white border border-gray-100 rounded-[2.5rem] flex flex-col overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)]"
           >
-            {/* 헤더 */}
             <div className="bg-linear-to-br from-green-500 to-green-600 p-6 text-white">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner">
@@ -94,7 +95,6 @@ export default function ChatBot() {
               </div>
             </div>
 
-            {/* 채팅 영역 */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6 bg-[#F8F9FA] custom-scrollbar">
               {messages.map((msg, idx) => (
                 <div
@@ -110,13 +110,58 @@ export default function ChatBot() {
                   )}
 
                   <div
-                    className={`max-w-[75%] p-3.5 px-4 rounded-2xl text-[14px] leading-relaxed shadow-sm ${
+                    className={`max-w-[85%] p-3.5 px-4 rounded-2xl text-[14px] leading-relaxed shadow-sm ${
                       msg.role === "user"
                         ? "bg-green-500 text-white rounded-br-none"
                         : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
                     }`}
                   >
-                    {msg.text}
+                    {msg.role === "user" ? (
+                      msg.text
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // ★ 수정됨: 타입 에러 해결을 위해 ({ node, ...props }: any) 사용
+                          a: ({ node, ...props }: any) => (
+                            <Link
+                              href={props.href || "#"}
+                              className="text-blue-600 underline font-bold hover:text-blue-800 mx-1"
+                              target={
+                                props.href?.startsWith("http")
+                                  ? "_blank"
+                                  : "_self"
+                              }
+                            >
+                              {props.children}
+                            </Link>
+                          ),
+                          ul: ({ node, ...props }: any) => (
+                            <ul
+                              className="list-disc pl-4 my-2 space-y-1"
+                              {...props}
+                            />
+                          ),
+                          ol: ({ node, ...props }: any) => (
+                            <ol
+                              className="list-decimal pl-4 my-2 space-y-1"
+                              {...props}
+                            />
+                          ),
+                          strong: ({ node, ...props }: any) => (
+                            <strong
+                              className="font-bold text-green-700"
+                              {...props}
+                            />
+                          ),
+                          p: ({ node, ...props }: any) => (
+                            <p className="mb-1 last:mb-0" {...props} />
+                          ),
+                        }}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+                    )}
                   </div>
                 </div>
               ))}
@@ -136,7 +181,6 @@ export default function ChatBot() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* 입력 영역 */}
             <form
               onSubmit={handleSend}
               className="p-4 bg-white border-t border-gray-50 flex items-center gap-2 mb-2"
@@ -146,7 +190,7 @@ export default function ChatBot() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="메시지를 입력하세요..."
+                  placeholder="궁금한 맛집이나 여행지를 물어보세요..."
                   className="w-full bg-gray-100 text-gray-800 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all border-none"
                 />
               </div>
