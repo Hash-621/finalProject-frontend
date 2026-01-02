@@ -86,6 +86,7 @@ export default function ResetPwPage() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw`,
         {
           email: email,
+          token: token,
           password: password,
         }
       );
