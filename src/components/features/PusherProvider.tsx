@@ -54,14 +54,14 @@ export default function PusherProvider({
     toast(
       ({ closeToast }) => (
         <div
-          className="flex items-center gap-3 cursor-pointer group w-full relative h-14"
+          className="flex items-center gap-3 cursor-pointer group relative h-14"
           onClick={() => {
             router.push(data.url || "/");
             closeToast();
           }}
         >
           {/* 아이콘 영역: MegaphoneIcon -> Megaphone */}
-          <div className="bg-orange-500 text-white p-4 rounded-2xl transition-all duration-300 group-hover:scale-110 active:scale-95 flex items-center justify-center shadow-[0_10px_30px_-5px_rgba(249,115,22,0.5)]">
+          <div className="bg-orange-500 text-white p-4.5 rounded-2xl transition-all duration-300 group-hover:scale-110 active:scale-95 flex items-center justify-center shadow-[0_10px_30px_-5px_rgba(249,115,22,0.5)]">
             <Megaphone className="w-7 h-7 text-white" strokeWidth={2.5} />
           </div>
 
@@ -92,7 +92,6 @@ export default function PusherProvider({
         hideProgressBar: true,
         closeButton: false,
         className: "custom-toast-responsive",
-        style: { background: "transparent", boxShadow: "none", padding: 0 },
       }
     );
   };

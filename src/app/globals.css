@@ -82,39 +82,26 @@ div[style*="border: 1px solid #7681a8"] {
 }
 /* ------------------------------------------------------------- */
 
-@media (max-width: 639px) {
-  .custom-toast-responsive {
-    background: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-    width: fit-content !important;
-
-    margin-right: 24px !important;
-    margin-bottom: 20px !important;
-  }
-
-  .Toastify__toast-container--bottom-right {
-    bottom: 80px !important;
-    right: 0 !important;
-  }
+.Toastify__toast-container {
+  bottom: 88px;
 }
 
-@media (min-width: 640px) {
-  .custom-toast-responsive {
-    background: white !important;
-    min-width: 350px !important;
-    padding: 12px !important;
-    border-radius: 24px !important; /* 챗봇과 같은 느낌의 둥근 모서리 */
-    border: 1px solid rgba(243, 244, 246, 1) !important;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-  }
+.Toastify__toast-container .Toastify__toast {
+  background-color: #fff;
+  padding: 15px 12px;
+  width: auto;
 }
-/* ------------------------------------------------------------- */
 
-@media screen and (min-width: 640px) {
-  .Toastify__toast {
-    margin-bottom: 80px !important;
+@media screen and (max-width: 640px) {
+  .Toastify__toast-container {
+    bottom: 88px;
+    right: 24px;
+  }
+
+  .Toastify__toast-container .Toastify__toast {
+    background-color: transparent;
+    box-shadow: none;
+    padding: 0;
   }
 }
 
