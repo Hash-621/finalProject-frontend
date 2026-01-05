@@ -116,7 +116,7 @@ export default function TourReviewList() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50">
       {/* 1. Hero Section (상단 배너) */}
       <section className="relative h-[400px] w-full overflow-hidden bg-slate-900">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/90 to-teal-900/80 z-10" />
