@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Facebook, Twitter, Youtube, Instagram } from "lucide-react";
+import Image from "next/image";
 
 export default function Footer() {
   return (
@@ -11,12 +12,13 @@ export default function Footer() {
           {/* 1. 로고 및 기업 정보 */}
           <div className="space-y-6">
             <Link href="/">
-              <span className="text-2xl font-black text-white tracking-tighter transition hover:opacity-80">
-                다잇슈{" "}
-                <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
-                  대전
-                </span>
-              </span>
+              <Image
+                src="\images\f_logo.svg"
+                alt="로고"
+                width={90}
+                height={25}
+                className="object-fill md:w-[103px] md:h-[29px]"
+              />
             </Link>
             <div className="text-sm leading-relaxed space-y-2 mt-4">
               <p className="flex gap-3">

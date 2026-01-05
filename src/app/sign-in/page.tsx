@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/common/Input";
 import { useAuth } from "@/hooks/useAuth";
+import Image from "next/image";
 
 export default function Page() {
   const router = useRouter();
@@ -32,12 +33,13 @@ export default function Page() {
               href="/"
               className="flex items-center transition hover:opacity-80 mb-16"
             >
-              <span className="text-3xl lg:text-4xl font-black text-white tracking-tighter">
-                다잇슈{" "}
-                <span className="text-transparent bg-clip-text bg-linear-to-r from-green-500 to-emerald-400">
-                  대전
-                </span>
-              </span>
+              <Image
+                src="\images\f_logo.svg"
+                alt="로고"
+                width={150}
+                height={40}
+                className="object-fill "
+              />
             </Link>
             <h2 className="text-5xl font-black text-white leading-[1.1] tracking-tighter mb-8">
               우리 동네의 <br />

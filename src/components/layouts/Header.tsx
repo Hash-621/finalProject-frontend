@@ -17,6 +17,7 @@ import { menuData } from "@/data/menuData";
 import { useRouter } from "next/navigation";
 import api from "@/api/axios";
 import Cookies from "js-cookie"; // [추가] 쿠키 라이브러리
+import Image from "next/image";
 
 export default function Header() {
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
@@ -205,12 +206,13 @@ export default function Header() {
                 href="/"
                 className="flex items-center transition hover:opacity-80"
               >
-                <span className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tighter">
-                  다잇슈{" "}
-                  <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
-                    대전
-                  </span>
-                </span>
+                <Image
+                  src="\images\logo.svg"
+                  alt="로고"
+                  width={90}
+                  height={25}
+                  className="object-fill md:w-[129px] md:h-9"
+                />
               </Link>
             </div>
 
