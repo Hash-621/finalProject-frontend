@@ -1,28 +1,67 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  Suspense,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, X, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Save,
+  Loader2,
+  Camera,
+  X,
+  LayoutList,
+  Image as ImageIcon,
+} from "lucide-react";
 import api from "@/api/axios";
 import Cookies from "js-cookie";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 
-export default function TourReviewWritePage() {
+// 1. Dynamic Import (SSR 에러 방지)
+const ReactQuillEditor = dynamic(
+  async () => {
+    const { default: RQ } = await import("react-quill-new");
+    return function Comp({ forwardedRef, ...props }: any) {
+      return <RQ ref={forwardedRef} {...props} />;
+    };
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[400px] bg-slate-50 animate-pulse rounded-[3rem] border border-slate-100" />
+    ),
+  }
+);
+
+function TourReviewContent() {
   const router = useRouter();
+  const quillRef = useRef<ReactQuill | null>(null);
 
-  // 상태 관리
+  // 카테고리 고정
+  const category = "TOUR_REVIEW";
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [images, setImages] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 대표 사진(썸네일) 상태
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+
   const [userData, setUserData] = useState<{
-    userId: string;
+    userId: any;
     nickname: string;
   } | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // 1. 유저 정보 가져오기
+  // 유저 정보 로드
   useEffect(() => {
     const fetchUserInfo = async () => {
       const token = Cookies.get("token");
@@ -31,7 +70,6 @@ export default function TourReviewWritePage() {
         router.push("/sign-in");
         return;
       }
-
       try {
         const res = await api.get("/mypage/info");
         const fetchedId = res.data.userId || res.data.id || res.data.loginId;
@@ -40,212 +78,317 @@ export default function TourReviewWritePage() {
         if (fetchedId) {
           setUserData({
             userId: fetchedId,
-            nickname: fetchedNickname || "익명",
+            nickname: fetchedNickname || "사용자",
           });
         }
       } catch (err) {
-        console.error("유저 정보 로드 실패:", err);
+        router.replace("/sign-in");
       }
     };
-
     fetchUserInfo();
   }, [router]);
 
-  // 2. 이미지 선택 핸들러
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+  // 본문 이미지 핸들러 (Base64)
+  const imageHandler = useCallback(() => {
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
+    input.setAttribute("multiple", "");
+    input.click();
 
-    const newFiles = Array.from(files);
-    const totalImages = images.length + newFiles.length;
+    input.onchange = async () => {
+      const fileArray = input.files;
+      if (!fileArray?.length) return;
 
-    if (totalImages > 5) {
-      alert("이미지는 최대 5장까지 업로드 가능합니다.");
-      return;
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
+        if (file.size > 5 * 1024 * 1024) {
+          alert("이미지 용량은 5MB를 초과할 수 없습니다.");
+          return;
+        }
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const quill = quillRef.current?.getEditor();
+          const range = quill?.getSelection()?.index;
+          if (range !== undefined && range !== null) {
+            quill?.insertEmbed(range, "image", reader.result);
+          }
+        };
+      }
+    };
+  }, []);
+
+  // 대표 사진(썸네일) 업로드
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("파일 크기는 5MB 이하여야 합니다.");
+        return;
+      }
+      setThumbnailFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setThumbnailPreview(reader.result as string);
+      reader.readAsDataURL(file);
     }
-
-    setImages((prev) => [...prev, ...newFiles]);
-
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-    setPreviewUrls((prev) => [...prev, ...newPreviews]);
   };
 
-  // 3. 이미지 삭제 핸들러
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+  const removeThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
   };
 
-  // ▼▼▼▼▼ [수정된 부분] handleSubmit ▼▼▼▼▼
+  const modules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ color: [] }, { background: [] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link", "image"],
+          ["clean"],
+        ],
+        handlers: { image: imageHandler },
+      },
+    }),
+    [imageHandler]
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!title.trim() || !content.trim()) {
-      alert("제목과 내용을 모두 입력해주세요.");
-      return;
-    }
-
-    if (!userData?.userId) {
-      alert("유저 정보를 확인 중입니다. 잠시만 기다려주세요.");
-      return;
-    }
+    if (isSubmitting) return;
+    if (!userData?.userId) return alert("유저 정보를 확인 중입니다.");
+    if (!title.trim() || !content.trim())
+      return alert("제목과 내용을 입력해주세요.");
 
     setIsSubmitting(true);
 
     try {
-      // 1. DTO 생성
       const payload = {
         userId: userData.userId,
-        userNickname: userData.nickname,
         title: title,
         content: content,
-        category: "TOUR_REVIEW", // 리뷰 카테고리
+        category: category, // TOUR_REVIEW 고정
         viewCount: 0,
+        likeCount: 0,
         commentCount: 0,
       };
 
       const formData = new FormData();
 
-      // 2. [핵심 1] JSON 데이터 키 이름을 'data'로 설정 (서버 로그: Required part 'data'...)
+      // 1. DTO (JSON)
       const jsonBlob = new Blob([JSON.stringify(payload)], {
         type: "application/json",
       });
-      formData.append("data", jsonBlob);
+      formData.append("dto", jsonBlob);
 
-      // 3. [핵심 2] 파일 추가 (키 이름: 'file')
-      // 현재 백엔드 savePost는 단일 파일(MultipartFile file)을 받는 것으로 보입니다.
-      // 여러 장을 올리더라도, 백엔드 호환성을 위해 우선 첫 번째 파일만 'file' 키로 보냅니다.
-      // (백엔드에서 List<MultipartFile>을 받도록 수정되었다면 forEach로 append 해도 됨)
-      if (images.length > 0) {
-        formData.append("file", images[0]);
+      // 2. 대표 사진 (File) - 백엔드가 'file' 혹은 'files'로 받는지 확인 필요
+      if (thumbnailFile) {
+        formData.append("file", thumbnailFile);
       }
 
-      console.log("🚀 리뷰 등록 요청 시작...");
+      // 전송
+      const response = await api.post("/community/post", formData);
 
-      // 4. [핵심 3] 엔드포인트를 '/community/posts' (복수형)으로 설정
-      // (서버 로그: /post 는 404 Not Found 였음)
-      await api.post("/community/posts", formData);
-
-      alert("리뷰가 성공적으로 등록되었습니다!");
-      router.back();
+      if (response.status === 200 || response.status === 201) {
+        alert("여행 리뷰가 등록되었습니다!");
+        router.push("/tour/review"); // 목록 페이지로 이동
+      }
     } catch (error: any) {
-      console.error("리뷰 등록 실패:", error);
-      const msg = error.response?.data?.message || "서버 오류가 발생했습니다.";
-      alert(`등록 실패: ${msg}`);
+      console.error("발행 실패:", error);
+      alert("글 작성에 실패했습니다.");
     } finally {
       setIsSubmitting(false);
     }
   };
-  // ▲▲▲▲▲ [수정 완료] ▲▲▲▲▲
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen bg-[#fcfdfc] p-4 md:py-12">
+      <div className="max-w-5xl mx-auto">
+        {/* 상단 툴바 & 목록 버튼 */}
+        <div className="flex items-center justify-between mb-8 px-4">
           <button
-            onClick={() => router.back()}
-            className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100 transition-colors"
+            onClick={() => router.push("/tour/review")} // 목록으로 이동
+            className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-all font-bold group"
           >
-            <ArrowLeft className="w-5 h-5 text-slate-600" />
+            <ArrowLeft
+              size={20}
+              className="group-hover:-translate-x-1 transition-transform"
+            />
+            <span>목록으로</span>
           </button>
-          <h1 className="text-2xl font-bold text-slate-800">여행 리뷰 작성</h1>
-        </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                제목
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="리뷰 제목을 입력해주세요"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                내용
-              </label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="여행은 어떠셨나요? 솔직한 후기를 들려주세요."
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all h-48 resize-none"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                사진 첨부{" "}
-                <span className="text-slate-400 font-normal">
-                  (현재 1장만 등록됩니다)
-                </span>
-              </label>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-24 h-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:border-green-500 hover:text-green-500 transition-all"
-                  disabled={isSubmitting}
-                >
-                  <Camera className="w-6 h-6 mb-1" />
-                  <span className="text-xs">추가</span>
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-
-                {previewUrls.map((url, index) => (
-                  <div
-                    key={index}
-                    className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-100"
-                  >
-                    <img
-                      src={url}
-                      alt={`preview-${index}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white hover:bg-red-500 transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          <div className="flex gap-3">
             <button
-              type="submit"
+              onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full py-4 bg-green-600 text-white rounded-xl font-bold text-lg hover:bg-green-700 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 hover:bg-[#00c73c] hover:shadow-green-100 transition-all flex items-center gap-2 group active:scale-95 disabled:bg-slate-400 disabled:scale-100"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="animate-spin w-5 h-5" />
-                  등록 중...
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>발행 중...</span>
                 </>
               ) : (
-                "리뷰 등록하기"
+                <>
+                  <span>리뷰 발행</span>
+                  <Send
+                    size={18}
+                    className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
+                  />
+                </>
               )}
             </button>
-          </form>
+          </div>
+        </div>
+
+        {/* 메인 에디터 영역 */}
+        <div className="bg-white rounded-[3rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.06)] border border-slate-50 overflow-hidden">
+          {/* 헤더 정보 */}
+          <div className="px-8 md:px-12 pt-10 flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-500">
+              <LayoutList size={20} />
+            </div>
+            <span className="font-bold text-slate-400 text-sm">여행 리뷰</span>
+            {userData && (
+              <span className="ml-auto text-xs text-slate-300 font-medium">
+                작성자: {userData.nickname}
+              </span>
+            )}
+          </div>
+
+          {/* 제목 입력 */}
+          <div className="px-8 md:px-12 py-6">
+            <input
+              type="text"
+              placeholder="리뷰 제목을 입력해주세요"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={isSubmitting}
+              className="w-full text-4xl md:text-5xl font-bold outline-none placeholder:text-slate-100 text-slate-900 bg-transparent"
+            />
+          </div>
+
+          {/* Quill 에디터 */}
+          <div className="custom-editor-wrapper">
+            <ReactQuillEditor
+              forwardedRef={quillRef}
+              theme="snow"
+              value={content}
+              onChange={setContent}
+              modules={modules}
+              placeholder="여행의 추억을 기록해보세요..."
+              readOnly={isSubmitting}
+            />
+          </div>
+
+          {/* 대표 사진 첨부 (하단 영역) */}
+          <div className="px-8 md:px-12 py-8 bg-slate-50/50 border-t border-slate-50">
+            <div className="flex flex-col gap-4">
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                <ImageIcon size={16} />
+                <span>대표 사진 설정</span>
+                <span className="text-xs font-normal text-slate-400">
+                  (목록에 표시될 이미지입니다)
+                </span>
+              </label>
+
+              <div className="flex gap-4">
+                {!thumbnailPreview && (
+                  <label className="w-32 h-32 flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-300 rounded-2xl cursor-pointer hover:border-green-500 hover:text-green-500 text-slate-400 transition-all group">
+                    <Camera
+                      size={24}
+                      className="mb-2 group-hover:scale-110 transition-transform"
+                    />
+                    <span className="text-xs font-bold">사진 추가</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleThumbnailChange}
+                    />
+                  </label>
+                )}
+
+                {thumbnailPreview && (
+                  <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-slate-200 shadow-sm group">
+                    <img
+                      src={thumbnailPreview}
+                      alt="Thumbnail"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      onClick={removeThumbnail}
+                      className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* 스타일 */}
+      <style jsx global>{`
+        .ql-toolbar.ql-snow {
+          border: none !important;
+          background: #fcfdfc;
+          padding: 1.5rem 3rem !important;
+          border-top: 1px solid #f8fafc !important;
+          border-bottom: 1px solid #f8fafc !important;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+        .ql-container.ql-snow {
+          border: none !important;
+        }
+        .ql-editor {
+          padding: 3rem !important;
+          min-height: 400px;
+          font-size: 1.15rem;
+          line-height: 1.8;
+          color: #334155;
+        }
+        .ql-editor.ql-blank::before {
+          left: 3rem !important;
+          color: #e2e8f0 !important;
+          font-style: normal !important;
+          font-weight: 800 !important;
+          font-size: 1.5rem;
+        }
+        @media (max-width: 640px) {
+          .ql-toolbar.ql-snow {
+            padding: 1rem !important;
+          }
+          .ql-editor {
+            padding: 1.5rem !important;
+          }
+          .ql-editor.ql-blank::before {
+            left: 1.5rem !important;
+          }
+        }
+      `}</style>
     </div>
+  );
+}
+
+export default function TourReviewWritePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center text-slate-400">
+          <Loader2 className="animate-spin mr-2" />
+          로딩 중...
+        </div>
+      }
+    >
+      <TourReviewContent />
+    </Suspense>
   );
 }

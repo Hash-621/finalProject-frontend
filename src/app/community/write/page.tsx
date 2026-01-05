@@ -134,26 +134,33 @@ function WriteContent() {
     const input = document.createElement("input");
     input.setAttribute("type", "file");
     input.setAttribute("accept", "image/*");
+    input.setAttribute("multiple", "");
     input.click();
 
     input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
+      const fileArray = input.files;
 
-      if (file.size > 5 * 1024 * 1024) {
-        alert("이미지 용량은 5MB를 초과할 수 없습니다.");
-        return;
-      }
+      if (fileArray?.length == 0) return;
+      if (!fileArray) return;
 
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const quill = quillRef.current?.getEditor();
-        const range = quill?.getSelection()?.index;
-        if (range !== undefined && range !== null) {
-          quill?.insertEmbed(range, "image", reader.result);
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
+
+        if (file.size > 5 * 1024 * 1024) {
+          alert("이미지 용량은 5MB를 초과할 수 없습니다.");
+          return;
         }
-      };
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const quill = quillRef.current?.getEditor();
+          const range = quill?.getSelection()?.index;
+          if (range !== undefined && range !== null) {
+            quill?.insertEmbed(range, "image", reader.result);
+          }
+        };
+      }
     };
   }, []);
 
@@ -215,7 +222,7 @@ function WriteContent() {
       const jsonBlob = new Blob([JSON.stringify(payload)], {
         type: "application/json",
       });
-      formData.append("data", jsonBlob);
+      formData.append("dto", jsonBlob);
 
       console.log("🚀 전송 시작:", endpoint);
 
