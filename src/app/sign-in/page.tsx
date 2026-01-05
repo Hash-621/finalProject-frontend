@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/common/Input";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Page() {

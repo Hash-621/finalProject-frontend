@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import api from "@/api/axios";
 import {
   Edit3,
-  MapPin,
   Heart,
   MessageCircle,
   Eye,
@@ -13,9 +12,9 @@ import {
   Search,
   Loader2,
   Sparkles,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
+
+import Pagination from "@/components/common/Pagination";
 
 // 백엔드 이미지 경로 설정을 위한 상수
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -92,9 +91,10 @@ export default function TourReviewList() {
   // 3. 총 페이지 수 계산
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
 
-  // 4. 페이지 변경 시 스크롤 상단 이동
-  const paginate = (pageNumber: number) => {
+  // 4. 페이지 변경 시 처리 (Pagination 컴포넌트에 전달할 함수)
+  const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
+    // 부드럽게 목록 상단으로 스크롤 이동
     window.scrollTo({ top: 400, behavior: "smooth" });
   };
 
@@ -102,7 +102,7 @@ export default function TourReviewList() {
     <div className="min-h-screen bg-slate-50">
       {/* 1. Hero Section (상단 배너) */}
       <section className="relative h-[400px] w-full overflow-hidden bg-slate-900">
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/90 to-teal-900/80 z-10" />
+        <div className="absolute inset-0 bg-linear-to-r from-emerald-900/90 to-teal-900/80 z-10" />
         <img
           src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop"
           alt="Travel Background"
@@ -114,7 +114,7 @@ export default function TourReviewList() {
           </span>
           <h1 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
             당신의 여행은 <br className="md:hidden" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-teal-300">
               어떤 추억
             </span>
             으로 남았나요?
@@ -123,7 +123,7 @@ export default function TourReviewList() {
             소중한 여행의 순간을 기록하고 공유해보세요.
           </p>
         </div>
-        <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-slate-50 to-transparent z-20" />
+        <div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-slate-50 to-transparent z-20" />
       </section>
 
       {/* 2. Main Content Area */}
@@ -149,7 +149,7 @@ export default function TourReviewList() {
 
           <button
             onClick={() => router.push("/tour/review/write")}
-            className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-emerald-200 transition-all hover:-translate-y-1"
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-emerald-200 transition-all hover:-translate-y-1"
           >
             <Edit3 size={18} />
             <span>인증샷 올리기</span>
@@ -175,9 +175,9 @@ export default function TourReviewList() {
                 <div
                   key={post.id}
                   onClick={() => router.push(`/tour/review/${post.id}`)}
-                  className="group bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-emerald-900/10 transition-all duration-500 cursor-pointer hover:-translate-y-2 flex flex-col h-full"
+                  className="group bg-white rounded-4xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-emerald-900/10 transition-all duration-500 cursor-pointer hover:-translate-y-2 flex flex-col h-full"
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+                  <div className="relative aspect-4/3 overflow-hidden bg-slate-100">
                     {post.filePath ? (
                       <img
                         src={getImageUrl(post.filePath)!}
@@ -228,38 +228,13 @@ export default function TourReviewList() {
               ))}
             </div>
 
-            {/* 4. 페이지네이션 UI */}
-            <div className="mt-16 flex justify-center items-center gap-2">
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500 disabled:opacity-30 disabled:hover:border-slate-200 disabled:hover:text-slate-400 transition-all shadow-sm"
-              >
-                <ChevronLeft size={20} />
-              </button>
-
-              {[...Array(totalPages)].map((_, idx) => (
-                <button
-                  key={idx + 1}
-                  onClick={() => paginate(idx + 1)}
-                  className={`w-12 h-12 rounded-2xl font-bold text-sm transition-all shadow-sm ${
-                    currentPage === idx + 1
-                      ? "bg-emerald-600 text-white shadow-emerald-200"
-                      : "bg-white border border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600"
-                  }`}
-                >
-                  {idx + 1}
-                </button>
-              ))}
-
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500 disabled:opacity-30 disabled:hover:border-slate-200 disabled:hover:text-slate-400 transition-all shadow-sm"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
+            {/* ✅ 4. 페이지네이션 컴포넌트 적용 */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              themeColor="green"
+            />
           </>
         )}
       </main>

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/common/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { usePosts } from "@/hooks/userPost";
 import { userService } from "@/api/services";
