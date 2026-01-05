@@ -32,4 +32,5 @@ export interface Tour {
   phone: string;
   description: string;
   image: string;
+  isFavorite: boolean;
 }

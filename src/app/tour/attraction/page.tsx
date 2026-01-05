@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
-import { tourService } from "@/api/services";
+// [수정] userService 추가 임포트
+import { tourService, userService } from "@/api/services";
 import { Tour } from "@/types/tour";
 import {
   MapPin,
@@ -12,12 +13,13 @@ import {
   ChevronLeft,
   Map as MapIcon,
   Search,
+  Heart,
+  RefreshCw,
 } from "lucide-react";
-import Pagination from "@/components/common/Pagination";
+import Pagination from "@/components/common/Pagination"; // Pagination 경로 확인
 
-export default function TourPage() {
+function TourPageContent() {
   const searchParams = useSearchParams();
-
   const initialKeyword = searchParams.get("keyword") || "";
 
   const [tours, setTours] = useState<Tour[]>([]);
@@ -26,21 +28,47 @@ export default function TourPage() {
   const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState(initialKeyword);
-
   const [selectedCategory, setSelectedCategory] = useState("전체");
 
-  // --- 페이지네이션 상태 추가 ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8; // 한 페이지에 8개씩 노출
+  const itemsPerPage = 8;
 
-  // 1. 데이터 로드 (서비스 레이어 활용)
+  // 1. 데이터 로드 (관광지 리스트 + 내 즐겨찾기 병합)
   useEffect(() => {
     const fetchTours = async () => {
       try {
         setLoading(true);
-        const response = await tourService.getTourCourses();
-        setTours(response.data);
-        setFilteredTours(response.data);
+
+        // [수정] 관광지 리스트와 즐겨찾기 동시 호출
+        const [toursRes, favoritesRes] = await Promise.allSettled([
+          tourService.getTourCourses(),
+          userService.getFavorites(),
+        ]);
+
+        let allTours: Tour[] = [];
+        const myFavoriteIds = new Set<number>();
+
+        // 1) 전체 관광지 데이터 확보
+        if (toursRes.status === "fulfilled") {
+          allTours = toursRes.value.data;
+        }
+
+        // 2) 내 즐겨찾기 ID 확보
+        if (favoritesRes.status === "fulfilled") {
+          const favoriteList = favoritesRes.value.data;
+          if (Array.isArray(favoriteList)) {
+            favoriteList.forEach((item: any) => myFavoriteIds.add(item.id));
+          }
+        }
+
+        // 3) 데이터 병합 (isFavorite 덮어쓰기)
+        const mergedList = allTours.map((item) => ({
+          ...item,
+          isFavorite: myFavoriteIds.has(item.id),
+        }));
+
+        setTours(mergedList);
+        setFilteredTours(mergedList); // 초기값 설정 (이후 useEffect에서 필터링됨)
       } catch (error) {
         console.error("데이터 호출 실패:", error);
       } finally {
@@ -50,8 +78,8 @@ export default function TourPage() {
     fetchTours();
   }, []);
 
+  // 2. 통합 필터링 로직
   useEffect(() => {
-    // 데이터가 아직 로드되지 않았으면 중단
     if (tours.length === 0) return;
 
     let result = tours;
@@ -61,10 +89,9 @@ export default function TourPage() {
       result = result.filter((tour) => tour.address.includes(selectedCategory));
     }
 
-    // (2) 검색어 필터 (Null Safety & 다중 키워드 지원)
+    // (2) 검색어 필터
     const trimmedKeyword = keyword.trim();
     if (trimmedKeyword !== "") {
-      // 공백으로 단어를 쪼개서 모든 단어가 포함되어야 검색됨 (AND 조건)
       const searchTerms = trimmedKeyword.split(/\s+/);
 
       result = result.filter((tour) => {
@@ -78,8 +105,7 @@ export default function TourPage() {
     }
 
     setFilteredTours(result);
-    // 검색어가 바뀌면 페이지네이션(더보기) 초기화할지 결정 (여기서는 유지하거나 리셋하거나 선택)
-    // setDisplayCount(8); // 필요하면 주석 해제하여 리셋
+    setCurrentPage(1); // 필터 변경 시 1페이지로
   }, [tours, selectedCategory, keyword]);
 
   const handleReset = () => {
@@ -87,6 +113,34 @@ export default function TourPage() {
     setSelectedCategory("전체");
   };
 
+  // 3. 즐겨찾기 토글 (낙관적 업데이트 적용)
+  const toggleFavorite = async (e: React.MouseEvent, id: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // UI 먼저 업데이트
+    const previousTours = [...tours];
+    const updateState = (list: Tour[]) =>
+      list.map((item) =>
+        item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
+      );
+
+    setTours((prev) => updateState(prev));
+    // filteredTours는 useEffect([tours])에 의해 자동 업데이트됨 (혹은 즉시 반영 위해 아래 추가)
+    setFilteredTours((prev) => updateState(prev));
+
+    try {
+      await tourService.toggleFavorite(id);
+    } catch (error) {
+      console.error("즐겨찾기 요청 실패:", error);
+      // 실패 시 롤백
+      setTours(previousTours);
+      setFilteredTours(previousTours); // 필터링된 목록도 롤백 필요 시 주의
+      alert("로그인이 필요합니다.");
+    }
+  };
+
+  // 지도 관련 함수 (기존 유지)
   const initMap = (address: string, name: string) => {
     const { kakao } = window as any;
     if (!kakao || !kakao.maps) return;
@@ -146,12 +200,6 @@ export default function TourPage() {
 
   const handleFilter = (category: string) => {
     setSelectedCategory(category);
-    setCurrentPage(1);
-    if (category === "전체") {
-      setFilteredTours(tours);
-    } else {
-      setFilteredTours(tours.filter((tour) => tour.address.includes(category)));
-    }
   };
 
   const totalPages = Math.ceil(filteredTours.length / itemsPerPage);
@@ -181,7 +229,7 @@ export default function TourPage() {
 
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight w-fit">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight w-fit">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -190,16 +238,11 @@ export default function TourPage() {
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
-            <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-10 tracking-tight">
-              맞춤형{" "}
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
-                대전 명소
-              </span>{" "}
-              큐레이션
-            </h2>
+            <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.1]">
+              맞춤형 <span className="text-green-500">대전 명소</span> 큐레이션
+            </h1>
 
-            {/* 검색창 UI (실시간 검색 적용) */}
-            <div className="relative w-full lg:w-96 mb-10">
+            <div className="relative w-full lg:w-96">
               <Search
                 className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
                 size={20}
@@ -208,7 +251,7 @@ export default function TourPage() {
                 type="text"
                 placeholder="관광지 이름이나 주소 검색..."
                 value={keyword}
-                onChange={(e) => setKeyword(e.target.value)} // 입력 즉시 keyword 변경 -> useEffect 발동
+                onChange={(e) => setKeyword(e.target.value)}
                 className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-3xl text-sm font-bold shadow-sm focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all"
               />
               {keyword && (
@@ -217,6 +260,15 @@ export default function TourPage() {
                   className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
                 >
                   <X size={16} />
+                </button>
+              )}
+              {!keyword && (
+                <button
+                  onClick={handleReset}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
+                  title="필터 초기화"
+                >
+                  <RefreshCw size={16} />
                 </button>
               )}
             </div>
@@ -241,44 +293,72 @@ export default function TourPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
-          {currentItems.map((tour, index) => (
-            <div
-              key={`${tour.id}-${index}`}
-              className="group cursor-pointer"
-              onClick={() => setSelectedTour(tour)}
-            >
-              <div className="relative h-72 overflow-hidden rounded-4xl bg-slate-100 shadow-sm transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
-                <img
-                  src={tour.image}
-                  alt={tour.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-              </div>
-              <div className="mt-5">
-                <h2 className="text-xl font-bold text-slate-900 group-hover:text-green-600 transition-colors truncate">
-                  {tour.name}
-                </h2>
-                <div className="flex items-center text-slate-400 text-sm mt-1 font-medium">
-                  <MapPin className="w-4 h-4 mr-1 text-green-500" />{" "}
-                  {tour.address.split(" ").slice(0, 2).join(" ")}
+        {filteredTours.length === 0 ? (
+          <div className="py-32 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 border-dashed">
+            <p className="text-slate-400 font-bold text-xl">
+              검색 결과가 없습니다.
+            </p>
+            <p className="text-slate-300 text-sm mt-2">
+              다른 키워드나 필터를 선택해보세요.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+            {currentItems.map((tour, index) => (
+              <div
+                key={`${tour.id}-${index}`}
+                className="group cursor-pointer"
+                onClick={() => setSelectedTour(tour)}
+              >
+                <div className="relative h-72 overflow-hidden rounded-4xl bg-slate-100 shadow-sm transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
+                  <img
+                    src={tour.image}
+                    alt={tour.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  {/* 즐겨찾기 버튼 추가 */}
+                  <button
+                    onClick={(e) => toggleFavorite(e, tour.id)}
+                    className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm transition-all hover:scale-110 active:scale-90 border border-slate-100"
+                  >
+                    <Heart
+                      size={18}
+                      className={`${
+                        tour.isFavorite
+                          ? "fill-orange-500 text-orange-500"
+                          : "text-slate-400"
+                      } transition-colors`}
+                    />
+                  </button>
+                </div>
+                <div className="mt-5">
+                  <h2 className="text-xl font-bold text-slate-900 group-hover:text-green-600 transition-colors truncate">
+                    {tour.name}
+                  </h2>
+                  <div className="flex items-center text-slate-400 text-sm mt-1 font-medium">
+                    <MapPin className="w-4 h-4 mr-1 text-green-500" />{" "}
+                    {tour.address.split(" ").slice(0, 2).join(" ")}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => setCurrentPage(page)}
-          themeColor="green"
-        />
+        {/* 페이지네이션 컴포넌트 사용 */}
+        {filteredTours.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrentPage(page)}
+            themeColor="green"
+          />
+        )}
       </div>
 
       {selectedTour && (
         <div
-          className="fixed inset-0 z-100 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-0 md:p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-0 md:p-6"
           onClick={() => setSelectedTour(null)}
         >
           <div
@@ -302,18 +382,35 @@ export default function TourPage() {
                 <X className="w-6 h-6 text-slate-400" />
               </button>
             </div>
+
             <div className="overflow-y-auto flex-1 custom-scrollbar">
               <div className="grid grid-cols-1 lg:grid-cols-2">
                 <div className="p-6 md:p-12 space-y-10 border-r border-slate-50">
-                  <div className="rounded-[2.5rem] overflow-hidden shadow-xl aspect-square lg:aspect-video">
+                  <div className="rounded-[2.5rem] overflow-hidden shadow-xl aspect-square lg:aspect-video relative">
                     <img
                       src={selectedTour.image}
                       className="w-full h-full object-cover"
                       alt={selectedTour.name}
                     />
+                    {/* 모달 내부 즐겨찾기 버튼 */}
+                    <button
+                      onClick={(e) => toggleFavorite(e, selectedTour.id)}
+                      className={`absolute top-6 right-6 p-3 rounded-full bg-white/90 backdrop-blur-md shadow-lg transition-all active:scale-95 ${
+                        selectedTour.isFavorite
+                          ? "text-orange-500"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      <Heart
+                        size={24}
+                        className={
+                          selectedTour.isFavorite ? "fill-orange-500" : ""
+                        }
+                      />
+                    </button>
                   </div>
                   <div className="space-y-6">
-                    <h4 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                    <h4 className="text-2xl font-black text-slate-900 flex items-center gap-3">
                       <span className="w-2 h-8 bg-green-500 rounded-full"></span>{" "}
                       상세 소개
                     </h4>
@@ -322,9 +419,10 @@ export default function TourPage() {
                     </p>
                   </div>
                 </div>
+
                 <div className="p-6 md:p-12 bg-slate-50/50 space-y-10">
                   <div className="space-y-6">
-                    <h4 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                    <h4 className="text-2xl font-black text-slate-900 flex items-center gap-3">
                       <span className="w-2 h-8 bg-green-500 rounded-full"></span>{" "}
                       위치 정보
                     </h4>
@@ -339,13 +437,14 @@ export default function TourPage() {
                       </span>
                     </div>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <a
                       href={`https://map.kakao.com/link/search/${encodeURIComponent(
                         selectedTour.address
                       )}`}
                       target="_blank"
-                      className="flex items-center justify-center gap-2 py-5 bg-[#FFEB00] text-[#3C1E1E] rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                      className="flex items-center justify-center gap-2 py-5 bg-[#FFEB00] text-[#3C1E1E] rounded-2xl font-black shadow-lg hover:shadow-xl transition-all"
                     >
                       <MapIcon size={20} /> 카카오맵 길찾기
                     </a>
@@ -353,7 +452,7 @@ export default function TourPage() {
                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
                         Contact
                       </span>
-                      <span className="text-xl font-bold tracking-tight flex items-center gap-2">
+                      <span className="text-xl font-black tracking-tight flex items-center gap-2">
                         <Phone size={18} className="text-green-400" />{" "}
                         {selectedTour.phone || "정보 없음"}
                       </span>
@@ -366,5 +465,13 @@ export default function TourPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TourPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TourPageContent />
+    </Suspense>
   );
 }

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Script from "next/script";
-import api from "@/api/axios";
+// [수정] userService 추가 임포트
+import { restaurantService, userService } from "@/api/services";
 import { RestaurantData } from "@/types/restaurant";
 import {
   Loader2,
@@ -27,19 +28,50 @@ export default function RestaurantDetail() {
   const [restaurant, setRestaurant] = useState<RestaurantData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // [수정] 데이터 로드 로직 (전체 리스트 + 즐겨찾기 리스트 병합)
   useEffect(() => {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        const response = await api.get("/restaurant");
-        const allData: RestaurantData[] = response.data;
-        const detail = allData.find(
-          (item: RestaurantData) => String(item.id) === id
+
+        // 1. 전체 맛집 리스트와 내 즐겨찾기 리스트 동시 요청
+        // (단일 조회 API getRestaurantDetail 대신 getRestaurants를 쓰고 계셔서 그대로 유지합니다)
+        const [restaurantsRes, favoritesRes] = await Promise.allSettled([
+          restaurantService.getRestaurants(),
+          userService.getFavorites(),
+        ]);
+
+        let allRestaurants: RestaurantData[] = [];
+        const myFavoriteIds = new Set<number>();
+
+        // 2. 전체 맛집 데이터 확보
+        if (restaurantsRes.status === "fulfilled") {
+          allRestaurants = restaurantsRes.value.data;
+        }
+
+        // 3. 내 즐겨찾기 ID 확보
+        if (favoritesRes.status === "fulfilled") {
+          const favoriteList = favoritesRes.value.data;
+          if (Array.isArray(favoriteList)) {
+            favoriteList.forEach((item: any) => myFavoriteIds.add(item.id));
+          }
+        }
+
+        // 4. 현재 페이지 ID에 해당하는 식당 찾기 + 즐겨찾기 여부 반영
+        const targetId = Number(id);
+        const detail = allRestaurants.find(
+          (item: RestaurantData) => item.id === targetId
         );
 
         if (detail) {
-          setRestaurant(detail);
+          // 즐겨찾기 상태 덮어쓰기
+          const mergedDetail = {
+            ...detail,
+            isFavorite: myFavoriteIds.has(targetId),
+          };
+          setRestaurant(mergedDetail);
         } else {
+          // 식당이 없으면 목록으로 이동
           router.push("/restaurant");
         }
       } catch (error) {
@@ -48,9 +80,11 @@ export default function RestaurantDetail() {
         setLoading(false);
       }
     };
+
     if (id) fetchDetail();
   }, [id, router]);
 
+  // 카카오맵 렌더링 함수 (기존 유지)
   const initMap = (address: string, name: string) => {
     const { kakao } = window as any;
     if (!kakao || !kakao.maps) return;
@@ -91,12 +125,20 @@ export default function RestaurantDetail() {
     }
   }, [restaurant, loading]);
 
+  // [수정] 즐겨찾기 토글 핸들러 (낙관적 업데이트 적용)
   const handleFavoriteClick = async () => {
     if (!restaurant) return;
+
+    // 1. UI 먼저 업데이트 (낙관적)
+    const previousState = { ...restaurant };
+    setRestaurant({ ...restaurant, isFavorite: !restaurant.isFavorite });
+
     try {
-      await api.post(`/restaurant/${restaurant.id}/favorite`);
-      setRestaurant({ ...restaurant, isFavorite: !restaurant.isFavorite });
+      // 2. 서버 요청
+      await restaurantService.toggleFavorite(restaurant.id);
     } catch (error) {
+      // 실패 시 롤백
+      setRestaurant(previousState);
       alert("로그인이 필요합니다.");
     }
   };
@@ -113,7 +155,6 @@ export default function RestaurantDetail() {
 
   if (!restaurant) return null;
 
-  // 전화번호 유효성 체크
   const isPhoneAvailable = !!restaurant.phone && restaurant.phone.trim() !== "";
 
   return (
@@ -266,7 +307,7 @@ export default function RestaurantDetail() {
                     : "맛집 리스트 추가"}
                 </button>
 
-                {/* 지금 바로 전화하기 버튼 (조건부 렌더링/비활성화) */}
+                {/* 지금 바로 전화하기 버튼 */}
                 <a
                   href={isPhoneAvailable ? `tel:${restaurant.phone}` : "#"}
                   onClick={(e) => !isPhoneAvailable && e.preventDefault()}

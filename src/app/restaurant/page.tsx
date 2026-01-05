@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { restaurantService } from "@/api/services";
+// [수정] userService를 추가로 import 해야 합니다.
+import { restaurantService, userService } from "@/api/services";
 import { RestaurantData } from "@/types/restaurant";
 import { MapPin, Loader2, Heart, Search, X } from "lucide-react";
 import Pagination from "@/components/common/Pagination";
@@ -18,13 +19,45 @@ export default function RestaurantListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
+  // [수정된 로직] 전체 맛집과 내 즐겨찾기 목록을 동시에 가져와서 병합함
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
-        const response = await restaurantService.getRestaurants();
-        setRestaurants(response.data);
-        setFilteredList(response.data);
+
+        // 1. 맛집 리스트와 즐겨찾기 리스트 동시 요청 (로그인 안 된 경우 대비 allSettled 사용)
+        const [restaurantsRes, favoritesRes] = await Promise.allSettled([
+          restaurantService.getRestaurants(),
+          userService.getFavorites(), // /mypage/favorites API 호출
+        ]);
+
+        let allRestaurants: RestaurantData[] = [];
+        const myFavoriteIds = new Set<number>();
+
+        // 2. 전체 맛집 데이터 확보
+        if (restaurantsRes.status === "fulfilled") {
+          allRestaurants = restaurantsRes.value.data;
+        }
+
+        // 3. 내 즐겨찾기 ID 확보 (로그인 상태일 때만 성공)
+        if (favoritesRes.status === "fulfilled") {
+          // 즐겨찾기 API 응답이 배열이라고 가정
+          const favoriteList = favoritesRes.value.data;
+          if (Array.isArray(favoriteList)) {
+            favoriteList.forEach((item: any) => myFavoriteIds.add(item.id));
+          }
+        }
+
+        // 4. 데이터 병합 (즐겨찾기 여부 isFavorite 덮어쓰기)
+        const mergedList = allRestaurants.map((item) => ({
+          ...item,
+          isFavorite: myFavoriteIds.has(item.id),
+        }));
+
+        setRestaurants(mergedList);
+        // 초기 로드 시에는 filteredList에도 병합된 데이터를 넣어줌
+        // (단, 아래쪽 필터링 useEffect가 곧바로 돌기 때문에 시각적 차이는 없음)
+        setFilteredList(mergedList);
       } catch (error) {
         console.error("Error fetching restaurants:", error);
       } finally {
@@ -86,7 +119,7 @@ export default function RestaurantListPage() {
       setFilteredList(updateState(filteredList));
     } catch (error) {
       console.error("즐겨찾기 요청 실패:", error);
-      alert("즐겨찾기 처리에 실패했습니다. 로그인을 확인해주세요.");
+      alert("로그인이 필요합니다.");
     }
   };
 
