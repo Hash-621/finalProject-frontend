@@ -26,7 +26,10 @@ export default function PusherProvider({
 
     if (!key || !cluster) return;
 
-    Pusher.logToConsole = true;
+    // 개발 환경(development)일 때만 true, 아니면 false
+    if (process.env.NODE_ENV === "development") {
+      Pusher.logToConsole = true;
+    }
 
     const pusher = new Pusher(key, {
       cluster,

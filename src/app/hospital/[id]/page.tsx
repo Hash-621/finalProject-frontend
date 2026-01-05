@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { useParams, useRouter } from "next/navigation";
-import api from "@/api/axios";
+
+// [수정] 서비스 추가 임포트
+
+import { hospitalService, userService } from "@/api/services";
+
 import {
   Loader2,
   MapPin,
@@ -14,26 +19,73 @@ import {
   Calendar,
   ShieldCheck,
   Building2,
+  Heart, // [추가] 하트 아이콘
 } from "lucide-react";
+
 import Link from "next/link";
 
 export default function HospitalDetail() {
   const { id } = useParams();
+
   const router = useRouter();
 
   const [hospital, setHospital] = useState<any | null>(null);
+
   const [loading, setLoading] = useState(true);
+
+  // [수정] 데이터 로드 로직 (병원 상세 + 즐겨찾기 상태 병합)
 
   useEffect(() => {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        const response = await api.get("/hospital");
-        const allData = response.data;
-        const detail = allData.find((item: any) => String(item.id) === id);
+
+        // 1. 전체 병원 목록과 내 즐겨찾기 목록 동시 호출
+
+        // (단일 조회 API 대신 전체 목록에서 찾는 방식을 유지합니다)
+
+        const [hospitalsRes, favoritesRes] = await Promise.allSettled([
+          hospitalService.getHospitals(),
+
+          userService.getFavorites(),
+        ]);
+
+        let allHospitals: any[] = [];
+
+        const myFavoriteIds = new Set<number>();
+
+        // 2. 전체 병원 데이터 확보
+
+        if (hospitalsRes.status === "fulfilled") {
+          allHospitals = hospitalsRes.value.data;
+        }
+
+        // 3. 내 즐겨찾기 ID 확보
+
+        if (favoritesRes.status === "fulfilled") {
+          const favoriteList = favoritesRes.value.data;
+
+          if (Array.isArray(favoriteList)) {
+            favoriteList.forEach((item: any) => myFavoriteIds.add(item.id));
+          }
+        }
+
+        // 4. 현재 ID에 해당하는 병원 찾기
+
+        const targetId = Number(id);
+
+        const detail = allHospitals.find((item: any) => item.id === targetId);
 
         if (detail) {
-          setHospital(detail);
+          // 즐겨찾기 상태 병합
+
+          const mergedDetail = {
+            ...detail,
+
+            isFavorite: myFavoriteIds.has(targetId),
+          };
+
+          setHospital(mergedDetail);
         } else {
           router.push("/hospital");
         }
@@ -47,10 +99,33 @@ export default function HospitalDetail() {
     if (id) fetchDetail();
   }, [id, router]);
 
+  // [추가] 즐겨찾기 토글 핸들러
+
+  const handleFavoriteClick = async () => {
+    if (!hospital) return;
+
+    // 낙관적 업데이트
+
+    const previousState = { ...hospital };
+
+    setHospital({ ...hospital, isFavorite: !hospital.isFavorite });
+
+    try {
+      await hospitalService.toggleFavorite(hospital.id);
+    } catch (error) {
+      // 실패 시 롤백
+
+      setHospital(previousState);
+
+      alert("로그인이 필요하거나 처리에 실패했습니다.");
+    }
+  };
+
   if (loading)
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-white">
         <Loader2 className="animate-spin text-green-500 w-12 h-12 mb-4" />
+
         <p className="text-slate-600 font-bold">병원 정보를 불러오는 중...</p>
       </div>
     );
@@ -59,16 +134,19 @@ export default function HospitalDetail() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      {/* 1. 상단 비주얼 섹션 (병원 테마 컬러 적용) */}
+      {/* 1. 상단 비주얼 섹션 */}
+
       <section className="relative h-[40vh] md:h-[50vh] w-full overflow-hidden bg-slate-900">
         <div
           className="absolute inset-0 opacity-40 bg-center bg-cover"
           style={{
             backgroundImage:
               "url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80')",
+
             backgroundAttachment: "fixed",
           }}
         />
+
         <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-900/40 to-transparent" />
 
         <div className="absolute top-6 left-6 z-30">
@@ -77,6 +155,7 @@ export default function HospitalDetail() {
             className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-black transition-all group"
           >
             <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+
             <span className="text-sm font-bold">뒤로가기</span>
           </button>
         </div>
@@ -85,18 +164,23 @@ export default function HospitalDetail() {
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-[10px] font-black rounded-md mb-4 uppercase tracking-widest shadow-lg">
             {hospital.treatCategory || "전문의원"}
           </div>
+
           <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tighter">
             {hospital.name}
           </h1>
+
           <div className="flex flex-wrap items-center gap-6 text-slate-300 font-bold">
             <div className="flex items-center gap-1.5">
               <MapPin className="w-5 h-5 text-green-400" />
+
               <span className="text-white/90 font-medium">
                 {hospital.address}
               </span>
             </div>
+
             <div className="flex items-center gap-1.5 border-l border-white/20 pl-6">
               <ShieldCheck className="w-5 h-5 text-blue-400" />
+
               <span className="text-white/90 font-medium">
                 보건복지부 인증 전문의
               </span>
@@ -106,16 +190,19 @@ export default function HospitalDetail() {
       </section>
 
       {/* 2. 상세 컨텐츠 섹션 */}
+
       <section className="relative z-20 md:-mt-12 bg-white rounded-t-[48px] flex-1">
         <div className="max-w-6xl mx-auto px-6 py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
             <div className="lg:col-span-8 space-y-16">
               {/* 진료 철학/소개 */}
+
               <div>
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
                     <Stethoscope className="w-6 h-6" />
                   </div>
+
                   <h3 className="text-2xl font-black text-slate-900">
                     진료 및 전문성 안내
                   </h3>
@@ -126,15 +213,18 @@ export default function HospitalDetail() {
                     <span className="text-green-600 font-black text-sm uppercase tracking-widest mb-2 block">
                       Medical Expert
                     </span>
+
                     <p className="text-slate-900 font-black text-3xl mb-4 leading-tight">
                       {hospital.treatCategory} 전문 진료 서비스
                     </p>
+
                     <p className="text-slate-500 leading-relaxed text-lg font-medium max-w-xl">
                       {hospital.name}은(는) 대전 지역 전문 의료기관으로서 최첨단
                       장비와 풍부한 임상 경험을 바탕으로 환자 맞춤형 치료를
                       제공합니다. 과잉 진료 없는 정직한 진료를 약속드립니다.
                     </p>
                   </div>
+
                   <div className="absolute -right-4 -bottom-4 text-green-100/50 font-black text-8xl pointer-events-none select-none italic">
                     DOC
                   </div>
@@ -142,11 +232,13 @@ export default function HospitalDetail() {
               </div>
 
               {/* 병원 기본 정보 */}
+
               <div>
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
                     <Info className="w-6 h-6" />
                   </div>
+
                   <h3 className="text-2xl font-black text-slate-900">
                     병원 상세 정보
                   </h3>
@@ -156,15 +248,20 @@ export default function HospitalDetail() {
                   <div className="p-6 bg-white rounded-2xl border border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Building2 className="w-5 h-5 text-slate-400" />
+
                       <span className="text-slate-400">의료기관 구분</span>
                     </div>
+
                     <span className="font-bold">의원 / 전문의</span>
                   </div>
+
                   <div className="p-6 bg-white rounded-2xl border border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Calendar className="w-5 h-5 text-slate-400" />
+
                       <span className="text-slate-400">예약 여부</span>
                     </div>
+
                     <span className="font-bold text-green-600">
                       전화 예약 권장
                     </span>
@@ -174,9 +271,30 @@ export default function HospitalDetail() {
             </div>
 
             {/* 오른쪽 사이드바 (영업 및 연락 정보) */}
+
             <div className="lg:col-span-4">
               <div className="sticky top-28 space-y-6">
                 <div className="p-8 bg-slate-900 rounded-[40px] text-white shadow-2xl">
+                  {/* [추가] 즐겨찾기 버튼 (진료 시간 및 문의 위쪽) */}
+
+                  <button
+                    onClick={handleFavoriteClick}
+                    className={`w-full py-4 mb-8 rounded-2xl font-black flex items-center justify-center gap-2 transition-all active:scale-95 ${
+                      hospital.isFavorite
+                        ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
+                        : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    }`}
+                  >
+                    <Heart
+                      size={20}
+                      className={hospital.isFavorite ? "fill-white" : ""}
+                    />
+
+                    {hospital.isFavorite
+                      ? "관심 병원 저장됨"
+                      : "관심 병원 등록"}
+                  </button>
+
                   <h4 className="text-xl font-bold mb-8 flex items-center gap-2">
                     <Clock className="w-6 h-6 text-green-400" />
                     진료 시간 및 문의
@@ -187,6 +305,7 @@ export default function HospitalDetail() {
                       <p className="text-white/40 text-xs font-black uppercase tracking-widest">
                         Address
                       </p>
+
                       <p className="text-sm font-medium leading-relaxed">
                         {hospital.address}
                       </p>
@@ -196,9 +315,11 @@ export default function HospitalDetail() {
                       <p className="text-white/40 text-xs font-black uppercase tracking-widest">
                         Clinic Hours
                       </p>
+
                       <p className="text-sm font-black italic uppercase">
                         {hospital.openTime || "평일 09:00 - 18:30 (문의 요망)"}
                       </p>
+
                       <p className="text-[10px] text-white/30 font-medium">
                         * 토/일/공휴일은 매장마다 상이하므로 확인이 필요합니다.
                       </p>
@@ -211,10 +332,12 @@ export default function HospitalDetail() {
                         <p className="text-white/40 text-xs font-black uppercase tracking-widest">
                           TEL Number
                         </p>
+
                         <p className="text-sm font-black uppercase">
                           {hospital.tel}
                         </p>
                       </div>
+
                       <div className="mt-5">
                         <Link
                           href={`tel:${hospital.tel}`}
@@ -245,6 +368,7 @@ export default function HospitalDetail() {
       </section>
 
       {/* 3. 푸터 버튼 */}
+
       <div className="bg-white py-12 border-t border-slate-50 mt-auto">
         <div className="max-w-6xl mx-auto px-6 flex justify-center">
           <button

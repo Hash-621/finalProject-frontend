@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/common/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { usePosts } from "@/hooks/userPost";
 import { userService } from "@/api/services";
@@ -200,7 +200,11 @@ export default function MyPage() {
               <div className="flex justify-between items-center mb-8 md:mb-14">
                 <h2 className="text-xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
                   <div className="w-1.5 h-6 md:h-10 bg-green-500 rounded-full" />
-                  {activeTab === "info" ? "Settings" : "History"}
+                  {activeTab === "info"
+                    ? "Settings"
+                    : activeTab === "favorites"
+                    ? "favorites"
+                    : "History"}
                 </h2>
               </div>
 
@@ -317,6 +321,60 @@ export default function MyPage() {
                       </Swiper>
                     </div>
                   </div>
+                </div>
+              ) : activeTab === "favorites" ? (
+                <div className="flex-1 flex flex-col animate-in fade-in duration-500">
+                  {listData.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-300 py-20 text-center">
+                      <p className="font-black text-lg text-slate-400">
+                        즐겨찾기 내역이 없습니다.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {listData.map((item: any) => {
+                        const category = item.category;
+                        const itemId = item.id;
+                        const title = item.title;
+                        const detailPath =
+                          category === "TOURS"
+                            ? `tour/attraction?keyword=${title}`
+                            : category === "RESTOURANTS"
+                            ? `restaurant/${itemId}`
+                            : category === "HOSPITALS"
+                            ? `hospital/${itemId}`
+                            : "";
+
+                        return (
+                          <Link
+                            key={item.id}
+                            href={detailPath}
+                            className="block group"
+                          >
+                            <div className="p-4 md:p-7 bg-slate-50/50 rounded-[1.8rem] md:rounded-[2.5rem] border border-transparent hover:border-green-200 hover:bg-white transition-all">
+                              <div className="flex justify-between items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-[8px] md:text-[10px] font-black uppercase text-green-700 bg-green-100 px-2 py-0.5 rounded-md shrink-0">
+                                      {category}
+                                    </span>
+                                  </div>
+                                  {/* 🔹 동적 글자수 제한 적용 */}
+                                  <h3 className="text-sm md:text-xl font-black text-slate-800 group-hover:text-green-600 transition-colors">
+                                    {title}
+                                  </h3>
+                                </div>
+                                <ArrowRight
+                                  size={16}
+                                  className="text-slate-200 group-hover:text-green-500 shrink-0"
+                                />
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col animate-in fade-in duration-500">

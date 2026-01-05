@@ -6,6 +6,7 @@ export const userService = {
   signUp: (data: any) => api.post("/user/signup", data),
   getUserInfo: () => api.get("/mypage/info"),
   updateUserInfo: (data: any) => api.put("/mypage/info", data),
+  getFavorites: () => api.get("/mypage/favorites"),
 };
 
 // 채용 정보 관련 서비스
@@ -33,12 +34,14 @@ export const restaurantService = {
 export const tourService = {
   getTourCourses: () => api.get("/tour"),
   getTourDetail: (id: string) => api.get(`/tour/${id}`),
+  toggleFavorite: (id: number) => api.post(`/tour/${id}/favorite`),
 };
 
 // 병원/지도 관련 서비스
 export const hospitalService = {
   getHospitals: () => api.get("/hospital"),
   getHospitalDetail: (id: number) => api.get(`/hospital/${id}`),
+  toggleFavorite: (id: number) => api.post(`/hospital/${id}/favorite`),
 };
 
 // 게시판 관련 서비스
