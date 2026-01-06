@@ -17,6 +17,8 @@ import {
   MapPin,
   ThumbsUp,
 } from "lucide-react";
+// [추가] 모달 컴포넌트 임포트
+import Modal from "@/components/common/Modal";
 
 // 백엔드 이미지 경로 설정을 위한 상수
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -41,6 +43,38 @@ export default function TourReviewDetail({
   const [commentContent, setCommentContent] = useState("");
   const [activeReplyId, setActiveReplyId] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
+
+  // --- [추가] 모달 상태 관리 ---
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    content: "",
+    type: "success" as "success" | "error" | "warning" | "confirm",
+    onConfirm: undefined as (() => void) | undefined,
+  });
+
+  // 모달 열기 헬퍼 함수
+  const openModal = (
+    content: string,
+    type: "success" | "error" | "warning" | "confirm" = "success",
+    title?: string,
+    onConfirm?: () => void
+  ) => {
+    setModalConfig({
+      isOpen: true,
+      content,
+      type,
+      title:
+        title ||
+        (type === "error" ? "오류" : type === "confirm" ? "확인" : "알림"),
+      onConfirm,
+    });
+  };
+
+  const closeModal = () => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+  // ---------------------------
 
   // ================= 데이터 로딩 =================
   useEffect(() => {
@@ -72,14 +106,17 @@ export default function TourReviewDetail({
         await fetchComments();
       } catch (err) {
         console.error("상세 로딩 실패:", err);
-        alert("게시글을 불러올 수 없습니다.");
-        router.push("/tour/review");
+        // [수정] alert -> modal
+        openModal("게시글을 불러올 수 없습니다.", "error", "오류", () =>
+          router.push("/tour/review")
+        );
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, router]);
 
   const fetchComments = async () => {
@@ -117,7 +154,8 @@ export default function TourReviewDetail({
 
   const handleLikeClick = async () => {
     if (!currentUser) {
-      alert("로그인이 필요한 서비스입니다.");
+      // [수정] alert -> modal
+      openModal("로그인이 필요한 서비스입니다.", "warning");
       return;
     }
 
@@ -127,26 +165,35 @@ export default function TourReviewDetail({
       setLikeCount(res.data.likeCount);
     } catch (error) {
       console.error("좋아요 처리 실패:", error);
-      alert("좋아요 처리에 실패했습니다.");
+      openModal("좋아요 처리에 실패했습니다.", "error");
     }
   };
 
-  const handleDeletePost = async () => {
-    if (!confirm("정말로 이 글을 삭제하시겠습니까?")) return;
-    try {
-      await api.delete(`/community/post/${id}`);
-      alert("게시글이 삭제되었습니다.");
-      router.push("/tour/review");
-    } catch (error) {
-      console.error(error);
-      alert("삭제 실패했습니다.");
-    }
+  const handleDeletePost = () => {
+    // [수정] confirm -> modal (confirm 타입)
+    openModal(
+      "정말로 이 글을 삭제하시겠습니까?",
+      "confirm",
+      "삭제 확인",
+      async () => {
+        try {
+          await api.delete(`/community/post/${id}`);
+          // 삭제 성공 시 모달 -> 이동
+          openModal("게시글이 삭제되었습니다.", "success", "삭제 완료", () =>
+            router.push("/tour/review")
+          );
+        } catch (error) {
+          console.error(error);
+          openModal("삭제 실패했습니다.", "error");
+        }
+      }
+    );
   };
 
   const handleCommentSubmit = async (parentId: number | null = null) => {
     const content = parentId ? replyContent : commentContent;
-    if (!content.trim()) return alert("내용을 입력해주세요.");
-    if (!currentUser) return alert("로그인이 필요합니다.");
+    if (!content.trim()) return openModal("내용을 입력해주세요.", "warning");
+    if (!currentUser) return openModal("로그인이 필요합니다.", "warning");
 
     try {
       await api.post("/community/comments", {
@@ -166,18 +213,20 @@ export default function TourReviewDetail({
       fetchComments();
     } catch (error) {
       console.error(error);
-      alert("댓글 등록 중 오류가 발생했습니다.");
+      openModal("댓글 등록 중 오류가 발생했습니다.", "error");
     }
   };
 
-  const handleDeleteComment = async (commentId: number) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    try {
-      await api.post("/community/comments/delete", { id: commentId });
-      fetchComments();
-    } catch (error) {
-      alert("댓글 삭제 실패");
-    }
+  const handleDeleteComment = (commentId: number) => {
+    // [수정] confirm -> modal
+    openModal("정말 삭제하시겠습니까?", "confirm", "댓글 삭제", async () => {
+      try {
+        await api.post("/community/comments/delete", { id: commentId });
+        fetchComments();
+      } catch (error) {
+        openModal("댓글 삭제 실패", "error");
+      }
+    });
   };
 
   const renderComments = (list: any[]) => {
@@ -306,6 +355,16 @@ export default function TourReviewDetail({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      {/* [추가] 모달 렌더링 */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        content={modalConfig.content}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+      />
+
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-100/40 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-100/40 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2" />

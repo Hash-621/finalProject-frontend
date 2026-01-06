@@ -16,9 +16,10 @@ import SearchBar from "@/components/common/SearchBar";
 import { menuData } from "@/data/menuData";
 import { useRouter } from "next/navigation";
 import api from "@/api/axios";
-import Cookies from "js-cookie"; // [추가] 쿠키 라이브러리
+import Cookies from "js-cookie";
 import Image from "next/image";
-import { authService, userService } from "@/api/services";
+// [추가] 모달 컴포넌트 임포트
+import Modal from "@/components/common/Modal";
 
 export default function Header() {
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
@@ -27,10 +28,38 @@ export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. 로그인 상태 확인 로직 수정 (쿠키 방식)
+  // --- [추가] 모달 상태 관리 ---
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    content: "",
+    type: "success" as "success" | "error" | "warning" | "confirm",
+    onConfirm: undefined as (() => void) | undefined,
+  });
+
+  const openModal = (
+    content: string,
+    type: "success" | "error" | "warning" | "confirm" = "success",
+    title?: string,
+    onConfirm?: () => void
+  ) => {
+    setModalConfig({
+      isOpen: true,
+      content,
+      type,
+      title: title || (type === "confirm" ? "로그아웃" : "알림"),
+      onConfirm,
+    });
+  };
+
+  const closeModal = () => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+  // ---------------------------
+
+  // 1. 로그인 상태 확인
   useEffect(() => {
     const checkAuth = async () => {
-      // 쿠키에서 토큰 확인
       const token = Cookies.get("token");
 
       if (!token) {
@@ -40,14 +69,11 @@ export default function Header() {
       }
 
       try {
-        // 토큰이 있다면 서버에 유효성 검사 요청
         const res = await api.get("/mypage/info");
         if (res.status === 200) {
           setIsLoggedIn(true);
         }
       } catch (err) {
-        console.error("인증 확인 실패:", err);
-        // 토큰이 유효하지 않으면 쿠키 삭제
         Cookies.remove("token", { path: "/" });
         setIsLoggedIn(false);
       } finally {
@@ -58,37 +84,37 @@ export default function Header() {
     checkAuth();
   }, []);
 
-  // 2. 로그아웃 처리 수정 (쿠키 삭제 방식)
-  const handleLogout = async () => {
-    if (!confirm("로그아웃 하시겠습니까?")) return;
-
+  // 2. 로그아웃 수행 함수
+  const performLogout = async () => {
     try {
-      // 1. 서버에 로그아웃 알림 (실패해도 무시)
-      // userService를 통해 호출합니다.
-      await authService
-        .logout()
-        .catch((err) => console.warn("서버 로그아웃 실패:", err));
-    } catch (error) {
-      console.error(error);
-    } finally {
-      // 2. [중요] 서버 응답 성공/실패 여부와 상관없이 브라우저에서는 무조건 로그아웃 처리
-
+      await api.post("/user/logout").catch(() => {}); // 서버 로그아웃 시도 (실패해도 진행)
       Cookies.remove("token", { path: "/" });
-
-      // 상태 변경
       setIsLoggedIn(false);
 
-      alert("로그아웃 되었습니다.");
-
-      // 메인으로 이동 및 새로고침
+      // 로그아웃 성공 모달 -> 확인 시 메인으로 이동
+      openModal("로그아웃 되었습니다.", "success", "완료", () => {
+        window.location.href = "/";
+      });
+    } catch (error) {
+      // 에러 발생 시에도 클라이언트 로그아웃은 처리
+      Cookies.remove("token", { path: "/" });
       window.location.href = "/";
     }
+  };
+
+  // [수정] 로그아웃 버튼 핸들러 (모달 띄우기)
+  const handleLogoutClick = () => {
+    openModal(
+      "정말 로그아웃 하시겠습니까?",
+      "confirm",
+      "로그아웃 확인",
+      performLogout
+    );
   };
 
   const pages = menuData.pages;
 
   const renderAuthButtons = (isMobile: boolean) => {
-    // 로딩 중에는 UI 점프 방지
     if (isLoading) return <div className="w-20" />;
 
     if (isLoggedIn) {
@@ -103,8 +129,8 @@ export default function Header() {
           </Link>
           <span aria-hidden="true" className="h-4 w-px bg-gray-200" />
           <button
-            onClick={handleLogout}
-            className="text-sm font-medium text-gray-700 hover:text-gray-400 transition-colors cursor-pointer border-none bg-transparent p-0"
+            onClick={handleLogoutClick} // [수정] 모달 핸들러 연결
+            className="text-sm font-medium text-gray-700 hover:text-gray-400 transition-colors cursor-pointer"
           >
             로그아웃
           </button>
@@ -115,7 +141,7 @@ export default function Header() {
     return (
       <div className="flex items-center space-x-3">
         <Link
-          href="/sign-in" // /sign-in에서 /login으로 변경 권장
+          href="/sign-in"
           className="text-sm font-medium text-gray-700 hover:text-gray-400 transition-colors"
           onClick={() => isMobile && setOpenMobileMenu(false)}
         >
@@ -135,6 +161,16 @@ export default function Header() {
 
   return (
     <>
+      {/* [추가] 모달 컴포넌트 렌더링 */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        content={modalConfig.content}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+      />
+
       <Dialog
         open={openMobileMenu}
         onClose={setOpenMobileMenu}
@@ -213,7 +249,7 @@ export default function Header() {
                 className="flex items-center transition hover:opacity-80"
               >
                 <Image
-                  src="\images\logo.svg"
+                  src="/images/logo.svg"
                   alt="로고"
                   width={90}
                   height={25}

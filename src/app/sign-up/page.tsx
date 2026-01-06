@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // 라우터 추가 (가입 후 이동)
+import { useRouter } from "next/navigation";
 import {
   User,
   Mail,
@@ -19,9 +19,11 @@ import {
 import { Input } from "@/components/common/Input";
 import Image from "next/image";
 import { authService, userService } from "@/api/services";
+// [추가] 모달 컴포넌트 임포트 (경로 확인해주세요)
+import Modal from "@/components/common/Modal";
 
 export default function SignUpPage() {
-  const router = useRouter(); // 가입 완료 후 페이지 이동용
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     loginId: "",
@@ -35,8 +37,41 @@ export default function SignUpPage() {
     birthDate: "",
   });
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // 약관 모달용 상태 (기존 유지)
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [agreed, setAgreed] = useState(false);
+
+  // --- 알림 팝업용 모달 상태 (새로 추가) ---
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    content: "",
+    type: "success" as "success" | "error" | "warning" | "confirm",
+    onConfirm: undefined as (() => void) | undefined,
+  });
+
+  // 모달 열기 헬퍼 함수
+  const openModal = (
+    content: string,
+    type: "success" | "error" | "warning" | "confirm" = "success",
+    title?: string,
+    onConfirm?: () => void
+  ) => {
+    setModalConfig({
+      isOpen: true,
+      content,
+      type,
+      title:
+        title ||
+        (type === "error" ? "오류 발생" : type === "success" ? "알림" : "확인"),
+      onConfirm,
+    });
+  };
+
+  // 모달 닫기 함수
+  const closeModal = () => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
 
   // --- 상태값들 ---
   const [isIdChecked, setIsIdChecked] = useState<boolean | null>(null);
@@ -69,7 +104,10 @@ export default function SignUpPage() {
   };
 
   const handleCheckId = async () => {
-    if (!formData.loginId) return alert("아이디를 입력해주세요.");
+    if (!formData.loginId) {
+      openModal("아이디를 입력해주세요.", "warning");
+      return;
+    }
 
     try {
       const response = await authService.checkIdDuplicate(formData.loginId);
@@ -78,50 +116,51 @@ export default function SignUpPage() {
       setIsIdChecked(isAvailable);
 
       if (isAvailable) {
-        alert("사용 가능한 아이디입니다.");
+        openModal("사용 가능한 아이디입니다.", "success");
       } else {
-        alert("이미 사용 중인 아이디입니다.");
+        openModal("이미 사용 중인 아이디입니다.", "error");
       }
     } catch (error) {
       console.error(error);
-      alert("중복 확인 중 오류가 발생했습니다.");
+      openModal("중복 확인 중 오류가 발생했습니다.", "error");
     }
   };
 
   const handleSendEmail = async () => {
-    // 1. 공백 제거 (Trim)
     const emailToSubmit = formData.email.trim();
 
-    if (!emailToSubmit) return alert("이메일을 입력해주세요.");
+    if (!emailToSubmit) {
+      openModal("이메일을 입력해주세요.", "warning");
+      return;
+    }
     if (emailStatus === "verified" || emailStatus === "sending") return;
 
     try {
       setEmailStatus("sending");
 
-      // 2. 공백 제거된 이메일로 요청 전송
-      // (주의: formData.email 대신 emailToSubmit 변수 사용)
       const response = await authService.sendEmailVerification(emailToSubmit);
 
       setEmailStatus("sent");
       setTimeLeft(180);
-      alert(response.data || "인증번호가 발송되었습니다.");
+      openModal(response.data || "인증번호가 발송되었습니다.", "success");
 
-      // (선택) 입력창에도 공백 제거된 값으로 업데이트 해주면 깔끔함
       setFormData((prev) => ({ ...prev, email: emailToSubmit }));
     } catch (error: any) {
       console.error(error);
       setEmailStatus("idle");
       const errorMsg =
         error.response?.data || "이메일 발송 중 오류가 발생했습니다.";
-      alert(errorMsg);
+      openModal(errorMsg, "error");
     }
   };
 
   const handleVerifyCode = async () => {
-    if (!formData.emailCode) return alert("인증번호를 입력해주세요.");
+    if (!formData.emailCode) {
+      openModal("인증번호를 입력해주세요.", "warning");
+      return;
+    }
 
     try {
-      // DTO 구조 생성 (백엔드 CheckEmailDto와 필드명 일치: email, token)
       const checkEmailDto = {
         email: formData.email,
         token: formData.emailCode,
@@ -129,31 +168,30 @@ export default function SignUpPage() {
 
       const response = await authService.verifyEmailCode(checkEmailDto);
 
-      // 성공 시 (200 OK)
       if (response.status === 200) {
         setEmailStatus("verified");
-        alert(response.data || "이메일 인증이 완료되었습니다.");
+        openModal(response.data || "이메일 인증이 완료되었습니다.", "success");
       }
     } catch (error: any) {
       console.error(error);
-      // 실패 시 에러 메시지
       const errorMsg = error.response?.data || "인증번호가 일치하지 않습니다.";
-      alert(errorMsg);
+      openModal(errorMsg, "error");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name) return alert("이름을 입력해주세요.");
-    if (isIdChecked !== true) return alert("아이디 중복 확인을 해주세요.");
-    if (emailStatus !== "verified") return alert("이메일 인증을 완료해주세요.");
+    if (!formData.name) return openModal("이름을 입력해주세요.", "warning");
+    if (isIdChecked !== true)
+      return openModal("아이디 중복 확인을 해주세요.", "warning");
+    if (emailStatus !== "verified")
+      return openModal("이메일 인증을 완료해주세요.", "warning");
     if (formData.password !== formData.confirmPassword)
-      return alert("비밀번호가 일치하지 않습니다.");
-    if (!agreed) return alert("약관에 동의해 주세요.");
+      return openModal("비밀번호가 일치하지 않습니다.", "error");
+    if (!agreed) return openModal("약관에 동의해 주세요.", "warning");
 
     try {
-      // 🚨 중요: 빈 문자열("")을 null로 변환해서 전송해야 함!
       const dataToSend = {
         ...formData,
         birthDate: formData.birthDate === "" ? null : formData.birthDate,
@@ -161,28 +199,39 @@ export default function SignUpPage() {
 
       console.log("서버로 전송될 데이터:", dataToSend);
 
-      // 변환된 데이터(dataToSend)로 요청
       await authService.signUp(dataToSend);
 
-      alert("회원가입이 성공적으로 완료되었습니다!");
-      router.push("/sign-in");
+      // 성공 시 모달 -> 확인 버튼 누르면 로그인 페이지 이동
+      openModal(
+        "회원가입이 성공적으로 완료되었습니다.\n로그인 페이지로 이동합니다.",
+        "success",
+        "가입 완료",
+        () => router.push("/sign-in")
+      );
     } catch (error: any) {
       console.error(error);
-
-      // 에러 메시지 처리 강화
       const errData = error.response?.data;
-      // 만약 백엔드가 { message: "..." } 형태로 보냈다면 message만, 아니면 전체 출력
       const errorMsg =
         errData?.message ||
         JSON.stringify(errData) ||
         "회원가입 처리에 실패했습니다.";
 
-      alert("오류 발생: " + errorMsg);
+      openModal("오류 발생: " + errorMsg, "error");
     }
   };
 
   return (
     <div className="min-h-screen bg-[#fcfdfc] flex items-center justify-center p-4 md:p-12">
+      {/* --- [추가] 커스텀 모달 컴포넌트 렌더링 --- */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        content={modalConfig.content}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+      />
+
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 bg-white rounded-[3.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.06)] border border-slate-50 overflow-hidden min-h-[850px]">
         {/* 왼쪽 브랜드 섹션 */}
         <div className="lg:col-span-5 flex flex-col justify-between p-12 md:p-16 bg-slate-900 relative overflow-hidden">
@@ -440,7 +489,8 @@ export default function SignUpPage() {
               </label>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)}
+                // 기존 약관 모달은 isTermsModalOpen 사용
+                onClick={() => setIsTermsModalOpen(true)}
                 className="text-[10px] font-black text-slate-400 underline"
               >
                 약관보기
@@ -468,8 +518,8 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      {/* 약관 모달 (기존 동일) */}
-      {isModalOpen && (
+      {/* 약관 모달 (기존 코드 유지, 상태 변수명만 isTermsModalOpen으로 변경) */}
+      {isTermsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
             <div className="p-8 border-b flex items-center justify-between bg-slate-50/50">
@@ -477,7 +527,7 @@ export default function SignUpPage() {
                 서비스 이용약관
               </h4>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => setIsTermsModalOpen(false)}
                 className="hover:text-red-500 transition-colors"
               >
                 <X size={24} />
@@ -490,7 +540,7 @@ export default function SignUpPage() {
               <button
                 onClick={() => {
                   setAgreed(true);
-                  setIsModalOpen(false);
+                  setIsTermsModalOpen(false);
                 }}
                 className="flex-1 bg-green-500 text-white font-black py-4 rounded-2xl hover:bg-green-600 transition-all"
               >
@@ -504,6 +554,7 @@ export default function SignUpPage() {
   );
 }
 
+// 하단 컴포넌트: 단계 표시용
 const Step = ({ icon, title, desc, active }: any) => (
   <div
     className={`flex gap-5 items-start ${

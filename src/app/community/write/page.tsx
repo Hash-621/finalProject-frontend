@@ -23,8 +23,10 @@ import api from "@/api/axios";
 import Cookies from "js-cookie";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
+// [추가] 모달 컴포넌트 임포트
+import Modal from "@/components/common/Modal";
 
-// 1. Dynamic Import 설정 (SSR 에러 방지)
+// 1. Dynamic Import 설정
 const ReactQuillEditor = dynamic(
   async () => {
     const { default: RQ } = await import("react-quill-new");
@@ -51,21 +53,65 @@ function WriteContent() {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(initialCategory);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // [핵심] 인증 체크 상태 (true일 때 화면 숨김)
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   const [userData, setUserData] = useState<{
     userId: any;
     nickname: string;
   } | null>(null);
 
-  // 초기 유저 정보 로드
+  // --- 모달 상태 관리 ---
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    content: "",
+    type: "success" as "success" | "error" | "warning" | "confirm",
+    onConfirm: undefined as (() => void) | undefined,
+  });
+
+  const openModal = (
+    content: string,
+    type: "success" | "error" | "warning" | "confirm" = "success",
+    title?: string,
+    onConfirm?: () => void
+  ) => {
+    setModalConfig({
+      isOpen: true,
+      content,
+      type,
+      title:
+        title ||
+        (type === "error" ? "오류" : type === "confirm" ? "확인" : "알림"),
+      onConfirm,
+    });
+  };
+
+  const closeModal = () => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+  // ----------------------
+
+  // 초기 유저 정보 로드 및 인증 체크
   useEffect(() => {
     const fetchUserInfo = async () => {
       const token = Cookies.get("token");
+
+      // 1. 토큰이 없을 때
       if (!token) {
-        alert("로그인이 필요한 서비스입니다.");
-        router.push("/sign-in");
+        // 모달 띄우고, 확인 시 로그인 페이지로 이동
+        openModal(
+          "로그인이 필요한 서비스입니다.\n로그인 페이지로 이동합니다.",
+          "warning",
+          "접근 제한",
+          () => router.replace("/sign-in")
+        );
+        // 여기서 return 하면 isAuthChecking이 true로 유지되어 글쓰기 화면이 안 보임
         return;
       }
 
+      // 2. 토큰이 있을 때 유저 정보 확인
       try {
         const res = await api.get("/mypage/info");
         const fetchedId = res.data.userId || res.data.id || res.data.loginId;
@@ -76,15 +122,20 @@ function WriteContent() {
             userId: fetchedId,
             nickname: fetchedNickname || "사용자",
           });
+          // 유저 정보 확인이 끝나야 화면을 보여줌
+          setIsAuthChecking(false);
+          checkSavedPost();
         }
       } catch (err) {
         console.error("유저 정보 로드 실패:", err);
-        router.replace("/sign-in");
+        // 토큰이 유효하지 않은 경우 처리
+        openModal("로그인 세션이 만료되었습니다.", "error", "오류", () =>
+          router.replace("/sign-in")
+        );
       }
     };
 
     fetchUserInfo();
-    checkSavedPost();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -94,29 +145,30 @@ function WriteContent() {
     if (savedPost) {
       const { title: sTitle, savedAt } = JSON.parse(savedPost);
       setTimeout(() => {
-        if (
-          window.confirm(
-            `[${savedAt}]에 작성하던 글을 불러올까요?\n제목: ${
-              sTitle || "제목 없음"
-            }`
-          )
-        ) {
-          const saved = localStorage.getItem("local-hub-temp-post");
-          if (saved) {
-            const { title: t, content: c, category: cat } = JSON.parse(saved);
-            setTitle(t);
-            setContent(c);
-            setCategory(cat);
+        openModal(
+          `[${savedAt}]에 작성하던 글을 불러올까요?\n제목: ${
+            sTitle || "제목 없음"
+          }`,
+          "confirm",
+          "임시 저장 불러오기",
+          () => {
+            const saved = localStorage.getItem("local-hub-temp-post");
+            if (saved) {
+              const { title: t, content: c, category: cat } = JSON.parse(saved);
+              setTitle(t);
+              setContent(c);
+              setCategory(cat);
+            }
           }
-        }
-      }, 100);
+        );
+      }, 500);
     }
   };
 
   // 임시 저장 기능
   const saveTemporary = useCallback(() => {
     if (!title.trim() && !content.trim()) {
-      alert("저장할 내용이 없습니다.");
+      openModal("저장할 내용이 없습니다.", "warning");
       return;
     }
     const tempData = {
@@ -126,10 +178,10 @@ function WriteContent() {
       savedAt: new Date().toLocaleString(),
     };
     localStorage.setItem("local-hub-temp-post", JSON.stringify(tempData));
-    alert("임시 저장되었습니다.");
+    openModal("임시 저장되었습니다.", "success");
   }, [title, content, category]);
 
-  // 이미지 핸들러 (Base64 방식)
+  // 이미지 핸들러
   const imageHandler = useCallback(() => {
     const input = document.createElement("input");
     input.setAttribute("type", "file");
@@ -139,18 +191,14 @@ function WriteContent() {
 
     input.onchange = async () => {
       const fileArray = input.files;
-
-      if (fileArray?.length == 0) return;
-      if (!fileArray) return;
+      if (!fileArray?.length) return;
 
       for (let i = 0; i < fileArray.length; i++) {
         const file = fileArray[i];
-
         if (file.size > 5 * 1024 * 1024) {
-          alert("이미지 용량은 5MB를 초과할 수 없습니다.");
+          openModal("이미지 용량은 5MB를 초과할 수 없습니다.", "error");
           return;
         }
-
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = () => {
@@ -175,26 +223,23 @@ function WriteContent() {
           ["link", "image"],
           ["clean"],
         ],
-        handlers: {
-          image: imageHandler,
-        },
+        handlers: { image: imageHandler },
       },
     }),
     [imageHandler]
   );
 
-  // ▼▼▼▼▼ [핵심 수정] handleSubmit 함수 ▼▼▼▼▼
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
     if (!userData?.userId) {
-      alert("유저 정보를 확인 중입니다. 잠시만 기다려주세요.");
+      openModal("유저 정보를 확인 중입니다.", "warning");
       return;
     }
 
     if (!title.trim() || !content.trim()) {
-      alert("제목과 내용을 모두 입력해주세요.");
+      openModal("제목과 내용을 모두 입력해주세요.", "warning");
       return;
     }
 
@@ -214,43 +259,72 @@ function WriteContent() {
         commentCount: 0,
       };
 
-      // 1. FormData 생성
       const formData = new FormData();
-
-      // 2. JSON 데이터를 Blob으로 변환하여 'data' 파트에 추가
-      // application/json 타입을 명시해야 백엔드가 DTO로 인식함
       const jsonBlob = new Blob([JSON.stringify(payload)], {
         type: "application/json",
       });
       formData.append("dto", jsonBlob);
 
-      console.log("🚀 전송 시작:", endpoint);
-
-      // 3. 전송 (Axios가 Content-Type을 multipart/form-data로 자동 설정함)
       const response = await api.post(endpoint, formData);
 
       if (response.status === 200 || response.status === 201) {
-        alert("게시글이 성공적으로 등록되었습니다!");
-        localStorage.removeItem("local-hub-temp-post");
-        router.push(
-          category === "RECOMMEND" ? "/community/recommend" : "/community/free"
+        openModal(
+          "게시글이 성공적으로 등록되었습니다!",
+          "success",
+          "등록 완료",
+          () => {
+            localStorage.removeItem("local-hub-temp-post");
+            router.push(
+              category === "RECOMMEND"
+                ? "/community/recommend"
+                : "/community/free"
+            );
+          }
         );
       }
     } catch (error: any) {
       console.error("❌ 발행 실패:", error);
       const errorMessage =
         error.response?.data?.message || error.message || "서버 오류";
-      alert(`글 작성 실패: ${errorMessage}`);
+      openModal(`글 작성 실패: ${errorMessage}`, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
-  // ▲▲▲▲▲ [수정 완료] ▲▲▲▲▲
+
+  // [핵심 로직] 인증 체크 중일 때는 모달과 로딩바만 보여주고 본문은 숨김
+  if (isAuthChecking) {
+    return (
+      <>
+        {/* 모달은 최상위에 렌더링되어 알림을 보여줌 */}
+        <Modal
+          isOpen={modalConfig.isOpen}
+          onClose={closeModal}
+          title={modalConfig.title}
+          content={modalConfig.content}
+          type={modalConfig.type}
+          onConfirm={modalConfig.onConfirm}
+        />
+        {/* 뒷배경은 로딩 상태로 유지 */}
+        <div className="min-h-screen flex items-center justify-center bg-[#fcfdfc]">
+          <Loader2 className="animate-spin text-green-500" size={40} />
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fcfdfc] p-4 md:py-12">
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        content={modalConfig.content}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+      />
+
       <div className="max-w-5xl mx-auto">
-        {/* 상단 툴바 */}
         <div className="flex items-center justify-between mb-8 px-4">
           <button
             onClick={() => router.back()}
@@ -340,7 +414,6 @@ function WriteContent() {
           </div>
         </div>
 
-        {/* 하단 정보 */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-slate-300">
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
             <Sparkles size={14} className="text-green-500" />
@@ -354,7 +427,6 @@ function WriteContent() {
         </div>
       </div>
 
-      {/* Quill 에디터 커스텀 스타일 */}
       <style jsx global>{`
         .ql-toolbar.ql-snow {
           border: none !important;

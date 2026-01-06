@@ -7,14 +7,14 @@ import { useRouter } from "next/navigation";
 import {
   Mail,
   User,
-  Lock,
   ArrowRight,
   Sparkles,
   ChevronLeft,
-  Smartphone,
   CheckCircle2,
 } from "lucide-react";
 import axios from "axios";
+// [추가] 모달 컴포넌트 임포트
+import Modal from "@/components/common/Modal";
 
 // --- 타입 정의 ---
 type FindMode = "id" | "pw";
@@ -30,7 +30,7 @@ interface FindInputProps {
 
 export default function Page() {
   const router = useRouter();
-  const proxyUrl = process.env.NEXT_PUBLIC_PROXY_URL;
+  // const proxyUrl = process.env.NEXT_PUBLIC_PROXY_URL; // (사용 안 함)
   const [mode, setMode] = useState<FindMode>("id");
   const [formData, setFormData] = useState({
     name: "",
@@ -38,6 +38,38 @@ export default function Page() {
     loginId: "",
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [code, setCode] = useState("");
+
+  // --- [추가] 모달 상태 관리 ---
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    content: "",
+    type: "success" as "success" | "error" | "warning" | "confirm",
+    onConfirm: undefined as (() => void) | undefined,
+  });
+
+  // 모달 열기 헬퍼 함수
+  const openModal = (
+    content: string,
+    type: "success" | "error" | "warning" | "confirm" = "success",
+    title?: string,
+    onConfirm?: () => void
+  ) => {
+    setModalConfig({
+      isOpen: true,
+      content,
+      type,
+      title: title || (type === "error" ? "오류 발생" : "알림"),
+      onConfirm,
+    });
+  };
+
+  // 모달 닫기 함수
+  const closeModal = () => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+  // ---------------------------
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,15 +77,14 @@ export default function Page() {
       `${mode === "id" ? "아이디" : "비밀번호"} 찾기 요청:`,
       formData
     );
+
     if (mode === "id") {
       if (formData.name.length === 0) {
-        alert("이름을 입력해주세요.");
-        router.replace("/find-account");
+        openModal("이름을 입력해주세요.", "warning");
         return;
       }
       if (formData.email.length === 0) {
-        alert("이메일을 입력해주세요.");
-
+        openModal("이메일을 입력해주세요.", "warning");
         return;
       }
       axios
@@ -61,23 +92,27 @@ export default function Page() {
           `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id/get-token?addr=${formData.email}`
         )
         .then((response) => {
-          // alert("인증번호가 이메일로 발송되었습니다.");
+          // 성공 시 별도 알림 없이 진행 (UI 변경됨)
         })
         .catch((error) => {
-          alert("인증번호 발송에 실패했습니다. 다시 시도해주세요.");
+          openModal(
+            "인증번호 발송에 실패했습니다. 다시 시도해주세요.",
+            "error"
+          );
         });
     }
+
     if (mode === "pw") {
       if (formData.loginId.length === 0) {
-        alert("아이디를 입력해주세요.");
+        openModal("아이디를 입력해주세요.", "warning");
         return;
       }
       if (formData.email.length === 0) {
-        alert("이메일을 입력해주세요.");
+        openModal("이메일을 입력해주세요.", "warning");
         return;
       }
       if (formData.name.length === 0) {
-        alert("이름을 입력해주세요.");
+        openModal("이름을 입력해주세요.", "warning");
         return;
       }
       axios
@@ -87,24 +122,25 @@ export default function Page() {
           email: formData.email,
         })
         .then((response) => {
-          // alert("인증번호가 이메일로 발송되었습니다.");
+          // 성공 시 별도 알림 없이 진행
         })
         .catch((error) => {
-          alert("발송에 실패했습니다. 다시 시도해주세요.");
+          openModal("발송에 실패했습니다. 다시 시도해주세요.", "error");
         });
     }
     setIsSubmitted(true);
   };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     // 정규식을 사용하여 숫자가 아닌 문자는 제거 (빈 문자열로 치환)
     const onlyNumbers = value.replace(/[^0-9]/g, "");
     setCode(onlyNumbers);
   };
-  const [code, setCode] = useState("");
+
   const handleVerify = () => {
     if (code.length === 0) {
-      alert("인증번호를 입력해주세요.");
+      openModal("인증번호를 입력해주세요.", "warning");
       return;
     }
     axios
@@ -116,6 +152,8 @@ export default function Page() {
       .then((response) => {
         const responseData = response.data;
         const koreanRegex = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/;
+
+        // 에러 메시지가 한글로 왔을 경우 처리
         if (
           typeof responseData === "string" &&
           koreanRegex.test(responseData)
@@ -124,21 +162,40 @@ export default function Page() {
             "응답이 한글로 왔습니다 (에러 메시지일 가능성):",
             responseData
           );
-          alert("아이디 찾기 실패: " + responseData);
+          openModal("아이디 찾기 실패: " + responseData, "error");
           return;
         }
 
         console.log("찾은 아이디:", responseData);
-        alert(`찾은 아이디는: ${responseData} 입니다.`);
+
+        // [중요] 아이디 찾기 성공 시 모달 띄우고, 확인 누르면 로그인 페이지로 이동
+        openModal(
+          `회원님의 아이디는 [ ${responseData} ] 입니다.`,
+          "success",
+          "아이디 찾기 성공",
+          () => router.push("/sign-in")
+        );
       })
       .catch((error) => {
-        alert("인증번호 확인에 실패했습니다. 다시 시도해주세요.");
+        openModal("인증번호 확인에 실패했습니다. 다시 시도해주세요.", "error");
       });
-    router.push("/sign-in");
+
+    // 기존 코드에 있던 router.push("/sign-in")은 비동기 처리 전에 실행되므로 제거하고
+    // 위 axios success 콜백의 openModal onConfirm으로 옮겼습니다.
   };
 
   return (
     <div className="min-h-screen bg-[#fcfdfc] flex items-center justify-center p-4 md:p-8">
+      {/* [추가] 모달 컴포넌트 렌더링 */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        content={modalConfig.content}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+      />
+
       <div className="max-w-md w-full">
         <Link
           href="/sign-in"
