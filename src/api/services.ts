@@ -2,10 +2,14 @@ import api from "@/api/axios";
 
 // 1. 유저 관련 서비스 (프로필, 정보 수정 등)
 export const userService = {
-  // 중복 사용 가능성을 위해 유지 (필요 없으면 제거 가능)
   login: (data: any) => api.post("/user/login", data),
-  signUp: (data: any) => api.post("/user/signup", data),
-
+  signUp: (data: any) => api.post("/user/join", data),
+  checkIdDuplicate: (loginId: string) =>
+    api.get("/user/check-id", { params: { loginId } }),
+  sendEmailVerification: (email: string) =>
+    api.post("/user/checkemail/get-token", { email }),
+  verifyEmailCode: (data: { email: string; token: string }) =>
+    api.post("/user/checkemail", data),
   getUserInfo: () => api.get("/mypage/info"),
   updateUserInfo: (data: any) => api.put("/mypage/info", data),
   getFavorites: () => api.get("/mypage/favorites"),
@@ -13,16 +17,10 @@ export const userService = {
 
 // 2. 인증 관련 서비스 (로그인, 회원가입 - 페이지에서 사용하는 부분)
 export const authService = {
-  // [New] 일반 로그인 추가 (SignUpPage/SignInPage 호환용)
-  login: (data: any) => api.post("/user/login", data),
-
-  // [New] 회원가입 추가 (SignUpPage 호환용)
-  signUp: (data: any) => api.post("/user/signup", data),
-
   // 카카오 로그인
   kakaoLogin: (code: string) => api.get(`/auth/kakao/callback?code=${code}`),
 
-  // 네이버 로그인
+  // 네이버 로그인 (데이터를 객체로 전달)
   naverLogin: (loginData: { code: string; state: string }) =>
     api.post("/auth/naver/login", loginData, {
       headers: {

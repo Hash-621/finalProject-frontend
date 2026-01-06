@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"; // 라우터 추가 (가입 후 이동)
 import {
   User,
   Mail,
@@ -13,158 +13,176 @@ import {
   CircleCheckBig,
   Calendar,
   X,
-  Check,
+  Timer,
+  IdCard,
 } from "lucide-react";
 import { Input } from "@/components/common/Input";
 import Image from "next/image";
-import { authService } from "@/api/services";
-
-// [Logic] 유효성 검사 메시지 타입 정의
-type ValidationState = {
-  message: string;
-  isError: boolean;
-};
+import { userService } from "@/api/services";
 
 export default function SignUpPage() {
-  const router = useRouter();
+  const router = useRouter(); // 가입 완료 후 페이지 이동용
 
-  // [State] 폼 데이터
   const [formData, setFormData] = useState({
     loginId: "",
+    name: "",
     nickname: "",
     email: "",
+    emailCode: "",
     password: "",
     confirmPassword: "",
-    gender: "MALE",
+    gender: "M",
     birthDate: "",
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [error, setError] = useState("");
 
-  // [Logic] 실시간 검증 상태 관리
-  const [validation, setValidation] = useState<{
-    loginId: ValidationState;
-    password: ValidationState;
-    confirmPassword: ValidationState;
-  }>({
-    loginId: { message: "", isError: false },
-    password: { message: "", isError: false },
-    confirmPassword: { message: "", isError: false },
-  });
+  // --- 상태값들 ---
+  const [isIdChecked, setIsIdChecked] = useState<boolean | null>(null);
+  const [emailStatus, setEmailStatus] = useState<
+    "idle" | "sending" | "sent" | "verified"
+  >("idle");
+  const [timeLeft, setTimeLeft] = useState(180);
 
-  // [Logic] 실시간 유효성 검사 함수
-  const validateField = (name: string, value: string, currentForm: any) => {
-    let newState: ValidationState = { message: "", isError: false };
-
-    if (name === "loginId") {
-      const idRegex = /^[a-zA-Z0-9]{4,12}$/;
-      if (!value) {
-        newState = { message: "", isError: false };
-      } else if (!idRegex.test(value)) {
-        newState = {
-          message: "4~12자의 영문/숫자만 가능합니다.",
-          isError: true,
-        };
-      } else {
-        newState = {
-          message: "사용 가능한 아이디 형식입니다.",
-          isError: false,
-        };
-      }
-      setValidation((prev) => ({ ...prev, loginId: newState }));
+  // 타이머 로직
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (emailStatus === "sent" && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
     }
+    return () => clearInterval(interval);
+  }, [emailStatus, timeLeft]);
 
-    if (name === "password") {
-      if (!value) {
-        newState = { message: "", isError: false };
-      } else if (value.length < 8) {
-        newState = {
-          message: "비밀번호는 8자 이상이어야 합니다.",
-          isError: true,
-        };
+  const formatTime = (seconds: number) => {
+    const min = Math.floor(seconds / 60);
+    const sec = seconds % 60;
+    return `${min}:${sec < 10 ? `0${sec}` : sec}`;
+  };
+
+  // 핸들러들
+  const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, loginId: e.target.value });
+    setIsIdChecked(null);
+  };
+
+  const handleCheckId = async () => {
+    if (!formData.loginId) return alert("아이디를 입력해주세요.");
+
+    try {
+      const response = await userService.checkIdDuplicate(formData.loginId);
+      const isAvailable = response.data; // 백엔드 리턴값 확인 필요 (Boolean 가정)
+
+      setIsIdChecked(isAvailable);
+
+      if (isAvailable) {
+        alert("사용 가능한 아이디입니다.");
       } else {
-        newState = { message: "안전한 비밀번호입니다.", isError: false };
+        alert("이미 사용 중인 아이디입니다.");
       }
-      setValidation((prev) => ({ ...prev, password: newState }));
-
-      // 비밀번호가 바뀌면 확인 필드도 재검사
-      if (currentForm.confirmPassword) {
-        const isMatch = value === currentForm.confirmPassword;
-        setValidation((prev) => ({
-          ...prev,
-          confirmPassword: {
-            message: isMatch
-              ? "비밀번호가 일치합니다."
-              : "비밀번호가 일치하지 않습니다.",
-            isError: !isMatch,
-          },
-        }));
-      }
-    }
-
-    if (name === "confirmPassword") {
-      if (!value) {
-        newState = { message: "", isError: false };
-      } else if (value !== currentForm.password) {
-        newState = { message: "비밀번호가 일치하지 않습니다.", isError: true };
-      } else {
-        newState = { message: "비밀번호가 일치합니다.", isError: false };
-      }
-      setValidation((prev) => ({ ...prev, confirmPassword: newState }));
+    } catch (error) {
+      console.error(error);
+      alert("중복 확인 중 오류가 발생했습니다.");
     }
   };
 
-  // [Handler] 입력 변경 핸들러 (유효성 검사 포함)
-  const handleChange =
-    (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      const nextForm = { ...formData, [field]: value };
-      setFormData(nextForm);
-      validateField(field, value, nextForm);
-    };
+  const handleSendEmail = async () => {
+    // 1. 공백 제거 (Trim)
+    const emailToSubmit = formData.email.trim();
 
-  // [Handler] 회원가입 제출
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (!agreed) return alert("약관에 동의해 주세요.");
-
-    // 유효성 검사 에러 확인
-    if (
-      validation.loginId.isError ||
-      validation.password.isError ||
-      validation.confirmPassword.isError
-    ) {
-      return alert("입력 정보를 다시 확인해주세요.");
-    }
-
-    // 필수값 체크 (빈 값 방지)
-    if (
-      !formData.loginId ||
-      !formData.password ||
-      !formData.email ||
-      !formData.nickname
-    ) {
-      return alert("필수 정보를 모두 입력해주세요.");
-    }
+    if (!emailToSubmit) return alert("이메일을 입력해주세요.");
+    if (emailStatus === "verified" || emailStatus === "sending") return;
 
     try {
-      await authService.signUp(formData);
-      alert("회원가입이 완료되었습니다.");
+      setEmailStatus("sending");
+
+      // 2. 공백 제거된 이메일로 요청 전송
+      // (주의: formData.email 대신 emailToSubmit 변수 사용)
+      const response = await userService.sendEmailVerification(emailToSubmit);
+
+      setEmailStatus("sent");
+      setTimeLeft(180);
+      alert(response.data || "인증번호가 발송되었습니다.");
+
+      // (선택) 입력창에도 공백 제거된 값으로 업데이트 해주면 깔끔함
+      setFormData((prev) => ({ ...prev, email: emailToSubmit }));
+    } catch (error: any) {
+      console.error(error);
+      setEmailStatus("idle");
+      const errorMsg =
+        error.response?.data || "이메일 발송 중 오류가 발생했습니다.";
+      alert(errorMsg);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!formData.emailCode) return alert("인증번호를 입력해주세요.");
+
+    try {
+      // DTO 구조 생성 (백엔드 CheckEmailDto와 필드명 일치: email, token)
+      const checkEmailDto = {
+        email: formData.email,
+        token: formData.emailCode,
+      };
+
+      const response = await userService.verifyEmailCode(checkEmailDto);
+
+      // 성공 시 (200 OK)
+      if (response.status === 200) {
+        setEmailStatus("verified");
+        alert(response.data || "이메일 인증이 완료되었습니다.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      // 실패 시 에러 메시지
+      const errorMsg = error.response?.data || "인증번호가 일치하지 않습니다.";
+      alert(errorMsg);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name) return alert("이름을 입력해주세요.");
+    if (isIdChecked !== true) return alert("아이디 중복 확인을 해주세요.");
+    if (emailStatus !== "verified") return alert("이메일 인증을 완료해주세요.");
+    if (formData.password !== formData.confirmPassword)
+      return alert("비밀번호가 일치하지 않습니다.");
+    if (!agreed) return alert("약관에 동의해 주세요.");
+
+    try {
+      // 🚨 중요: 빈 문자열("")을 null로 변환해서 전송해야 함!
+      const dataToSend = {
+        ...formData,
+        birthDate: formData.birthDate === "" ? null : formData.birthDate,
+      };
+
+      console.log("서버로 전송될 데이터:", dataToSend);
+
+      // 변환된 데이터(dataToSend)로 요청
+      await userService.signUp(dataToSend);
+
+      alert("회원가입이 성공적으로 완료되었습니다!");
       router.push("/sign-in");
-    } catch (err: any) {
-      console.error(err);
-      setError(
-        err.response?.data?.message || "회원가입 중 오류가 발생했습니다."
-      );
+    } catch (error: any) {
+      console.error(error);
+
+      // 에러 메시지 처리 강화
+      const errData = error.response?.data;
+      // 만약 백엔드가 { message: "..." } 형태로 보냈다면 message만, 아니면 전체 출력
+      const errorMsg =
+        errData?.message ||
+        JSON.stringify(errData) ||
+        "회원가입 처리에 실패했습니다.";
+
+      alert("오류 발생: " + errorMsg);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfdfc] flex items-center justify-center p-4 md:p-12 font-pretendard">
+    <div className="min-h-screen bg-[#fcfdfc] flex items-center justify-center p-4 md:p-12">
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 bg-white rounded-[3.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.06)] border border-slate-50 overflow-hidden min-h-[850px]">
         {/* 왼쪽 브랜드 섹션 */}
         <div className="lg:col-span-5 flex flex-col justify-between p-12 md:p-16 bg-slate-900 relative overflow-hidden">
@@ -205,7 +223,6 @@ export default function SignUpPage() {
           </div>
         </div>
 
-        {/* 오른쪽 폼 섹션 */}
         <div className="lg:col-span-7 p-8 md:p-20 flex flex-col justify-center bg-white">
           <form
             onSubmit={handleSubmit}
@@ -220,130 +237,195 @@ export default function SignUpPage() {
               </p>
             </div>
 
-            {/* 아이디 & 닉네임 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <Input
-                  label="아이디"
-                  icon={<User size={18} />}
-                  placeholder="ID 입력"
-                  value={formData.loginId}
-                  onChange={handleChange("loginId")}
-                />
-                {/* 실시간 피드백 */}
-                {validation.loginId.message && (
-                  <p
-                    className={`text-xs mt-1.5 ml-1 font-medium ${
-                      validation.loginId.isError
-                        ? "text-red-500"
-                        : "text-green-600"
-                    }`}
-                  >
-                    {validation.loginId.message}
-                  </p>
-                )}
+            {/* 1. 아이디 섹션 */}
+            <div className="space-y-2">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <Input
+                    label="아이디"
+                    icon={<User size={18} />}
+                    placeholder="ID 입력"
+                    value={formData.loginId}
+                    onChange={handleIdChange}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCheckId}
+                  disabled={isIdChecked === true}
+                  className={`h-14 px-6 rounded-[1.4rem] font-bold text-sm whitespace-nowrap transition-all ${
+                    isIdChecked === true
+                      ? "bg-green-100 text-green-600 cursor-default"
+                      : "bg-slate-900 text-white hover:bg-slate-800"
+                  }`}
+                >
+                  {isIdChecked === true ? "확인완료" : "중복확인"}
+                </button>
               </div>
-
-              <div>
-                <Input
-                  label="닉네임"
-                  icon={<Sparkles size={18} />}
-                  placeholder="별명"
-                  value={formData.nickname}
-                  onChange={handleChange("nickname")}
-                />
-              </div>
+              {isIdChecked === false && (
+                <p className="text-xs text-red-500 font-bold ml-4">
+                  * 이미 사용 중인 아이디입니다.
+                </p>
+              )}
             </div>
 
-            <Input
-              label="이메일 주소"
-              icon={<Mail size={18} />}
-              type="email"
-              placeholder="example@mail.com"
-              value={formData.email}
-              onChange={handleChange("email")}
-            />
+            {/* 2. 이름 & 닉네임 섹션 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <Input
+                label="이름"
+                icon={<IdCard size={18} />}
+                placeholder="실명 입력"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+              />
+              <Input
+                label="닉네임"
+                icon={<Sparkles size={18} />}
+                placeholder="별명"
+                value={formData.nickname}
+                onChange={(e) =>
+                  setFormData({ ...formData, nickname: e.target.value })
+                }
+              />
+            </div>
 
-            {/* 생년월일 & 성별 */}
+            {/* 3. 이메일 인증 섹션 */}
+            <div className="space-y-4">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <Input
+                    label="이메일 주소"
+                    icon={<Mail size={18} />}
+                    type="email"
+                    placeholder="example@mail.com"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    readOnly={emailStatus === "verified"}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSendEmail}
+                  disabled={
+                    emailStatus === "verified" || emailStatus === "sending"
+                  }
+                  className={`h-14 px-6 rounded-[1.4rem] font-bold text-sm whitespace-nowrap transition-all ${
+                    emailStatus === "verified"
+                      ? "bg-green-100 text-green-600 border border-green-200"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
+                  }`}
+                >
+                  {emailStatus === "sending"
+                    ? "발송중.."
+                    : emailStatus === "verified"
+                    ? "인증완료"
+                    : emailStatus === "sent"
+                    ? "재발송"
+                    : "인증요청"}
+                </button>
+              </div>
+
+              {(emailStatus === "sent" || emailStatus === "verified") && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1 relative">
+                      <Input
+                        label="인증번호"
+                        icon={<ShieldCheck size={18} />}
+                        placeholder="6자리 숫자"
+                        value={formData.emailCode}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            emailCode: e.target.value,
+                          })
+                        }
+                        readOnly={emailStatus === "verified"}
+                      />
+                      {emailStatus === "sent" && (
+                        <div className="absolute right-4 top-[50px] flex items-center gap-1 text-red-500 font-bold text-sm">
+                          <Timer size={14} />
+                          {formatTime(timeLeft)}
+                        </div>
+                      )}
+                    </div>
+                    {emailStatus !== "verified" && (
+                      <button
+                        type="button"
+                        onClick={handleVerifyCode}
+                        className="h-14 px-6 rounded-[1.4rem] bg-green-500 text-white font-bold text-sm whitespace-nowrap hover:bg-green-600 transition-all shadow-lg shadow-green-200"
+                      >
+                        확인
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 4. 생년월일 & 성별 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Input
                 label="생년월일"
                 icon={<Calendar size={18} />}
                 type="date"
                 value={formData.birthDate}
-                onChange={handleChange("birthDate")}
+                onChange={(e) =>
+                  setFormData({ ...formData, birthDate: e.target.value })
+                }
               />
               <div className="space-y-2.5">
                 <label className="text-[11px] font-black text-slate-400 ml-4 uppercase tracking-[0.15em]">
                   성별
                 </label>
                 <div className="flex gap-2 h-[62px]">
-                  {["MALE", "FEMALE"].map((gender) => (
+                  {["M", "F"].map((gender) => (
                     <button
                       key={gender}
                       type="button"
                       onClick={() => setFormData({ ...formData, gender })}
                       className={`flex-1 rounded-[1.8rem] font-black text-sm transition-all border ${
                         formData.gender === gender
-                          ? "bg-slate-900 text-white border-slate-900 shadow-md"
+                          ? "bg-slate-900 text-white border-slate-900"
                           : "bg-slate-50/50 text-slate-400 border-slate-100 hover:bg-slate-100"
                       }`}
                     >
-                      {gender === "MALE" ? "남성" : "여성"}
+                      {gender === "M" ? "남성" : "여성"}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* 비밀번호 & 확인 */}
+            {/* 5. 비밀번호 섹션 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <Input
-                  label="비밀번호"
-                  icon={<Lock size={18} />}
-                  type="password"
-                  placeholder="8자 이상"
-                  value={formData.password}
-                  onChange={handleChange("password")}
-                />
-                {validation.password.message && (
-                  <p
-                    className={`text-xs mt-1.5 ml-1 font-medium ${
-                      validation.password.isError
-                        ? "text-red-500"
-                        : "text-green-600"
-                    }`}
-                  >
-                    {validation.password.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Input
-                  label="비밀번호 확인"
-                  icon={<ShieldCheck size={18} />}
-                  type="password"
-                  placeholder="다시 입력"
-                  value={formData.confirmPassword}
-                  onChange={handleChange("confirmPassword")}
-                />
-                {validation.confirmPassword.message && (
-                  <p
-                    className={`text-xs mt-1.5 ml-1 font-medium ${
-                      validation.confirmPassword.isError
-                        ? "text-red-500"
-                        : "text-green-600"
-                    }`}
-                  >
-                    {validation.confirmPassword.message}
-                  </p>
-                )}
-              </div>
+              <Input
+                label="비밀번호"
+                icon={<Lock size={18} />}
+                type="password"
+                placeholder="8자 이상"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+              />
+              <Input
+                label="비밀번호 확인"
+                icon={<ShieldCheck size={18} />}
+                type="password"
+                placeholder="다시 입력"
+                value={formData.confirmPassword}
+                onChange={(e) =>
+                  setFormData({ ...formData, confirmPassword: e.target.value })
+                }
+              />
             </div>
 
-            {/* 약관 동의 */}
+            {/* 약관 및 제출 버튼 */}
             <div className="bg-slate-50/50 p-6 rounded-[2.2rem] border border-slate-100 flex items-center justify-between">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
@@ -365,18 +447,18 @@ export default function SignUpPage() {
               </button>
             </div>
 
-            {/* 에러 메시지 표시 */}
-            {error && (
-              <p className="text-red-500 text-sm text-center font-bold">
-                {error}
-              </p>
-            )}
-
             <button
               type="submit"
-              className="w-full bg-slate-900 text-white font-black py-6 rounded-4xl hover:bg-green-600 shadow-2xl shadow-slate-200 transition-all flex items-center justify-center gap-3 group"
+              className={`w-full py-6 rounded-4xl shadow-2xl transition-all flex items-center justify-center gap-3 group font-black ${
+                isIdChecked &&
+                emailStatus === "verified" &&
+                agreed &&
+                formData.name
+                  ? "bg-slate-900 text-white hover:bg-green-600 shadow-slate-200"
+                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              }`}
             >
-              가입 완료하고 시작하기
+              가입 완료하고 시작하기{" "}
               <ArrowRight
                 size={20}
                 className="group-hover:translate-x-1 transition-transform"
@@ -386,7 +468,7 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      {/* 약관 모달 */}
+      {/* 약관 모달 (기존 동일) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
@@ -402,13 +484,7 @@ export default function SignUpPage() {
               </button>
             </div>
             <div className="p-8 overflow-y-auto max-h-[400px] text-sm text-slate-500 leading-relaxed">
-              <p>
-                제 1조 (목적) 본 약관은 다잇슈 대전이 제공하는 서비스의 이용
-                조건 및 절차를 규정함을 목적으로 합니다...
-                <br />
-                <br />
-                (상세 약관 내용...)
-              </p>
+              <p>약관 내용...</p>
             </div>
             <div className="p-8 bg-slate-50 flex gap-4">
               <button
