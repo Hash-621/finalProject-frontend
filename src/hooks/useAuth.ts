@@ -1,13 +1,13 @@
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { userService } from "@/api/services";
+import { authService } from "@/api/services";
 
 export const useAuth = () => {
   const router = useRouter();
 
   const login = async (formData: any) => {
     try {
-      const response = await userService.login(formData);
+      const response = await authService.login(formData);
       const token = response.data.token || response.data.accessToken;
       if (token) {
         Cookies.set("token", token, { expires: 7, path: "/" });
