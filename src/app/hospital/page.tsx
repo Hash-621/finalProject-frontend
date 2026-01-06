@@ -22,10 +22,28 @@ import {
   Heart,
 } from "lucide-react";
 
+// [UI] 병원 리스트 스켈레톤
+const HospitalListSkeleton = () => (
+  <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm animate-pulse mb-6">
+    <div className="flex justify-between items-start mb-4">
+      <div className="flex items-center gap-2">
+        <div className="w-16 h-6 bg-slate-200 rounded-md" />
+        <div className="w-9 h-9 bg-slate-200 rounded-full ml-2" />
+      </div>
+      <div className="w-11 h-11 bg-slate-200 rounded-2xl" />
+    </div>
+    <div className="h-8 bg-slate-200 rounded w-3/4 mb-4" />
+    <div className="h-4 bg-slate-200 rounded w-full mb-2" />
+    <div className="h-4 bg-slate-200 rounded w-2/3 mb-8" />
+    <div className="h-10 bg-slate-200 rounded-2xl w-full" />
+  </div>
+);
+
 export default function Page() {
   const router = useRouter();
 
-  const [loading] = useKakaoLoader({
+  // 카카오 맵 로더
+  const [mapLoading] = useKakaoLoader({
     appkey: process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "",
     libraries: ["services", "clusterer"],
   });
@@ -36,6 +54,9 @@ export default function Page() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [visibleCount, setVisibleCount] = useState(6);
   const [filterCategory, setFilterCategory] = useState("전체");
+
+  // [State] 데이터 로딩 상태 (초기값 true)
+  const [dataLoading, setDataLoading] = useState(true);
 
   const [keyword, setKeyword] = useState("");
 
@@ -51,7 +72,11 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
+    // 맵 로더가 준비되지 않았으면 대기
+    if (mapLoading) return;
+
     const fetchAndGeocodeHospitals = async () => {
+      setDataLoading(true); // 데이터 로딩 시작
       try {
         const [hospitalsRes, favoritesRes] = await Promise.allSettled([
           hospitalService.getHospitals(),
@@ -71,6 +96,9 @@ export default function Page() {
             favoriteList.forEach((item: any) => myFavoriteIds.add(item.id));
           }
         }
+
+        // 스켈레톤 확인용 지연 (0.5초)
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
         const geocoder = new window.kakao.maps.services.Geocoder();
         const promises = dbData.map((item: any) => {
@@ -95,11 +123,13 @@ export default function Page() {
         setFilteredHospitals(validHospitals);
       } catch (err) {
         console.error("데이터 로드 실패:", err);
+      } finally {
+        setDataLoading(false); // 데이터 로딩 종료
       }
     };
 
-    if (!loading) fetchAndGeocodeHospitals();
-  }, [loading]);
+    fetchAndGeocodeHospitals();
+  }, [mapLoading]); // mapLoading이 false가 되면 실행
 
   const categories = useMemo(() => {
     const sets = new Set(hospitals.map((h) => h.treatCategory));
@@ -161,13 +191,11 @@ export default function Page() {
   const handleHospitalClick = (h: any) => {
     setSelectedId(h.id);
 
-    // 모바일에서는 지도가 아래에 있으므로 지도로 스크롤 이동
     if (window.innerWidth < 1024) {
       const mapElement = document.getElementById("hospital-map-section");
 
       if (mapElement) {
-        // [수정] scrollIntoView 대신 좌표 계산 방식 사용
-        const headerOffset = 200; // 💡 px 만큼 여유를 두고 스크롤 (원하는 만큼 조절 가능)
+        const headerOffset = 200;
         const elementPosition = mapElement.getBoundingClientRect().top;
         const offsetPosition = elementPosition + window.scrollY - headerOffset;
 
@@ -196,7 +224,8 @@ export default function Page() {
     setSelectedId(null);
   };
 
-  if (loading)
+  // [UI] 맵 로딩 중일 때 전체 화면 로딩
+  if (mapLoading)
     return (
       <div className="h-screen flex items-center justify-center bg-white">
         <Loader2 className="animate-spin text-green-500" size={40} />
@@ -283,100 +312,131 @@ export default function Page() {
                 </p>
               </div>
               <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
-                {filteredHospitals.length}개
+                {/* 로딩 중일 땐 개수 대신 ... 표시 */}
+                {dataLoading ? "..." : `${filteredHospitals.length}개`}
               </span>
             </div>
 
-            {filteredHospitals.length === 0 && (
-              <div className="py-20 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 border-dashed">
-                <Search className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-slate-400 font-bold">
-                  검색 결과가 없습니다.
+            {/* [렌더링 분기] */}
+            {dataLoading ? (
+              // 1. 데이터 로딩 중 (스켈레톤)
+              Array(4)
+                .fill(0)
+                .map((_, i) => <HospitalListSkeleton key={i} />)
+            ) : filteredHospitals.length === 0 ? (
+              // 2. 결과 없음 (Empty State)
+              <div className="py-20 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 border-dashed relative overflow-hidden">
+                {/* 배경 데코레이션 */}
+                <div className="absolute top-4 right-4 text-4xl opacity-10 rotate-[15deg]">
+                  🚑
+                </div>
+                <div className="absolute bottom-4 left-4 text-4xl opacity-10 rotate-[-10deg]">
+                  🩺
+                </div>
+
+                {/* 스티커 이모지 */}
+                <div className="relative mb-6 group cursor-default select-none">
+                  <div className="text-[60px] drop-shadow-xl filter grayscale opacity-80 relative z-10">
+                    🏥
+                  </div>
+                  <div className="absolute -top-3 -right-3 text-[40px] drop-shadow-md animate-bounce z-20">
+                    🤔
+                  </div>
+                </div>
+
+                <p className="text-slate-800 font-bold text-lg mb-1">
+                  검색된 병원이 없습니다.
+                </p>
+                <p className="text-slate-400 text-xs font-medium">
+                  다른 키워드로 검색하거나 필터를 변경해보세요.
                 </p>
               </div>
-            )}
-
-            {filteredHospitals.slice(0, visibleCount).map((h) => (
-              <div
-                key={h.id}
-                onClick={() => handleHospitalClick(h)}
-                className={`group bg-white rounded-[2.5rem] p-8 border transition-all cursor-pointer relative ${
-                  selectedId === h.id
-                    ? "border-green-500 shadow-2xl shadow-green-500/10 -translate-y-1"
-                    : "border-slate-100 hover:border-green-200 shadow-sm"
-                }`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-[10px] font-black rounded-md uppercase tracking-widest shadow-lg shadow-green-200">
-                      {h.treatCategory}
-                    </div>
-                    <button
-                      onClick={(e) => toggleFavorite(e, h.id)}
-                      className={`w-9 h-9 ml-2 rounded-full flex items-center justify-center transition-all ${
-                        h.isFavorite
-                          ? "bg-red-50 text-red-500"
-                          : "bg-slate-50 text-slate-300 hover:bg-slate-100"
-                      }`}
-                    >
-                      <Heart
-                        size={18}
-                        className={h.isFavorite ? "fill-red-500" : ""}
-                      />
-                    </button>
-                  </div>
-
+            ) : (
+              // 3. 데이터 리스트
+              <>
+                {filteredHospitals.slice(0, visibleCount).map((h) => (
                   <div
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
+                    key={h.id}
+                    onClick={() => handleHospitalClick(h)}
+                    className={`group bg-white rounded-[2.5rem] p-8 border transition-all cursor-pointer relative ${
                       selectedId === h.id
-                        ? "bg-green-600 text-white shadow-lg shadow-green-200"
-                        : "bg-slate-50 text-slate-300 group-hover:bg-slate-100"
+                        ? "border-green-500 shadow-2xl shadow-green-500/10 -translate-y-1"
+                        : "border-slate-100 hover:border-green-200 shadow-sm"
                     }`}
                   >
-                    <MapIcon size={20} />
-                  </div>
-                </div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-[10px] font-black rounded-md uppercase tracking-widest shadow-lg shadow-green-200">
+                          {h.treatCategory}
+                        </div>
+                        <button
+                          onClick={(e) => toggleFavorite(e, h.id)}
+                          className={`w-9 h-9 ml-2 rounded-full flex items-center justify-center transition-all ${
+                            h.isFavorite
+                              ? "bg-red-50 text-red-500"
+                              : "bg-slate-50 text-slate-300 hover:bg-slate-100"
+                          }`}
+                        >
+                          <Heart
+                            size={18}
+                            className={h.isFavorite ? "fill-red-500" : ""}
+                          />
+                        </button>
+                      </div>
 
-                <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tight line-clamp-1">
-                  {h.name}
-                </h4>
-                <div className="flex flex-col gap-3 mb-8 text-slate-500 text-sm font-medium">
-                  <div className="flex items-center gap-2.5">
-                    <MapPin size={16} className="text-green-500 shrink-0" />
-                    <span className="line-clamp-1">{h.address}</span>
+                      <div
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
+                          selectedId === h.id
+                            ? "bg-green-600 text-white shadow-lg shadow-green-200"
+                            : "bg-slate-50 text-slate-300 group-hover:bg-slate-100"
+                        }`}
+                      >
+                        <MapIcon size={20} />
+                      </div>
+                    </div>
+
+                    <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tight line-clamp-1">
+                      {h.name}
+                    </h4>
+                    <div className="flex flex-col gap-3 mb-8 text-slate-500 text-sm font-medium">
+                      <div className="flex items-center gap-2.5">
+                        <MapPin size={16} className="text-green-500 shrink-0" />
+                        <span className="line-clamp-1">{h.address}</span>
+                      </div>
+                    </div>
+                    <div className="pt-6 border-t border-dashed border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        <span className="text-[11px] font-black text-slate-400 uppercase">
+                          Clinic Open
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/hospital/${h.id}`);
+                        }}
+                        className="flex items-center gap-2 px-7 py-3.5 bg-slate-900 text-white rounded-2xl text-[13px] font-bold hover:bg-green-600 transition-all shadow-xl shadow-slate-200"
+                      >
+                        진료 정보 보기 <ArrowRight size={16} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="pt-6 border-t border-dashed border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span className="text-[11px] font-black text-slate-400 uppercase">
-                      Clinic Open
-                    </span>
-                  </div>
+                ))}
+
+                {visibleCount < filteredHospitals.length && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/hospital/${h.id}`);
-                    }}
-                    className="flex items-center gap-2 px-7 py-3.5 bg-slate-900 text-white rounded-2xl text-[13px] font-bold hover:bg-green-600 transition-all shadow-xl shadow-slate-200"
+                    onClick={() => setVisibleCount((v) => v + 5)}
+                    className="w-full py-6 bg-white border-2 border-slate-100 rounded-[2.2rem] text-slate-400 font-black text-sm hover:text-green-600 transition-all flex items-center justify-center gap-2"
                   >
-                    진료 정보 보기 <ArrowRight size={16} />
+                    <Plus size={20} /> 결과 더 보기
                   </button>
-                </div>
-              </div>
-            ))}
-
-            {visibleCount < filteredHospitals.length && (
-              <button
-                onClick={() => setVisibleCount((v) => v + 5)}
-                className="w-full py-6 bg-white border-2 border-slate-100 rounded-[2.2rem] text-slate-400 font-black text-sm hover:text-green-600 transition-all flex items-center justify-center gap-2"
-              >
-                <Plus size={20} /> 결과 더 보기
-              </button>
+                )}
+              </>
             )}
           </div>
 
-          {/* 우측 지도 섹션 (모바일에서 아래로 내려감) */}
+          {/* 우측 지도 섹션 */}
           <div
             id="hospital-map-section"
             className="w-full h-[500px] lg:h-[calc(100vh-140px)] lg:col-span-3 lg:sticky lg:top-[100px] lg:self-start mt-8 lg:mt-0 order-2"

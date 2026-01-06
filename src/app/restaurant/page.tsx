@@ -2,61 +2,69 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-// [수정] userService를 추가로 import 해야 합니다.
 import { restaurantService, userService } from "@/api/services";
 import { RestaurantData } from "@/types/restaurant";
-import { MapPin, Loader2, Heart, Search, X } from "lucide-react";
+import { MapPin, Heart, Search, X } from "lucide-react";
 import Pagination from "@/components/common/Pagination";
+
+// [New] 맛집 카드 스켈레톤
+const RestaurantSkeleton = () => (
+  <div className="bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm animate-pulse h-[380px] flex flex-col">
+    <div className="h-48 bg-slate-200 w-full" /> {/* 이미지 */}
+    <div className="p-6 flex-1 space-y-3">
+      <div className="h-7 bg-slate-200 rounded w-3/4" /> {/* 이름 */}
+      <div className="h-4 bg-slate-200 rounded w-1/2" /> {/* 주소 */}
+      <div className="h-4 bg-slate-200 rounded w-full mt-6" /> {/* 메뉴 */}
+    </div>
+  </div>
+);
 
 export default function RestaurantListPage() {
   const [restaurants, setRestaurants] = useState<RestaurantData[]>([]);
   const [filteredList, setFilteredList] = useState<RestaurantData[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("전체");
+
+  // [Fix] 초기 로딩 true (스켈레톤 즉시 노출)
   const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState("");
-
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // [수정된 로직] 전체 맛집과 내 즐겨찾기 목록을 동시에 가져와서 병합함
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
 
-        // 1. 맛집 리스트와 즐겨찾기 리스트 동시 요청 (로그인 안 된 경우 대비 allSettled 사용)
+        // 맛집 리스트와 즐겨찾기 동시 요청
         const [restaurantsRes, favoritesRes] = await Promise.allSettled([
           restaurantService.getRestaurants(),
-          userService.getFavorites(), // /mypage/favorites API 호출
+          userService.getFavorites(),
         ]);
+
+        // 스켈레톤 확인용 지연 (0.5초)
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
         let allRestaurants: RestaurantData[] = [];
         const myFavoriteIds = new Set<number>();
 
-        // 2. 전체 맛집 데이터 확보
         if (restaurantsRes.status === "fulfilled") {
           allRestaurants = restaurantsRes.value.data;
         }
 
-        // 3. 내 즐겨찾기 ID 확보 (로그인 상태일 때만 성공)
         if (favoritesRes.status === "fulfilled") {
-          // 즐겨찾기 API 응답이 배열이라고 가정
           const favoriteList = favoritesRes.value.data;
           if (Array.isArray(favoriteList)) {
             favoriteList.forEach((item: any) => myFavoriteIds.add(item.id));
           }
         }
 
-        // 4. 데이터 병합 (즐겨찾기 여부 isFavorite 덮어쓰기)
         const mergedList = allRestaurants.map((item) => ({
           ...item,
           isFavorite: myFavoriteIds.has(item.id),
         }));
 
         setRestaurants(mergedList);
-        // 초기 로드 시에는 filteredList에도 병합된 데이터를 넣어줌
-        // (단, 아래쪽 필터링 useEffect가 곧바로 돌기 때문에 시각적 차이는 없음)
         setFilteredList(mergedList);
       } catch (error) {
         console.error("Error fetching restaurants:", error);
@@ -70,19 +78,18 @@ export default function RestaurantListPage() {
   useEffect(() => {
     let result = restaurants;
 
-    // 1. 카테고리 필터
+    // 카테고리 필터
     if (selectedCategory !== "전체") {
       result = result.filter((item) => item.restCategory === selectedCategory);
     }
 
-    // 2. 검색어 필터 (다중 키워드 + Null Safety)
+    // 검색어 필터
     const trimmedKeyword = keyword.trim();
     if (trimmedKeyword !== "") {
       const searchTerms = trimmedKeyword.split(/\s+/);
-
       result = result.filter((item) => {
         const name = item.name || "";
-        const category = item.restCategory || ""; // restCategory 사용 확인 필요
+        const category = item.restCategory || "";
         const address = item.address || "";
         const menu = (item.menu || []).join(" ");
         const bestMenu = item.bestMenu || "";
@@ -109,12 +116,10 @@ export default function RestaurantListPage() {
 
     try {
       await restaurantService.toggleFavorite(id);
-
       const updateState = (list: RestaurantData[]) =>
         list.map((item) =>
           item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
         );
-
       setRestaurants(updateState(restaurants));
       setFilteredList(updateState(filteredList));
     } catch (error) {
@@ -126,13 +131,6 @@ export default function RestaurantListPage() {
   const handleFilter = (category: string) => {
     setSelectedCategory(category);
     setCurrentPage(1);
-    if (category === "전체") {
-      setFilteredList(restaurants);
-    } else {
-      setFilteredList(
-        restaurants.filter((item) => item.restCategory === category)
-      );
-    }
   };
 
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
@@ -141,16 +139,8 @@ export default function RestaurantListPage() {
     currentPage * itemsPerPage
   );
 
-  if (loading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center">
-        <Loader2 className="animate-spin text-green-500 w-10 h-10" />
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full bg-[#fcfcfc] min-h-screen pb-24">
+    <div className="w-full bg-[#fcfcfc] min-h-screen pb-24 font-pretendard">
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 mb-3 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight w-fit">
@@ -226,75 +216,112 @@ export default function RestaurantListPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 mt-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {currentItems.map((item) => (
-            <div key={item.id} className="relative group">
-              {/* 즐겨찾기 버튼 */}
-              <button
-                onClick={(e) => toggleFavorite(e, item.id)}
-                className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm transition-all hover:scale-110 active:scale-90 border border-slate-100"
-              >
-                <Heart
-                  size={18}
-                  className={`${
-                    item.isFavorite
-                      ? "fill-orange-500 text-orange-500"
-                      : "text-slate-400"
-                  } transition-colors`}
-                />
-              </button>
-
-              <Link href={`/restaurant/${item.id}`} className="block h-full">
-                <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-slate-100 h-full flex flex-col">
-                  <div className="relative aspect-video overflow-hidden">
-                    <img
-                      src={`/images/restaurantImages/${item.imagePath}`}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      alt={item.name}
-                    />
-                    <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-green-600 shadow-sm">
-                      {item.restCategory}
-                    </div>
-                  </div>
-
-                  <div className="p-6 flex flex-col grow">
-                    <h3 className="text-lg font-black text-slate-900 mb-2 group-hover:text-green-600 transition-colors">
-                      {item.name}
-                    </h3>
-                    <div className="flex items-center gap-1 text-slate-400 text-[11px] mb-4 font-medium">
-                      <MapPin size={12} className="text-slate-300" />
-                      <span className="line-clamp-1">{item.address}</span>
-                    </div>
-
-                    <div className="mt-auto pt-4 border-t border-slate-50 flex flex-col gap-1">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-                        Best Menu
-                      </span>
-                      <span className="text-orange-600 font-bold text-sm truncate">
-                        {item.bestMenu || "추천메뉴"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Link>
+        {/* 콘텐츠 렌더링 */}
+        {loading ? (
+          // [New] 로딩 시 스켈레톤 표시
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {Array(8)
+              .fill(0)
+              .map((_, i) => (
+                <RestaurantSkeleton key={`skeleton-${i}`} />
+              ))}
+          </div>
+        ) : filteredList.length === 0 ? (
+          // [New] 결과 없음 (Empty State - 스티커 적용)
+          <div className="py-32 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-dashed border-gray-200 text-center relative overflow-hidden">
+            {/* 배경 데코레이션 */}
+            <div className="absolute top-10 right-10 text-6xl opacity-5 rotate-[15deg] select-none pointer-events-none">
+              🍕
             </div>
-          ))}
-        </div>
+            <div className="absolute bottom-10 left-10 text-6xl opacity-5 rotate-[-15deg] select-none pointer-events-none">
+              🍜
+            </div>
 
-        {filteredList.length === 0 && (
-          <div className="w-full py-20 text-center">
-            <p className="text-slate-400 font-medium">
-              선택하신 카테고리의 맛집이 아직 등록되지 않았습니다.
+            {/* 스티커 */}
+            <div className="relative mb-8 group cursor-default select-none">
+              <div className="text-[80px] drop-shadow-2xl filter hover:scale-110 transition-transform duration-300 rotate-[-5deg] z-10 relative">
+                🍳
+              </div>
+              <div className="absolute -top-6 -right-6 text-[50px] drop-shadow-xl rotate-[15deg] animate-bounce z-20">
+                🤔
+              </div>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/10 blur-md rounded-full"></div>
+            </div>
+
+            <h3 className="text-2xl font-black text-slate-900 mb-2">
+              검색된 맛집이 없어요.
+            </h3>
+            <p className="text-slate-500 text-sm font-medium">
+              다른 검색어를 입력하거나 전체 목록을 확인해보세요!
             </p>
+          </div>
+        ) : (
+          // 데이터 리스트
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {currentItems.map((item) => (
+              <div key={item.id} className="relative group">
+                <button
+                  onClick={(e) => toggleFavorite(e, item.id)}
+                  className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm transition-all hover:scale-110 active:scale-90 border border-slate-100"
+                >
+                  <Heart
+                    size={18}
+                    className={`${
+                      item.isFavorite
+                        ? "fill-orange-500 text-orange-500"
+                        : "text-slate-400"
+                    } transition-colors`}
+                  />
+                </button>
+
+                <Link href={`/restaurant/${item.id}`} className="block h-full">
+                  <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-slate-100 h-full flex flex-col">
+                    <div className="relative aspect-video overflow-hidden">
+                      <img
+                        src={`/images/restaurantImages/${item.imagePath}`}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        alt={item.name}
+                      />
+                      <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-green-600 shadow-sm">
+                        {item.restCategory}
+                      </div>
+                    </div>
+
+                    <div className="p-6 flex flex-col grow">
+                      <h3 className="text-lg font-black text-slate-900 mb-2 group-hover:text-green-600 transition-colors">
+                        {item.name}
+                      </h3>
+                      <div className="flex items-center gap-1 text-slate-400 text-[11px] mb-4 font-medium">
+                        <MapPin size={12} className="text-slate-300" />
+                        <span className="line-clamp-1">{item.address}</span>
+                      </div>
+
+                      <div className="mt-auto pt-4 border-t border-slate-50 flex flex-col gap-1">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+                          Best Menu
+                        </span>
+                        <span className="text-orange-600 font-bold text-sm truncate">
+                          {item.bestMenu || "추천메뉴"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            ))}
           </div>
         )}
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => setCurrentPage(page)}
-          themeColor="black"
-        />
+        {!loading && filteredList.length > 0 && (
+          <div className="mt-12">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              themeColor="black"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
