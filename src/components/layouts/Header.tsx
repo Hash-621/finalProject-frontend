@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import api from "@/api/axios";
 import Cookies from "js-cookie"; // [추가] 쿠키 라이브러리
 import Image from "next/image";
+import { authService, userService } from "@/api/services";
 
 export default function Header() {
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
@@ -62,19 +63,24 @@ export default function Header() {
     if (!confirm("로그아웃 하시겠습니까?")) return;
 
     try {
-      // 서버 로그아웃 호출 (필요한 경우만)
-      await api.post("/user/logout").catch(() => {});
+      // 1. 서버에 로그아웃 알림 (실패해도 무시)
+      // userService를 통해 호출합니다.
+      await authService
+        .logout()
+        .catch((err) => console.warn("서버 로그아웃 실패:", err));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      // 2. [중요] 서버 응답 성공/실패 여부와 상관없이 브라우저에서는 무조건 로그아웃 처리
 
-      // 핵심: 쿠키 삭제 (path 설정 중요)
       Cookies.remove("token", { path: "/" });
 
+      // 상태 변경
       setIsLoggedIn(false);
+
       alert("로그아웃 되었습니다.");
 
-      // 상태 완전 초기화를 위해 새로고침 이동
-      window.location.href = "/";
-    } catch (error) {
-      Cookies.remove("token", { path: "/" });
+      // 메인으로 이동 및 새로고침
       window.location.href = "/";
     }
   };

@@ -1,8 +1,9 @@
 import api from "@/api/axios";
 
-// 1. 유저 관련 서비스 (프로필, 정보 수정 등)
-export const userService = {
+// 1. 인증 관련 서비스 (로그인, 회원가입 - 페이지에서 사용하는 부분)
+export const authService = {
   login: (data: any) => api.post("/user/login", data),
+  logout: () => api.post("/user/logout"),
   signUp: (data: any) => api.post("/user/join", data),
   checkIdDuplicate: (loginId: string) =>
     api.get("/user/check-id", { params: { loginId } }),
@@ -10,13 +11,6 @@ export const userService = {
     api.post("/user/checkemail/get-token", { email }),
   verifyEmailCode: (data: { email: string; token: string }) =>
     api.post("/user/checkemail", data),
-  getUserInfo: () => api.get("/mypage/info"),
-  updateUserInfo: (data: any) => api.put("/mypage/info", data),
-  getFavorites: () => api.get("/mypage/favorites"),
-};
-
-// 2. 인증 관련 서비스 (로그인, 회원가입 - 페이지에서 사용하는 부분)
-export const authService = {
   // 카카오 로그인
   kakaoLogin: (code: string) => api.get(`/auth/kakao/callback?code=${code}`),
 
@@ -27,6 +21,13 @@ export const authService = {
         "Content-Type": "application/json",
       },
     }),
+};
+
+// 2. 유저 관련 서비스 (프로필, 정보 수정 등)
+export const userService = {
+  getUserInfo: () => api.get("/mypage/info"),
+  updateUserInfo: (data: any) => api.put("/mypage/info", data),
+  getFavorites: () => api.get("/mypage/favorites"),
 };
 
 // 3. 채용 정보 관련 서비스

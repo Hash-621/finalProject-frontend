@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/common/Input";
 import Image from "next/image";
-import { userService } from "@/api/services";
+import { authService, userService } from "@/api/services";
 
 export default function SignUpPage() {
   const router = useRouter(); // 가입 완료 후 페이지 이동용
@@ -72,7 +72,7 @@ export default function SignUpPage() {
     if (!formData.loginId) return alert("아이디를 입력해주세요.");
 
     try {
-      const response = await userService.checkIdDuplicate(formData.loginId);
+      const response = await authService.checkIdDuplicate(formData.loginId);
       const isAvailable = response.data; // 백엔드 리턴값 확인 필요 (Boolean 가정)
 
       setIsIdChecked(isAvailable);
@@ -100,7 +100,7 @@ export default function SignUpPage() {
 
       // 2. 공백 제거된 이메일로 요청 전송
       // (주의: formData.email 대신 emailToSubmit 변수 사용)
-      const response = await userService.sendEmailVerification(emailToSubmit);
+      const response = await authService.sendEmailVerification(emailToSubmit);
 
       setEmailStatus("sent");
       setTimeLeft(180);
@@ -127,7 +127,7 @@ export default function SignUpPage() {
         token: formData.emailCode,
       };
 
-      const response = await userService.verifyEmailCode(checkEmailDto);
+      const response = await authService.verifyEmailCode(checkEmailDto);
 
       // 성공 시 (200 OK)
       if (response.status === 200) {
@@ -162,7 +162,7 @@ export default function SignUpPage() {
       console.log("서버로 전송될 데이터:", dataToSend);
 
       // 변환된 데이터(dataToSend)로 요청
-      await userService.signUp(dataToSend);
+      await authService.signUp(dataToSend);
 
       alert("회원가입이 성공적으로 완료되었습니다!");
       router.push("/sign-in");
