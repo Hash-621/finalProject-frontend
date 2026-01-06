@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Script from "next/script";
-// [수정] userService 추가 임포트
+import api from "@/api/axios";
 import { restaurantService, userService } from "@/api/services";
 import { RestaurantData } from "@/types/restaurant";
 import {
@@ -18,7 +18,39 @@ import {
   ExternalLink,
   Info,
   PhoneOff,
+  ArrowRight,
+  ImageIcon,
 } from "lucide-react";
+
+// --- [기존 유지] 타입 및 함수들 ---
+interface BlogItem {
+  title: string;
+  link: string;
+  description: string;
+  bloggername: string;
+  bloggerlink: string;
+  postdate: string;
+  thumbnail?: string;
+}
+
+const cleanText = (text: string) => {
+  if (!text) return "";
+  return text
+    .replace(/(<([^>]+)>)/gi, "")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ");
+};
+
+const formatDate = (dateString: string) => {
+  if (!dateString || dateString.length !== 8) return dateString;
+  return `${dateString.slice(0, 4)}.${dateString.slice(
+    4,
+    6
+  )}.${dateString.slice(6)}`;
+};
 
 export default function RestaurantDetail() {
   const params = useParams();
@@ -27,15 +59,23 @@ export default function RestaurantDetail() {
 
   const [restaurant, setRestaurant] = useState<RestaurantData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [blogs, setBlogs] = useState<BlogItem[]>([]);
+  const [blogLoading, setBlogLoading] = useState(true);
 
-  // [수정] 데이터 로드 로직 (전체 리스트 + 즐겨찾기 리스트 병합)
+  // [추가] 레이아웃의 overflow 속성을 강제로 풀어주어 sticky가 작동하게 함
+  useEffect(() => {
+    const wrapElement = document.querySelector(".wrap") as HTMLElement;
+    if (wrapElement) wrapElement.style.overflow = "visible";
+    return () => {
+      if (wrapElement) wrapElement.style.overflow = "hidden";
+    };
+  }, []);
+
+  // 1. 맛집 정보 로드
   useEffect(() => {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-
-        // 1. 전체 맛집 리스트와 내 즐겨찾기 리스트 동시 요청
-        // (단일 조회 API getRestaurantDetail 대신 getRestaurants를 쓰고 계셔서 그대로 유지합니다)
         const [restaurantsRes, favoritesRes] = await Promise.allSettled([
           restaurantService.getRestaurants(),
           userService.getFavorites(),
@@ -44,12 +84,9 @@ export default function RestaurantDetail() {
         let allRestaurants: RestaurantData[] = [];
         const myFavoriteIds = new Set<number>();
 
-        // 2. 전체 맛집 데이터 확보
         if (restaurantsRes.status === "fulfilled") {
           allRestaurants = restaurantsRes.value.data;
         }
-
-        // 3. 내 즐겨찾기 ID 확보
         if (favoritesRes.status === "fulfilled") {
           const favoriteList = favoritesRes.value.data;
           if (Array.isArray(favoriteList)) {
@@ -57,21 +94,18 @@ export default function RestaurantDetail() {
           }
         }
 
-        // 4. 현재 페이지 ID에 해당하는 식당 찾기 + 즐겨찾기 여부 반영
         const targetId = Number(id);
         const detail = allRestaurants.find(
           (item: RestaurantData) => item.id === targetId
         );
 
         if (detail) {
-          // 즐겨찾기 상태 덮어쓰기
           const mergedDetail = {
             ...detail,
             isFavorite: myFavoriteIds.has(targetId),
           };
           setRestaurant(mergedDetail);
         } else {
-          // 식당이 없으면 목록으로 이동
           router.push("/restaurant");
         }
       } catch (error) {
@@ -80,31 +114,49 @@ export default function RestaurantDetail() {
         setLoading(false);
       }
     };
-
     if (id) fetchDetail();
   }, [id, router]);
 
-  // 카카오맵 렌더링 함수 (기존 유지)
+  // 2. 블로그 로드
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      if (!id) return;
+      try {
+        setBlogLoading(true);
+        const response = await api.get(`/restaurant/${id}/blogs`);
+        const blogItems = response.data.items || response.data || [];
+
+        if (Array.isArray(blogItems)) {
+          setBlogs(blogItems);
+        } else {
+          setBlogs([]);
+        }
+      } catch (error) {
+        console.error("블로그 로드 실패:", error);
+      } finally {
+        setBlogLoading(false);
+      }
+    };
+    fetchBlogs();
+  }, [id]);
+
+  // 지도 로직
   const initMap = (address: string, name: string) => {
     const { kakao } = window as any;
     if (!kakao || !kakao.maps) return;
-
     kakao.maps.load(() => {
       const container = document.getElementById("map");
       if (!container) return;
-
       const options = {
         center: new kakao.maps.LatLng(36.3504, 127.3845),
         level: 3,
       };
       const map = new kakao.maps.Map(container, options);
       const geocoder = new kakao.maps.services.Geocoder();
-
       geocoder.addressSearch(address, (result: any, status: any) => {
         if (status === kakao.maps.services.Status.OK) {
           const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
           new kakao.maps.Marker({ map, position: coords });
-
           const infowindow = new kakao.maps.InfoWindow({
             content: `<div style="width:150px;text-align:center;padding:6px 0;font-size:12px;font-weight:bold;color:#334155;">${name}</div>`,
           });
@@ -125,21 +177,15 @@ export default function RestaurantDetail() {
     }
   }, [restaurant, loading]);
 
-  // [수정] 즐겨찾기 토글 핸들러 (낙관적 업데이트 적용)
   const handleFavoriteClick = async () => {
     if (!restaurant) return;
-
-    // 1. UI 먼저 업데이트 (낙관적)
     const previousState = { ...restaurant };
     setRestaurant({ ...restaurant, isFavorite: !restaurant.isFavorite });
-
     try {
-      // 2. 서버 요청
       await restaurantService.toggleFavorite(restaurant.id);
     } catch (error) {
-      // 실패 시 롤백
       setRestaurant(previousState);
-      alert("로그인이 필요합니다.");
+      alert("로그인이 필요하거나 처리에 실패했습니다.");
     }
   };
 
@@ -177,7 +223,6 @@ export default function RestaurantDetail() {
         >
           <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent" />
         </div>
-
         <div className="absolute top-8 left-6 md:left-12 z-20">
           <button
             onClick={() => router.back()}
@@ -190,7 +235,6 @@ export default function RestaurantDetail() {
             <span className="font-bold text-sm">목록으로</span>
           </button>
         </div>
-
         <div className="absolute bottom-12 left-0 right-0 z-10">
           <div className="max-w-7xl mx-auto px-6 md:px-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-500 text-white text-[11px] font-black rounded-lg mb-4 uppercase tracking-widest">
@@ -212,6 +256,7 @@ export default function RestaurantDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* 왼쪽 컬럼 */}
           <div className="lg:col-span-8 space-y-10">
+            {/* 시그니처 메뉴 */}
             <section className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100">
               <div className="flex items-center gap-3 mb-10">
                 <div className="p-3 bg-orange-100 rounded-2xl text-orange-600">
@@ -226,7 +271,6 @@ export default function RestaurantDetail() {
                   </p>
                 </div>
               </div>
-
               <div className="relative p-8 md:p-10 bg-slate-50 rounded-[2.5rem] border border-slate-100 overflow-hidden group">
                 <div className="relative z-10">
                   <span className="text-orange-500 font-black text-xs uppercase tracking-widest mb-3 block">
@@ -246,6 +290,7 @@ export default function RestaurantDetail() {
               </div>
             </section>
 
+            {/* 기본 정보 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5">
                 <div className="w-14 h-14 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shrink-0">
@@ -284,11 +329,96 @@ export default function RestaurantDetail() {
                 </div>
               </div>
             </div>
+
+            {/* 블로그 리뷰 섹션 */}
+            <section className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+              <div className="flex items-center gap-3 mb-10">
+                <div className="p-3 bg-green-100 rounded-2xl text-green-600">
+                  <Info size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900">
+                    생생 블로그 리뷰
+                  </h2>
+                  <p className="text-slate-400 text-sm font-medium">
+                    다녀온 사람들의 솔직한 후기를 확인하세요
+                  </p>
+                </div>
+              </div>
+
+              {blogLoading ? (
+                <div className="grid gap-4">
+                  {[1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="bg-slate-50 h-32 rounded-3xl animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : blogs.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                  <p>등록된 리뷰가 없습니다.</p>
+                </div>
+              ) : (
+                <div className="grid gap-6">
+                  {blogs.slice(0, 5).map((blog, idx) => (
+                    <a
+                      key={idx}
+                      href={blog.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex flex-col md:flex-row gap-6 p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-lg hover:border-green-200 transition-all duration-300"
+                    >
+                      <div className="flex-1 flex flex-col">
+                        <h3
+                          className="text-lg font-bold text-slate-900 mb-2 line-clamp-2 group-hover:text-green-600 transition-colors"
+                          dangerouslySetInnerHTML={{ __html: blog.title }}
+                        />
+                        <p
+                          className="text-sm text-slate-500 mb-4 line-clamp-2 leading-relaxed"
+                          dangerouslySetInnerHTML={{
+                            __html: blog.description,
+                          }}
+                        />
+                        <div className="mt-auto flex items-center justify-between text-xs text-slate-400 font-medium pt-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500 font-bold">
+                              by {blog.bloggername}
+                            </span>
+                            <span className="w-px h-2.5 bg-slate-300"></span>
+                            <span>{formatDate(blog.postdate)}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1 group-hover:text-green-600 transition-colors">
+                            리뷰 보러가기 <ArrowRight size={12} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {blog.thumbnail && (
+                        <div className="w-full md:w-32 h-48 md:h-32 shrink-0 rounded-2xl overflow-hidden bg-slate-200 relative order-first md:order-last">
+                          <img
+                            src={blog.thumbnail}
+                            alt="blog thumbnail"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                            onError={(e) =>
+                              (e.currentTarget.style.display = "none")
+                            }
+                          />
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
 
           {/* 오른쪽 사이드바 */}
           <aside className="lg:col-span-4 space-y-6">
-            <div className="bg-white p-8 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-10">
+            {/* [수정] sticky top-10 -> sticky top-32 로 변경하여 헤더에 가려지지 않고 따라오게 함 */}
+            <div className="bg-white p-8 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-25">
               <div className="flex flex-col gap-3 mb-8">
                 <button
                   onClick={handleFavoriteClick}
@@ -306,8 +436,6 @@ export default function RestaurantDetail() {
                     ? "나의 맛집 저장됨"
                     : "맛집 리스트 추가"}
                 </button>
-
-                {/* 지금 바로 전화하기 버튼 */}
                 <a
                   href={isPhoneAvailable ? `tel:${restaurant.phone}` : "#"}
                   onClick={(e) => !isPhoneAvailable && e.preventDefault()}
@@ -325,7 +453,6 @@ export default function RestaurantDetail() {
                   {isPhoneAvailable ? "지금 바로 전화하기" : "전화 연결 불가"}
                 </a>
               </div>
-
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
@@ -342,12 +469,10 @@ export default function RestaurantDetail() {
                     큰 지도보기 <ExternalLink size={12} />
                   </a>
                 </div>
-
                 <div
                   id="map"
                   className="w-full h-[250px] rounded-4xl bg-slate-100 border border-slate-100 overflow-hidden shadow-inner"
                 />
-
                 <div className="p-6 bg-slate-900 rounded-4xl text-white">
                   <div className="flex items-center gap-2 text-orange-400 mb-3">
                     <Clock size={18} />
@@ -359,7 +484,6 @@ export default function RestaurantDetail() {
                     {restaurant.openTime ?? "매장 운영 정보를 준비 중입니다."}
                   </p>
                 </div>
-
                 <a
                   href={`https://map.kakao.com/link/to/${encodeURIComponent(
                     restaurant.name ?? ""

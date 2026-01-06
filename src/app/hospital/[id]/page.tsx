@@ -34,6 +34,13 @@ export default function HospitalDetail() {
   const [loading, setLoading] = useState(true);
 
   // [수정] 데이터 로드 로직 (병원 상세 + 즐겨찾기 상태 병합)
+  useEffect(() => {
+    const wrapElement = document.querySelector(".wrap") as HTMLElement;
+    if (wrapElement) wrapElement.style.overflow = "visible";
+    return () => {
+      if (wrapElement) wrapElement.style.overflow = "hidden";
+    };
+  }, []);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -117,7 +124,7 @@ export default function HospitalDetail() {
 
       setHospital(previousState);
 
-      alert("로그인이 필요하거나 처리에 실패했습니다.");
+      alert("로그인이 필요합니다.");
     }
   };
 
@@ -192,8 +199,8 @@ export default function HospitalDetail() {
       {/* 2. 상세 컨텐츠 섹션 */}
 
       <section className="relative z-20 md:-mt-12 bg-white rounded-t-[48px] flex-1">
-        <div className="max-w-6xl mx-auto px-6 py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+        <div className="max-w-6xl mx-auto px-6 py-16 h-400">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 h-400">
             <div className="lg:col-span-8 space-y-16">
               {/* 진료 철학/소개 */}
 
