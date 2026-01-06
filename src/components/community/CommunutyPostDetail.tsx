@@ -2,245 +2,461 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/api/axios";
+import api from "@/api/axios"; // 경로에 맞게 수정
 import {
+  Clock,
+  Eye,
   ChevronLeft,
-  Loader2,
-  MapPin,
-  Quote as QuoteIcon,
   Send,
+  Loader2,
+  Trash2,
+  CornerDownRight,
+  MessageSquare,
 } from "lucide-react";
 import Cookies from "js-cookie";
 import { userService } from "@/api/services";
 
+// 테마 설정
+const THEMES = {
+  green: {
+    badge: "bg-green-50 text-green-600",
+    profileBg: "bg-linear-to-br from-green-500 to-green-600",
+    profileShadow: "shadow-green-100",
+    textMain: "text-green-600",
+    button: "bg-green-600 hover:bg-green-700 shadow-green-100",
+    icon: "text-green-500",
+    commentCount: "bg-green-50 text-green-600",
+    myBadge: "bg-green-50 text-green-600 border-green-100",
+    hoverText: "hover:text-green-600",
+    focusRing: "focus:ring-green-500/10",
+  },
+  blue: {
+    badge: "bg-blue-50 text-blue-600",
+    profileBg: "bg-linear-to-br from-blue-500 to-blue-600",
+    profileShadow: "shadow-blue-100",
+    textMain: "text-blue-600",
+    button: "bg-blue-600 hover:bg-blue-700 shadow-blue-100",
+    icon: "text-blue-500",
+    commentCount: "bg-blue-50 text-blue-600",
+    myBadge: "bg-blue-50 text-blue-600 border-blue-100",
+    hoverText: "hover:text-blue-600",
+    focusRing: "focus:ring-blue-500/10",
+  },
+};
+
+interface CommonPostDetailProps {
+  postId: string;
+  theme: "green" | "blue";
+  categoryLabel: string; // 예: Free Board, Recommendation
+  listPath: string; // 목록으로 돌아갈 경로
+  apiEndpoints: {
+    fetchPost: string; // 게시글 조회 API URL
+    deletePost?: string; // 게시글 삭제 API URL (옵션)
+    fetchComments: string; // 댓글 조회 API URL
+    postComment: string; // 댓글 작성 API URL
+    deleteComment: string; // 댓글 삭제 API URL
+  };
+}
+
 export default function CommunutyPostDetail({
   postId,
+  theme,
   categoryLabel,
   listPath,
   apiEndpoints,
-}: any) {
+}: CommonPostDetailProps) {
   const router = useRouter();
+  const styles = THEMES[theme];
+
   const [post, setPost] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // 댓글 관련 상태
   const [commentContent, setCommentContent] = useState("");
+  const [activeReplyId, setActiveReplyId] = useState<number | null>(null);
+  const [replyContent, setReplyContent] = useState("");
 
-  // [핵심] JSON 파싱 함수 (문자열이 없어질 때까지 재귀 파싱)
-  const deepParse = (content: any): any => {
-    if (!content) return null;
-    let temp = content;
-    try {
-      while (typeof temp === "string") {
-        const parsed = JSON.parse(temp);
-        if (parsed === temp) break;
-        temp = parsed;
-      }
-    } catch (e) {
-      return temp;
-    }
-    return temp;
-  };
+  // 유저 정보
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // 1. 유저 정보 및 게시글/댓글 데이터 로드
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
+        // 유저 정보 가져오기 (토큰 기반)
         const token = Cookies.get("token");
         if (token) {
-          const userRes = await userService.getUserInfo().catch(() => null);
-          if (userRes?.data) {
-            const data = userRes.data;
-            setCurrentUser({
-              userId: data.userId || data.id || data.loginId,
-              nickname: data.userNickname || data.nickname,
-            });
+          try {
+            const userRes = await userService.getUserInfo().catch(() => null);
+            if (userRes?.data) {
+              const data = userRes.data;
+              setCurrentUser({
+                userId: data.userId || data.id || data.loginId,
+                nickname: data.userNickname || data.nickname,
+              });
+            }
+          } catch (e) {
+            console.error("Auth check failed", e);
           }
         }
+
         const postRes = await api.get(apiEndpoints.fetchPost);
         setPost(postRes.data);
-        const commentRes = await api.get(apiEndpoints.fetchComments);
-        setComments(commentRes.data);
+
+        await fetchComments();
       } catch (err) {
-        console.error("데이터 로드 실패:", err);
+        console.error(err);
+        alert("게시글을 불러올 수 없습니다.");
         router.push(listPath);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [postId, apiEndpoints, listPath, router]);
 
-  const handleCommentSubmit = async () => {
-    if (!commentContent.trim() || !currentUser) return;
+    if (postId) fetchData();
+  }, [postId, listPath]);
+
+  const fetchComments = async () => {
+    try {
+      const res = await api.get(apiEndpoints.fetchComments);
+      const rawComments = res.data;
+
+      const commentMap = new Map();
+      const rootComments: any[] = [];
+
+      rawComments.forEach((c: any) =>
+        commentMap.set(c.id, { ...c, children: [] })
+      );
+
+      rawComments.forEach((c: any) => {
+        if (c.parentId) {
+          const parent = commentMap.get(c.parentId);
+          if (parent) parent.children.push(commentMap.get(c.id));
+        } else {
+          rootComments.push(commentMap.get(c.id));
+        }
+      });
+
+      setComments(rootComments);
+    } catch (err) {
+      console.error("댓글 로드 실패:", err);
+    }
+  };
+
+  const handleDeletePost = async () => {
+    if (!apiEndpoints.deletePost) return;
+    if (!confirm("정말로 이 글을 삭제하시겠습니까?")) return;
+
+    try {
+      await api.delete(apiEndpoints.deletePost);
+      alert("게시글이 삭제되었습니다.");
+      router.push(listPath);
+    } catch (error) {
+      console.error(error);
+      alert("삭제 실패했습니다.");
+    }
+  };
+
+  const handleCommentSubmit = async (parentId: number | null = null) => {
+    const content = parentId ? replyContent : commentContent;
+    if (!content.trim()) return alert("내용을 입력해주세요.");
+    if (!currentUser) return alert("로그인이 필요합니다.");
+
     try {
       await api.post(apiEndpoints.postComment, {
-        postId,
+        postId: postId,
         userId: currentUser.userId,
         userNickname: currentUser.nickname,
-        content: commentContent,
+        content: content,
+        parentId: parentId,
       });
-      setCommentContent("");
-      const res = await api.get(apiEndpoints.fetchComments);
-      setComments(res.data);
+
+      if (parentId) {
+        setReplyContent("");
+        setActiveReplyId(null);
+      } else {
+        setCommentContent("");
+      }
+      fetchComments();
     } catch (error) {
-      alert("댓글 등록 실패");
+      console.error(error);
+      alert("댓글 등록 중 오류가 발생했습니다.");
     }
   };
 
-  // [렌더링] 파싱된 데이터를 화면에 그리는 함수
-  const renderContent = (rawContent: any) => {
-    let data = deepParse(rawContent);
-
-    // 데이터 구조가 중첩되어 있을 경우 대비
-    if (data && data.content) {
-      data = deepParse(data.content);
+  const handleDeleteComment = async (commentId: number) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await api.post(apiEndpoints.deleteComment, { id: commentId });
+      fetchComments();
+    } catch (error) {
+      alert("댓글 삭제 실패");
     }
+  };
 
-    // 데이터가 없거나 형식이 안 맞을 때
-    if (!data || (!data.blocks && !data.ops)) {
-      // React-Quill로 작성된 글(HTML형태)일 수도 있으므로 dangerouslySetInnerHTML 처리
+  const renderComments = (list: any[]) => {
+    return list.map((comment) => {
+      const isAuthor =
+        currentUser && String(comment.userId) === String(currentUser.userId);
+      const isReply = !!comment.parentId;
+
       return (
-        <div className="max-w-[850px] mx-auto px-6 py-10 prose">
-          <div dangerouslySetInnerHTML={{ __html: String(rawContent || "") }} />
-        </div>
-      );
-    }
+        <div key={comment.id} className="w-full">
+          <div className={`flex ${isReply ? "mt-2" : "mt-6"}`}>
+            {isReply && (
+              <div className="flex flex-col items-end mr-3 pt-6 min-w-6">
+                <CornerDownRight className="text-slate-300 w-5 h-5" />
+              </div>
+            )}
+            <div
+              className={`flex-1 rounded-3xl p-6 transition-all ${
+                isReply
+                  ? "bg-[#F1F5F9] border border-slate-200/50"
+                  : "bg-white border border-slate-100 shadow-sm"
+              }`}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex items-center justify-center font-bold text-sm rounded-2xl ${
+                      isReply
+                        ? "w-8 h-8 bg-white text-slate-500 border border-slate-200"
+                        : `w-10 h-10 text-white ${styles.profileBg} shadow-lg ${styles.profileShadow}`
+                    }`}
+                  >
+                    {(comment.userNickname || "?")[0]}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-800 text-[15px]">
+                        {comment.userNickname}
+                      </span>
+                      {isAuthor && (
+                        <span
+                          className={`text-[10px] px-1.5 rounded font-bold border ${styles.myBadge}`}
+                        >
+                          나
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-400 font-medium mt-0.5">
+                      {comment.createdAt?.split("T")[0] || "날짜없음"}
+                    </div>
+                  </div>
+                </div>
 
-    // Editor.js 블록 렌더링
-    return (
-      <div className="w-full">
-        {data.headerImage && (
-          <div className="w-full h-[400px] md:h-[550px] relative mb-12">
-            <img
-              src={data.headerImage}
-              alt="Cover"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/30 flex flex-col justify-center items-center p-6 text-center">
-              <h1 className="text-white text-4xl md:text-5xl font-black mb-4">
-                {post?.title}
-              </h1>
-              <p className="text-white/80 font-bold tracking-widest text-xs border-t border-white/20 pt-4 uppercase">
-                {categoryLabel}
+                <div className="flex items-center gap-2">
+                  {!comment.isDelete && (
+                    <button
+                      onClick={() =>
+                        setActiveReplyId(
+                          activeReplyId === comment.id ? null : comment.id
+                        )
+                      }
+                      className={`text-xs font-bold text-slate-400 ${styles.hoverText} px-2 py-1 transition-colors`}
+                    >
+                      답글
+                    </button>
+                  )}
+                  {isAuthor && !comment.isDelete && (
+                    <button
+                      onClick={() => handleDeleteComment(comment.id)}
+                      className="text-slate-400 hover:text-red-500 p-1"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <p
+                className={`text-[15px] leading-relaxed pl-1 whitespace-pre-wrap ${
+                  comment.isDelete
+                    ? "text-slate-400 italic"
+                    : "text-slate-700 font-medium"
+                }`}
+              >
+                {comment.isDelete ? "삭제된 댓글입니다." : comment.content}
               </p>
+
+              {/* 답글 입력창 */}
+              {activeReplyId === comment.id && (
+                <div className="mt-5 pt-4 border-t border-slate-200/60 animate-in fade-in zoom-in-95 duration-200">
+                  <textarea
+                    value={replyContent}
+                    onChange={(e) => setReplyContent(e.target.value)}
+                    className={`w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm h-24 outline-none resize-none shadow-sm ${styles.focusRing} focus:ring-4`}
+                    placeholder={`@${comment.userNickname} 님에게 답글 남기기...`}
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-2 mt-2">
+                    <button
+                      onClick={() => setActiveReplyId(null)}
+                      className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg"
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={() => handleCommentSubmit(comment.id)}
+                      className={`${styles.button} text-white px-5 py-2 rounded-lg font-bold text-xs transition-all`}
+                    >
+                      등록하기
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        )}
-
-        <div className="max-w-[850px] mx-auto px-6 pb-20">
-          {!data.headerImage && (
-            <div className="mb-12 border-b pb-8">
-              <h1 className="text-4xl font-black text-slate-900 mb-4">
-                {post?.title}
-              </h1>
-              <div className="text-slate-400 text-sm">
-                {post?.userNickname} • {new Date().toLocaleDateString()}
-              </div>
+          {/* 대댓글 재귀 렌더링 */}
+          {comment.children?.length > 0 && (
+            <div className="pl-6 md:pl-12">
+              {renderComments(comment.children)}
             </div>
           )}
-
-          {data.blocks &&
-            data.blocks.map((block: any, idx: number) => {
-              const key = block.id || idx;
-              switch (block.type) {
-                case "header": {
-                  const HeaderTag = `h${block.data.level || 2}` as any;
-                  return (
-                    <HeaderTag key={key} className="text-2xl font-bold my-6">
-                      {block.data.text}
-                    </HeaderTag>
-                  );
-                }
-                case "paragraph":
-                  return (
-                    <p
-                      key={key}
-                      className="text-[18px] leading-[1.8] text-slate-700 mb-6"
-                      dangerouslySetInnerHTML={{ __html: block.data.text }}
-                    />
-                  );
-                case "image":
-                  return (
-                    <figure key={key} className="my-10 w-full">
-                      <div className="rounded-xl overflow-hidden border border-slate-100 shadow-sm">
-                        <img
-                          src={block.data.file.url}
-                          alt={block.data.caption}
-                          className="w-full h-auto"
-                          onError={(e) =>
-                            (e.currentTarget.src = "/no-image.png")
-                          }
-                        />
-                      </div>
-                      {block.data.caption && (
-                        <figcaption className="mt-3 text-center text-slate-400 text-sm">
-                          {block.data.caption}
-                        </figcaption>
-                      )}
-                    </figure>
-                  );
-                default:
-                  return null;
-              }
-            })}
         </div>
-      </div>
-    );
+      );
+    });
   };
 
-  if (loading || !post) {
+  if (loading)
     return (
-      <div className="min-h-screen flex justify-center items-center">
-        <Loader2 className="animate-spin text-emerald-500 w-10 h-10" />
+      <div className="min-h-screen flex justify-center items-center bg-[#F8FAFC]">
+        <Loader2 className={`animate-spin ${styles.textMain} w-10 h-10`} />
       </div>
     );
-  }
+  if (!post) return <div>게시글을 찾을 수 없습니다.</div>;
 
   return (
-    <div className="min-h-screen bg-white pb-24 font-sans">
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 h-16 flex items-center px-6">
-        <button
-          onClick={() => router.push(listPath)}
-          className="flex items-center text-slate-500 font-bold"
-        >
-          <ChevronLeft size={24} /> <span>List</span>
-        </button>
-      </nav>
-
-      <article>{renderContent(post.content)}</article>
-
-      {/* 댓글 영역 */}
-      <section className="max-w-[850px] mx-auto p-6">
-        <h3 className="text-xl font-bold mb-6">댓글 ({comments.length})</h3>
-        <div className="mb-10">
-          <textarea
-            value={commentContent}
-            onChange={(e) => setCommentContent(e.target.value)}
-            className="w-full p-4 border rounded-xl h-24 resize-none focus:ring-2 focus:ring-emerald-500 outline-none"
-            placeholder={
-              currentUser ? "댓글을 입력하세요..." : "로그인이 필요합니다."
-            }
-            disabled={!currentUser}
-          />
+    <div className="min-h-screen bg-[#F8FAFC] pb-24">
+      {/* 상단 네비게이션 */}
+      <nav className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100">
+        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <button
-            onClick={handleCommentSubmit}
-            className="mt-2 bg-[#00c73c] text-white px-6 py-2 rounded-lg font-bold float-right"
+            onClick={() => router.push(listPath)}
+            className={`group flex items-center text-slate-500 ${styles.hoverText} transition-colors`}
           >
-            등록
+            <ChevronLeft
+              size={20}
+              className="group-hover:-translate-x-1 transition-transform"
+            />
+            <span className="ml-1 font-bold">목록으로</span>
           </button>
         </div>
-        <div className="space-y-6 mt-16">
-          {comments.map((c, i) => (
-            <div key={i} className="border-b pb-4">
-              <div className="font-bold text-slate-800 mb-1">
-                {c.userNickname}
-              </div>
-              <div className="text-slate-600">{c.content}</div>
+      </nav>
+
+      <div className="max-w-4xl mx-auto px-6 mt-10">
+        {/* 게시글 본문 */}
+        <article className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden mb-10">
+          <div className="p-8 md:p-12">
+            <div className="flex items-center justify-between mb-6">
+              <span
+                className={`${styles.badge} text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider`}
+              >
+                {categoryLabel}
+              </span>
+
+              {apiEndpoints.deletePost &&
+                currentUser &&
+                String(post.userId) === String(currentUser.userId) && (
+                  <button
+                    onClick={handleDeletePost}
+                    className="flex items-center gap-1 text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all text-sm font-bold"
+                  >
+                    <Trash2 size={16} /> 삭제
+                  </button>
+                )}
             </div>
-          ))}
-        </div>
-      </section>
+
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-8 leading-[1.3] tracking-tight">
+              {post.title}
+            </h1>
+
+            <div className="flex items-center gap-4 border-b border-slate-50 pb-8 mb-10">
+              <div
+                className={`w-12 h-12 ${styles.profileBg} rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg ${styles.profileShadow}`}
+              >
+                {(post.userNickname || "익")[0]}
+              </div>
+              <div>
+                <div className="font-black text-slate-800 text-lg">
+                  {post.userNickname || "익명"}
+                </div>
+                <div className="text-sm text-slate-400 flex items-center gap-3 mt-0.5">
+                  <span className="flex items-center gap-1">
+                    <Clock size={14} /> {post.createdAt?.split("T")[0]}
+                  </span>
+                  <span className="flex items-center gap-1 border-l border-slate-200 pl-3">
+                    <Eye size={14} /> {post.viewCount} views
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="text-slate-700 leading-[1.8] text-[17px] font-medium min-h-[300px] wrap-break-words
+              [&>p]:mb-4 [&>h1]:text-3xl [&>h1]:font-bold [&>h2]:text-2xl [&>h2]:font-bold 
+              [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 
+              [&>blockquote]:border-l-4 [&>blockquote]:border-slate-300 [&>blockquote]:pl-4 [&>blockquote]:italic
+              [&>a]:text-blue-500 [&>a]:underline [&>img]:max-w-full [&>img]:rounded-xl"
+              dangerouslySetInnerHTML={{ __html: post.content }}
+            />
+          </div>
+        </article>
+
+        {/* 댓글 섹션 */}
+        <section className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+          <div className="p-8 md:p-12">
+            <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
+              댓글{" "}
+              <span
+                className={`text-lg font-bold ${styles.commentCount} px-3 py-0.5 rounded-full`}
+              >
+                {comments.length}
+              </span>
+            </h3>
+
+            {/* 댓글 입력창 */}
+            <div className="relative mb-12">
+              <textarea
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                placeholder={
+                  currentUser
+                    ? "소중한 의견을 남겨주세요..."
+                    : "로그인이 필요합니다."
+                }
+                disabled={!currentUser}
+                className={`w-full p-6 bg-slate-50 border-none rounded-3xl ${styles.focusRing} focus:ring-2 h-32 resize-none transition-all text-slate-700 placeholder:text-slate-400 font-medium disabled:bg-slate-100 disabled:cursor-not-allowed`}
+              />
+              <button
+                onClick={() => handleCommentSubmit(null)}
+                disabled={!currentUser}
+                className={`absolute bottom-4 right-4 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 text-sm ${
+                  currentUser
+                    ? styles.button
+                    : "bg-slate-400 cursor-not-allowed shadow-none"
+                }`}
+              >
+                <Send size={16} /> 등록하기
+              </button>
+            </div>
+
+            {/* 댓글 리스트 */}
+            <div className="space-y-1">
+              {comments.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-slate-400 font-medium">
+                    아직 댓글이 없습니다.
+                  </p>
+                </div>
+              ) : (
+                renderComments(comments)
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
