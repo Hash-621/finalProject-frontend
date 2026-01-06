@@ -4,6 +4,8 @@ import api from "@/api/axios";
 export const userService = {
   login: (data: any) => api.post("/user/login", data),
   signUp: (data: any) => api.post("/user/signup", data),
+  checkIdDuplicate: (loginId: string) =>
+    api.get("/user/check-id", { params: { loginId } }),
   getUserInfo: () => api.get("/mypage/info"),
   updateUserInfo: (data: any) => api.put("/mypage/info", data),
   getFavorites: () => api.get("/mypage/favorites"),
