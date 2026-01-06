@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -16,7 +16,10 @@ import {
   ChartData,
 } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
+import { fetchClient } from "@/utils/api"; // 아까 만든 API 클라이언트
+import useAdminCheck from "@/hooks/useAdminCheck"; // 아까 만든 권한 체크 훅
 
+// Chart.js 플러그인 등록
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -29,7 +32,7 @@ ChartJS.register(
   Filler
 );
 
-// 타입 정의
+// --- 타입 정의 ---
 interface VisitorTrend {
   labels: string[];
   thisWeek: number[];
@@ -48,39 +51,30 @@ interface DashboardMetrics {
   trafficSource: TrafficSource;
   serverTraffic: ServerTraffic;
 }
-const serverURL = process.env.NEXT_PUBLIC_API_URL;
-// ==========================================
-// [Real API] 백엔드 연동
-// ==========================================
-const fetchDashboardData = async (): Promise<DashboardMetrics | null> => {
-  try {
-    const res = await fetch(`${serverURL}/api/v1/admin/stats`, {
-      method: "GET",
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`Server Error: ${res.status}`);
-    return await res.json();
-  } catch (error) {
-    console.error("Failed to fetch:", error);
-    return null;
-  }
-};
 
-// ==========================================
-// [Chart Components]
-// ==========================================
+// --- 차트 컴포넌트들 ---
 
-// 1. 방문자 차트 (기존 동일)
+// 1. 방문자 차트 (꺾은선)
 const VisitorChart = ({ data }: { data: VisitorTrend }) => {
   const chartData: ChartData<"line"> = {
     labels: data.labels,
     datasets: [
       {
-        label: "This Week",
+        label: "이번 주",
         data: data.thisWeek,
         borderColor: "rgb(53, 162, 235)",
-        backgroundColor: "rgba(53, 162, 235, 0.5)",
+        backgroundColor: "rgba(53, 162, 235, 0.2)",
         tension: 0.4,
+        fill: true,
+      },
+      {
+        label: "지난 주",
+        data: data.lastWeek,
+        borderColor: "rgb(201, 203, 207)",
+        backgroundColor: "rgba(201, 203, 207, 0.2)",
+        tension: 0.4,
+        borderDash: [5, 5], // 점선
+        fill: false,
       },
     ],
   };
@@ -89,8 +83,9 @@ const VisitorChart = ({ data }: { data: VisitorTrend }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: { position: "top" },
-      title: { display: true, text: "Visitor Trends" },
+      title: { display: true, text: "주간 방문자 추이" },
     },
+    scales: { y: { beginAtZero: true } },
   };
   return (
     <div style={{ height: "300px" }}>
@@ -99,14 +94,20 @@ const VisitorChart = ({ data }: { data: VisitorTrend }) => {
   );
 };
 
-// 2. 유입 경로 차트 (기존 동일)
+// 2. 유입 경로 차트 (도넛)
 const TrafficSourceChart = ({ data }: { data: TrafficSource }) => {
   const chartData: ChartData<"doughnut"> = {
     labels: data.labels,
     datasets: [
       {
         data: data.data,
-        backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+        backgroundColor: [
+          "#FF6384",
+          "#36A2EB",
+          "#FFCE56",
+          "#4BC0C0",
+          "#9966FF",
+        ],
       },
     ],
   };
@@ -115,7 +116,7 @@ const TrafficSourceChart = ({ data }: { data: TrafficSource }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: { position: "right" },
-      title: { display: true, text: "Traffic Sources" },
+      title: { display: true, text: "유입 경로" },
     },
   };
   return (
@@ -125,46 +126,32 @@ const TrafficSourceChart = ({ data }: { data: TrafficSource }) => {
   );
 };
 
-// ==========================================
-// ★ [핵심 수정] 3. 실시간 서버 트래픽 차트
-// ==========================================
+// 3. 서버 CPU 차트 (실시간)
 const ServerTrafficChart = ({ data }: { data: ServerTraffic }) => {
   const chartData: ChartData<"line"> = {
     labels: data.labels,
     datasets: [
       {
         fill: true,
-        label: "CPU Usage (%)",
+        label: "CPU 사용량 (%)",
         data: data.cpu,
         borderColor: "rgb(75, 192, 192)",
         backgroundColor: "rgba(75, 192, 192, 0.2)",
         tension: 0.3,
-        pointRadius: 0, // 점 숨기기 (선만 보이게)
+        pointRadius: 0,
       },
     ],
   };
-
   const options: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: {
-      duration: 0, // ★ 중요: 깜빡임 방지 (데이터 갱신 시 애니메이션 끄기)
-    },
+    animation: { duration: 0 }, // 깜빡임 방지 (실시간 느낌)
     scales: {
-      x: {
-        display: false, // X축 라벨(시간)이 너무 많아지므로 숨김 처리 (깔끔하게)
-      },
-      y: {
-        min: 0,
-        max: 100,
-        ticks: { stepSize: 20 },
-      },
+      x: { display: false }, // X축 라벨 숨김 (깔끔하게)
+      y: { min: 0, max: 100 },
     },
-    plugins: {
-      title: { display: true, text: "Real-time Server CPU" },
-    },
+    plugins: { title: { display: true, text: "실시간 서버 CPU" } },
   };
-
   return (
     <div style={{ height: "300px" }}>
       <Line options={options} data={chartData} />
@@ -172,139 +159,140 @@ const ServerTrafficChart = ({ data }: { data: ServerTraffic }) => {
   );
 };
 
-// ==========================================
-// [Main Page]
-// ==========================================
-export default function DashboardPage() {
-  // 초기 상태: 빈 껍데기
+// --- 메인 페이지 컴포넌트 ---
+export default function AdminPage() {
+  // 1. 관리자 권한 체크 (Hook 사용)
+  const { isAdmin, loading: authLoading } = useAdminCheck();
+
+  // 2. 초기 데이터 상태 (빈 껍데기)
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     visitorTrend: { labels: [], thisWeek: [], lastWeek: [] },
     trafficSource: { labels: [], data: [] },
-    serverTraffic: { labels: [], cpu: [] }, // 처음엔 빈 배열
+    serverTraffic: { labels: [], cpu: [] },
   });
 
-  // React StrictMode 방지용 Ref
-  const isVisited = useRef(false);
+  // 3. 데이터 가져오는 함수
+  const fetchData = async () => {
+    try {
+      // ★ 중요: fetchClient 사용 (쿠키 자동 포함)
+      // 백엔드 경로가 /api/v1/admin/stats 라고 가정
+      // fetchClient 내부에서 BASE_URL(/api/v1)을 붙여주므로 여기선 나머지만 작성
+      const data = await fetchClient("api/v1/admin");
 
-  // 1. 방문자 기록 (최초 1회 실행)
-  useEffect(() => {
-    if (isVisited.current) return;
-    const logVisit = async () => {
-      try {
-        await fetch(`${serverURL}/api/v1/admin/visit`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currentUrl: window.location.href,
-            referrer: document.referrer,
-          }),
+      if (data) {
+        setMetrics((prev) => {
+          // CPU 데이터 누적 로직 (큐 구조: 데이터가 흐르는 효과)
+          const prevLabels = prev.serverTraffic.labels;
+          const prevCpu = prev.serverTraffic.cpu;
+
+          // 새로 받은 데이터 (보통 배열로 오지만 하나만 꺼내 씀)
+          const newLabel =
+            data.serverTraffic.labels[0] || new Date().toLocaleTimeString();
+          const newCpu = data.serverTraffic.cpu[0] || 0;
+
+          const maxLen = 20; // 그래프에 점 20개만 유지
+          return {
+            ...data, // 방문자, 유입경로는 서버 데이터 그대로 사용
+            serverTraffic: {
+              // 기존 데이터 뒤에 새 데이터 붙이고, 오래된 건 자름
+              labels: [...prevLabels, newLabel].slice(-maxLen),
+              cpu: [...prevCpu, newCpu].slice(-maxLen),
+            },
+          };
         });
-        isVisited.current = true;
-      } catch (e) {
-        console.error(e);
       }
-    };
-    logVisit();
-  }, []);
+    } catch (e) {
+      console.error("데이터 로딩 실패", e);
+    }
+  };
 
-  // 2. ★ 데이터 폴링 (2초마다 실행)
+  // 4. 주기적 폴링 (2초마다 갱신)
   useEffect(() => {
-    const fetchData = async () => {
-      const newData = await fetchDashboardData();
-      if (!newData) return;
+    if (!isAdmin) return; // 관리자 아니면 요청 안 함
 
-      setMetrics((prev) => {
-        // A. 기존 CPU 데이터 가져오기 (없으면 빈 배열)
-        const prevLabels = prev.serverTraffic.labels;
-        const prevCpu = prev.serverTraffic.cpu;
+    fetchData(); // 최초 1회 즉시 실행
+    const interval = setInterval(fetchData, 2000); // 2초마다 반복
 
-        // B. 새로운 데이터(점 1개) 가져오기
-        // 백엔드에서 리스트로 주지만 0번째가 최신값이라고 가정
-        const newLabelPoint = newData.serverTraffic.labels[0] || "";
-        const newCpuPoint = newData.serverTraffic.cpu[0] || 0;
+    return () => clearInterval(interval); // 페이지 나가면 중단
+  }, [isAdmin]);
 
-        // C. 배열 합치기 (최대 20개까지만 유지)
-        // [구 데이터 19개] + [새 데이터 1개]
-        const maxDataPoints = 20;
-        const updatedLabels = [...prevLabels, newLabelPoint].slice(
-          -maxDataPoints
-        );
-        const updatedCpu = [...prevCpu, newCpuPoint].slice(-maxDataPoints);
+  // 5. 로딩 중이거나 권한 없을 때 화면 숨김
+  if (authLoading || !isAdmin) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          height: "100vh",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <h2>권한 확인 중...</h2>
+      </div>
+    );
+  }
 
-        return {
-          visitorTrend: newData.visitorTrend, // 얘는 그냥 덮어쓰기
-          trafficSource: newData.trafficSource, // 얘도 덮어쓰기
-          serverTraffic: {
-            labels: updatedLabels, // 누적된 배열 저장
-            cpu: updatedCpu, // 누적된 배열 저장
-          },
-        };
-      });
-    };
-
-    // 최초 실행
-    fetchData();
-
-    // 2초마다 반복 (Real-time 효과)
-    const intervalId = setInterval(fetchData, 2000);
-
-    return () => clearInterval(intervalId);
-  }, []);
-
+  // 6. 실제 대시보드 화면
   return (
     <main
       style={{
-        padding: "20px",
-        backgroundColor: "#f5f7fa",
+        padding: "30px",
+        backgroundColor: "#f3f4f6",
         minHeight: "100vh",
       }}
     >
       <h1
-        style={{ marginBottom: "24px", fontSize: "24px", fontWeight: "bold" }}
+        style={{
+          fontSize: "28px",
+          fontWeight: "bold",
+          marginBottom: "30px",
+          color: "#1f2937",
+        }}
       >
-        Admin Dashboard
+        관리자 대시보드
       </h1>
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(12, 1fr)",
-          gap: "20px",
-          maxWidth: "1200px",
-          margin: "0 auto",
+          gap: "24px",
         }}
       >
-        {/* 방문자 */}
+        {/* 방문자 추이 (전체 너비) */}
         <div
           style={{
-            backgroundColor: "#fff",
-            padding: "20px",
-            borderRadius: "12px",
             gridColumn: "span 12",
+            backgroundColor: "white",
+            padding: "24px",
+            borderRadius: "12px",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
           }}
         >
           <VisitorChart data={metrics.visitorTrend} />
         </div>
 
-        {/* 유입 경로 */}
+        {/* 유입 경로 (왼쪽) */}
         <div
           style={{
-            backgroundColor: "#fff",
-            padding: "20px",
-            borderRadius: "12px",
             gridColumn: "span 4",
+            backgroundColor: "white",
+            padding: "24px",
+            borderRadius: "12px",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
           }}
         >
           <TrafficSourceChart data={metrics.trafficSource} />
         </div>
 
-        {/* 서버 트래픽 (실시간) */}
+        {/* 서버 CPU (오른쪽) */}
         <div
           style={{
-            backgroundColor: "#fff",
-            padding: "20px",
-            borderRadius: "12px",
             gridColumn: "span 8",
+            backgroundColor: "white",
+            padding: "24px",
+            borderRadius: "12px",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
           }}
         >
           <ServerTrafficChart data={metrics.serverTraffic} />
