@@ -9,13 +9,7 @@ import React, {
   Suspense,
 } from "react";
 import api from "@/api/axios";
-import {
-  Loader2,
-  RefreshCw,
-  Search,
-  Filter,
-  ChevronRightIcon,
-} from "lucide-react";
+import { Loader2, RefreshCw, Search, Filter, X } from "lucide-react";
 
 // 컴포넌트 및 타입
 import JobCard from "@/components/jobTools/JobCard";
@@ -24,24 +18,52 @@ import Pagination from "@/components/common/Pagination";
 import { JOB_DETAILS_DB } from "@/data/jobDetailData";
 import { JobData, ApplyFormData, ApplyStep, DetailContent } from "@/types/job";
 
-export default function Page() {
-  const searchParams = useSearchParams();
+// [UI] 채용 공고 스켈레톤 UI
+const JobSkeleton = () => (
+  <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-sm animate-pulse h-[280px] flex flex-col">
+    <div className="flex justify-between items-start mb-6">
+      <div className="h-6 bg-slate-200 rounded-lg w-20" /> {/* D-Day 배지 */}
+      <div className="h-6 bg-slate-200 rounded-full w-8" /> {/* 북마크 버튼 */}
+    </div>
+    <div className="space-y-3 mb-6 flex-1">
+      <div className="h-5 bg-slate-200 rounded w-1/3" /> {/* 회사명 */}
+      <div className="h-7 bg-slate-200 rounded w-3/4" /> {/* 공고 제목 */}
+      <div className="flex gap-2 pt-2">
+        <div className="h-4 bg-slate-200 rounded w-16" /> {/* 태그 1 */}
+        <div className="h-4 bg-slate-200 rounded w-16" /> {/* 태그 2 */}
+      </div>
+    </div>
+    <div className="h-12 bg-slate-200 rounded-2xl w-full mt-auto" />{" "}
+    {/* 버튼 영역 */}
+  </div>
+);
 
+// [UI] 추천 검색어 목록
+const RECOMMEND_KEYWORDS = [
+  "개발자",
+  "마케팅",
+  "디자인",
+  "신입",
+  "인턴",
+  "재택근무",
+];
+
+function JobPageContent() {
+  const searchParams = useSearchParams();
   const initialKeyword = searchParams.get("keyword") || "";
 
   const [jobs, setJobs] = useState<JobData[]>([]);
-  const [loading, setLoading] = useState(false);
+  // [Fix] 초기 로딩 상태 true (스켈레톤 즉시 노출)
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
-  // [수정 2] tempFilters (검색창) 초기값 설정
   const [tempFilters, setTempFilters] = useState({
     keyword: initialKeyword,
     career: "",
     education: "",
   });
 
-  // [수정 3] activeFilters (실제 검색 쿼리) 초기값 설정
   const [activeFilters, setActiveFilters] = useState({
     keyword: initialKeyword,
     career: "",
@@ -66,6 +88,10 @@ export default function Page() {
     try {
       const queryParams = new URLSearchParams(activeFilters);
       const res = await api.get(`/job/crawl?${queryParams.toString()}`);
+
+      // 스켈레톤 확인용 지연 (0.5초)
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       setJobs(res.data || []);
       setCurrentPage(1);
     } catch (e) {
@@ -81,9 +107,11 @@ export default function Page() {
   }, [fetchJobs]);
 
   const handleSearch = () => setActiveFilters(tempFilters);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSearch();
   };
+
   const handleFilterChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
   ) => {
@@ -91,11 +119,19 @@ export default function Page() {
     setTempFilters((prev) => ({ ...prev, [name]: value }));
   };
 
+  // 키워드 클릭 핸들러
+  const handleKeywordClick = (keyword: string) => {
+    const newFilters = { ...tempFilters, keyword };
+    setTempFilters(newFilters);
+    setActiveFilters(newFilters);
+  };
+
   // 페이지네이션용 데이터 계산
   const totalPages = useMemo(
     () => Math.ceil(jobs.length / itemsPerPage) || 1,
     [jobs]
   );
+
   const currentJobs = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return jobs.slice(start, start + itemsPerPage);
@@ -149,7 +185,7 @@ export default function Page() {
   };
 
   return (
-    <section className="py-16 bg-gray-50/30 overflow-hidden">
+    <section className="py-16 bg-gray-50/30 overflow-hidden min-h-screen">
       <div className="w-full lg:max-w-7xl mx-auto px-4 lg:px-5">
         <div className="w-full shrink-0 space-y-5 relative mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
@@ -184,11 +220,10 @@ export default function Page() {
               size={18}
               className={
                 loading
-                  ? "animate-spin"
+                  ? "animate-spin text-green-500"
                   : "group-hover:rotate-180 transition-transform duration-500"
               }
             />
-            {/* 모바일에서는 숨기고, md(768px) 이상에서만 텍스트 노출 */}
             <span className="hidden md:inline">필터 초기화 및 새로고침</span>
           </button>
         </div>
@@ -206,15 +241,25 @@ export default function Page() {
                   onChange={handleFilterChange}
                   onKeyDown={handleKeyDown}
                   placeholder="기업명 혹은 직무 검색"
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50/50 border-none rounded-2xl focus:ring-2 focus:ring-green-500/20 focus:bg-white transition-all text-sm outline-none"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-50/50 border-none rounded-2xl focus:ring-2 focus:ring-green-500/20 focus:bg-white transition-all text-sm outline-none font-bold text-slate-700 placeholder:font-medium"
                 />
+                {tempFilters.keyword && (
+                  <button
+                    onClick={() =>
+                      setTempFilters((prev) => ({ ...prev, keyword: "" }))
+                    }
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-slate-500 rounded-full"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
               <div className="flex gap-3">
                 <select
                   name="career"
                   value={tempFilters.career}
                   onChange={handleFilterChange}
-                  className="px-4 py-4 bg-slate-50/50 border-none rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-green-500/20 cursor-pointer"
+                  className="px-4 py-4 bg-slate-50/50 border-none rounded-2xl text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-green-500/20 cursor-pointer min-w-[120px]"
                 >
                   <option value="">경력전체</option>
                   <option value="신입">신입</option>
@@ -223,7 +268,7 @@ export default function Page() {
                 </select>
                 <button
                   onClick={handleSearch}
-                  className="px-8 bg-slate-900 hover:bg-green-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-slate-200 flex items-center gap-2"
+                  className="px-8 bg-slate-900 hover:bg-green-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-slate-200 hover:shadow-green-200 flex items-center gap-2 active:scale-95"
                 >
                   <Filter size={18} />
                   검색
@@ -232,22 +277,61 @@ export default function Page() {
             </div>
           </div>
 
-          {/* 결과 리스트 */}
+          {/* 결과 리스트 영역 */}
           {loading ? (
-            <div className="py-32 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 shadow-sm">
-              <Loader2 className="animate-spin text-green-500 w-12 h-12 mb-4" />
-              <p className="text-slate-400 font-semibold text-lg">
-                최적의 공고를 선별하고 있습니다...
-              </p>
+            // [New] 로딩 시 스켈레톤 UI 표시
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Array(6)
+                .fill(0)
+                .map((_, i) => (
+                  <JobSkeleton key={`skeleton-${i}`} />
+                ))}
             </div>
           ) : jobs.length === 0 ? (
-            <div className="py-32 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 border-dashed">
-              <p className="text-slate-400 font-bold text-xl">
-                검색 결과가 없습니다.
+            // [New] 검색 결과 없음 (Empty State - 스티커 적용)
+            <div className="py-24 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-center px-4 relative overflow-hidden">
+              {/* 배경 데코레이션 */}
+              <div className="absolute top-10 left-10 text-6xl opacity-5 rotate-[-15deg] select-none pointer-events-none">
+                💼
+              </div>
+              <div className="absolute bottom-10 right-10 text-6xl opacity-5 rotate-[15deg] select-none pointer-events-none">
+                📄
+              </div>
+
+              {/* 스티커 이모지 */}
+              <div className="relative mb-8 group cursor-default select-none">
+                <div className="text-[80px] drop-shadow-2xl filter hover:scale-110 transition-transform duration-300 rotate-[-5deg] z-10 relative">
+                  👨‍💼
+                </div>
+                <div className="absolute -top-6 -right-6 text-[50px] drop-shadow-xl rotate-[15deg] animate-bounce z-20">
+                  ❓
+                </div>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/10 blur-md rounded-full"></div>
+              </div>
+
+              <p className="text-slate-800 font-bold text-xl mb-2">
+                '{activeFilters.keyword}' 검색 결과가 없습니다.
               </p>
-              <p className="text-slate-300 text-sm mt-2">
-                다른 검색어나 필터를 선택해보세요.
+              <p className="text-slate-400 text-sm mb-8">
+                단어의 철자가 정확한지 확인하시거나, 다른 키워드로 검색해보세요.
               </p>
+
+              <div className="flex flex-col items-center gap-4">
+                <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
+                  Recommend Keywords
+                </span>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {RECOMMEND_KEYWORDS.map((keyword) => (
+                    <button
+                      key={keyword}
+                      onClick={() => handleKeywordClick(keyword)}
+                      className="px-4 py-2 bg-slate-50 hover:bg-green-50 text-slate-600 hover:text-green-600 border border-slate-100 hover:border-green-200 rounded-full text-sm font-bold transition-all"
+                    >
+                      #{keyword}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-10">
@@ -262,7 +346,7 @@ export default function Page() {
                 ))}
               </div>
 
-              {/* 🔹 공통 페이지네이션 컴포넌트 적용 */}
+              {/* 페이지네이션 */}
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -287,5 +371,20 @@ export default function Page() {
         handleApplySubmit={handleApplySubmit}
       />
     </section>
+  );
+}
+
+// Suspense 감싸기 (useSearchParams 사용 시 필수)
+export default function Page() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50/30">
+          <Loader2 className="animate-spin w-10 h-10 text-green-500" />
+        </div>
+      }
+    >
+      <JobPageContent />
+    </Suspense>
   );
 }

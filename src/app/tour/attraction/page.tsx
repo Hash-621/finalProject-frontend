@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
+import Link from "next/link";
 import Script from "next/script";
-// [수정] userService 추가 임포트
+import { useSearchParams } from "next/navigation";
 import { tourService, userService } from "@/api/services";
 import { Tour } from "@/types/tour";
 import {
@@ -15,8 +15,21 @@ import {
   Search,
   Heart,
   RefreshCw,
+  Camera,
 } from "lucide-react";
-import Pagination from "@/components/common/Pagination"; // Pagination 경로 확인
+import Pagination from "@/components/common/Pagination";
+
+// [New] 관광지 스켈레톤
+const TourSkeleton = () => (
+  <div className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm animate-pulse h-[360px] flex flex-col">
+    <div className="h-48 bg-slate-200 w-full" /> {/* 이미지 */}
+    <div className="p-6 flex-1 space-y-3">
+      <div className="h-7 bg-slate-200 rounded w-2/3" /> {/* 제목 */}
+      <div className="h-4 bg-slate-200 rounded w-1/2" /> {/* 주소 */}
+      <div className="h-4 bg-slate-200 rounded w-full mt-4" /> {/* 설명 */}
+    </div>
+  </div>
+);
 
 function TourPageContent() {
   const searchParams = useSearchParams();
@@ -25,6 +38,8 @@ function TourPageContent() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [filteredTours, setFilteredTours] = useState<Tour[]>([]);
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
+
+  // [Fix] 초기 로딩 true
   const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState(initialKeyword);
@@ -33,27 +48,27 @@ function TourPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // 1. 데이터 로드 (관광지 리스트 + 내 즐겨찾기 병합)
+  // 1. 데이터 로드
   useEffect(() => {
     const fetchTours = async () => {
       try {
         setLoading(true);
 
-        // [수정] 관광지 리스트와 즐겨찾기 동시 호출
         const [toursRes, favoritesRes] = await Promise.allSettled([
           tourService.getTourCourses(),
           userService.getFavorites(),
         ]);
 
+        // 스켈레톤 지연 (0.5초)
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         let allTours: Tour[] = [];
         const myFavoriteIds = new Set<number>();
 
-        // 1) 전체 관광지 데이터 확보
         if (toursRes.status === "fulfilled") {
           allTours = toursRes.value.data;
         }
 
-        // 2) 내 즐겨찾기 ID 확보
         if (favoritesRes.status === "fulfilled") {
           const favoriteList = favoritesRes.value.data;
           if (Array.isArray(favoriteList)) {
@@ -61,18 +76,17 @@ function TourPageContent() {
           }
         }
 
-        // 3) 데이터 병합 (isFavorite 덮어쓰기)
         const mergedList = allTours.map((item) => ({
           ...item,
           isFavorite: myFavoriteIds.has(item.id),
         }));
 
         setTours(mergedList);
-        setFilteredTours(mergedList); // 초기값 설정 (이후 useEffect에서 필터링됨)
+        setFilteredTours(mergedList);
       } catch (error) {
         console.error("데이터 호출 실패:", error);
       } finally {
-        setTimeout(() => setLoading(false), 500);
+        setLoading(false);
       }
     };
     fetchTours();
@@ -80,24 +94,19 @@ function TourPageContent() {
 
   // 2. 통합 필터링 로직
   useEffect(() => {
-    if (tours.length === 0) return;
-
+    // tours가 비어있어도 필터링 로직은 돌아야 함 (초기화 등)
     let result = tours;
 
-    // (1) 지역 카테고리 필터
     if (selectedCategory !== "전체") {
       result = result.filter((tour) => tour.address.includes(selectedCategory));
     }
 
-    // (2) 검색어 필터
     const trimmedKeyword = keyword.trim();
     if (trimmedKeyword !== "") {
       const searchTerms = trimmedKeyword.split(/\s+/);
-
       result = result.filter((tour) => {
         const name = tour.name || "";
         const address = tour.address || "";
-
         return searchTerms.every(
           (term) => name.includes(term) || address.includes(term)
         );
@@ -105,7 +114,7 @@ function TourPageContent() {
     }
 
     setFilteredTours(result);
-    setCurrentPage(1); // 필터 변경 시 1페이지로
+    setCurrentPage(1);
   }, [tours, selectedCategory, keyword]);
 
   const handleReset = () => {
@@ -113,12 +122,10 @@ function TourPageContent() {
     setSelectedCategory("전체");
   };
 
-  // 3. 즐겨찾기 토글 (낙관적 업데이트 적용)
   const toggleFavorite = async (e: React.MouseEvent, id: number) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // UI 먼저 업데이트
     const previousTours = [...tours];
     const updateState = (list: Tour[]) =>
       list.map((item) =>
@@ -126,21 +133,19 @@ function TourPageContent() {
       );
 
     setTours((prev) => updateState(prev));
-    // filteredTours는 useEffect([tours])에 의해 자동 업데이트됨 (혹은 즉시 반영 위해 아래 추가)
-    setFilteredTours((prev) => updateState(prev));
+    // filteredTours는 useEffect에 의해 자동 업데이트되지만 즉시 반영을 위해
+    // setFilteredTours((prev) => updateState(prev)); // 필요시 추가
 
     try {
       await tourService.toggleFavorite(id);
     } catch (error) {
       console.error("즐겨찾기 요청 실패:", error);
-      // 실패 시 롤백
       setTours(previousTours);
-      setFilteredTours(previousTours); // 필터링된 목록도 롤백 필요 시 주의
       alert("로그인이 필요합니다.");
     }
   };
 
-  // 지도 관련 함수 (기존 유지)
+  // 지도 초기화 함수
   const initMap = (address: string, name: string) => {
     const { kakao } = window as any;
     if (!kakao || !kakao.maps) return;
@@ -176,6 +181,7 @@ function TourPageContent() {
     }
   }, [selectedTour]);
 
+  // 모달 스크롤 방지
   useEffect(() => {
     if (selectedTour) {
       const scrollY = window.scrollY;
@@ -209,14 +215,6 @@ function TourPageContent() {
   );
 
   const categories = ["전체", "대덕구", "동구", "서구", "유성구", "중구"];
-
-  if (loading && tours.length === 0) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen bg-white">
-        <div className="w-12 h-12 border-4 border-green-100 border-t-green-500 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full bg-[#fcfcfc] min-h-screen pb-24">
@@ -293,16 +291,47 @@ function TourPageContent() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-16">
-        {filteredTours.length === 0 ? (
-          <div className="py-32 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 border-dashed">
-            <p className="text-slate-400 font-bold text-xl">
-              검색 결과가 없습니다.
-            </p>
-            <p className="text-slate-300 text-sm mt-2">
-              다른 키워드나 필터를 선택해보세요.
+        {/* 콘텐츠 렌더링 */}
+        {loading ? (
+          // [New] 로딩 시 스켈레톤 표시
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+            {Array(8)
+              .fill(0)
+              .map((_, i) => (
+                <TourSkeleton key={i} />
+              ))}
+          </div>
+        ) : filteredTours.length === 0 ? (
+          // [New] 결과 없음 (Empty State - 스티커 적용)
+          <div className="py-32 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-center relative overflow-hidden">
+            {/* 배경 데코레이션 */}
+            <div className="absolute top-10 left-10 text-6xl opacity-5 rotate-[-15deg] select-none pointer-events-none">
+              ☁️
+            </div>
+            <div className="absolute bottom-10 right-10 text-6xl opacity-5 rotate-[15deg] select-none pointer-events-none">
+              🌳
+            </div>
+
+            {/* 스티커 */}
+            <div className="relative mb-8 group cursor-default select-none">
+              <div className="text-[80px] drop-shadow-2xl filter hover:scale-110 transition-transform duration-300 rotate-[-5deg] z-10 relative">
+                🗺️
+              </div>
+              <div className="absolute -top-6 -right-6 text-[50px] drop-shadow-xl rotate-[15deg] animate-bounce z-20">
+                📸
+              </div>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/10 blur-md rounded-full"></div>
+            </div>
+
+            <h3 className="text-2xl font-black text-slate-900 mb-2">
+              검색된 관광지가 없어요.
+            </h3>
+            <p className="text-slate-500 text-sm font-medium">
+              다른 검색어를 입력하거나 전체 목록을 확인해보세요!
             </p>
           </div>
         ) : (
+          // 데이터 리스트
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
             {currentItems.map((tour, index) => (
               <div
@@ -316,7 +345,7 @@ function TourPageContent() {
                     alt={tour.name}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />
-                  {/* 즐겨찾기 버튼 추가 */}
+                  {/* 즐겨찾기 버튼 */}
                   <button
                     onClick={(e) => toggleFavorite(e, tour.id)}
                     className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm transition-all hover:scale-110 active:scale-90 border border-slate-100"
@@ -345,8 +374,8 @@ function TourPageContent() {
           </div>
         )}
 
-        {/* 페이지네이션 컴포넌트 사용 */}
-        {filteredTours.length > 0 && (
+        {/* 페이지네이션 */}
+        {!loading && filteredTours.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -356,6 +385,7 @@ function TourPageContent() {
         )}
       </div>
 
+      {/* 상세 모달 */}
       {selectedTour && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-0 md:p-6"
@@ -392,7 +422,6 @@ function TourPageContent() {
                       className="w-full h-full object-cover"
                       alt={selectedTour.name}
                     />
-                    {/* 모달 내부 즐겨찾기 버튼 */}
                     <button
                       onClick={(e) => toggleFavorite(e, selectedTour.id)}
                       className={`absolute top-6 right-6 p-3 rounded-full bg-white/90 backdrop-blur-md shadow-lg transition-all active:scale-95 ${

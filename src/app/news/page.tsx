@@ -1,10 +1,30 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation"; // 1. 훅 임포트
+import { useSearchParams } from "next/navigation";
 import api from "@/api/axios";
 import { NewsResponse, NewsItem } from "@/types/news";
-import { ArrowRight, Loader2, Newspaper, Search, X } from "lucide-react";
+import { ArrowRight, Loader2, Search, X } from "lucide-react";
+
+// 스켈레톤 UI 컴포넌트
+const NewsSkeleton = () => (
+  <div className="flex flex-col bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm animate-pulse">
+    <div className="aspect-16/11 bg-slate-200" />
+    <div className="p-7 flex flex-col flex-1">
+      <div className="h-7 bg-slate-200 rounded-lg w-3/4 mb-3" />
+      <div className="h-7 bg-slate-200 rounded-lg w-1/2 mb-6" />
+      <div className="space-y-3 mb-8">
+        <div className="h-4 bg-slate-200 rounded w-full" />
+        <div className="h-4 bg-slate-200 rounded w-full" />
+        <div className="h-4 bg-slate-200 rounded w-2/3" />
+      </div>
+      <div className="mt-auto pt-5 flex items-center justify-between border-t border-slate-50">
+        <div className="h-3 bg-slate-200 rounded w-20" />
+        <div className="h-3 bg-slate-200 rounded w-16" />
+      </div>
+    </div>
+  </div>
+);
 
 const cleanText = (text: string) => {
   if (!text) return "";
@@ -18,24 +38,22 @@ const cleanText = (text: string) => {
 };
 
 function NewsPageContent() {
-  const searchParams = useSearchParams(); // 2. URL 파라미터 가져오기
-
-  // 3. URL에서 'searchKeyword'가 있으면 가져오고 없으면 빈 문자열
+  const searchParams = useSearchParams();
   const initialKeyword = searchParams.get("searchKeyword") || "";
 
   const [allFetchedNews, setAllFetchedNews] = useState<NewsItem[]>([]);
   const [displayCount, setDisplayCount] = useState(4);
   const [page, setPage] = useState(1);
 
-  // 4. useState 초기값에 URL에서 가져온 키워드를 넣어줍니다.
-  // 이렇게 하면 페이지가 열리자마자 검색창에 글자가 채워져 있고, activeSearch가 설정됩니다.
   const [searchTerm, setSearchTerm] = useState(initialKeyword);
   const [activeSearch, setActiveSearch] = useState(initialKeyword);
 
-  const [isLoading, setIsLoading] = useState(false);
+  // [Fix] 초기 로딩 true (스켈레톤 즉시 노출)
+  const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
 
-  // 📡 데이터 가져오기 로직
+  const isInitialLoading = isLoading && page === 1;
+
   const fetchNews = useCallback(
     async (pageNum: number, isNewSearch: boolean = false) => {
       setIsLoading(true);
@@ -48,9 +66,11 @@ function NewsPageContent() {
         );
         const newItems = response.data.items || [];
 
+        // 스켈레톤 확인용 지연 (0.5초)
+        if (pageNum === 1) await new Promise((r) => setTimeout(r, 500));
+
         setAllFetchedNews((prev) => {
           if (isNewSearch) return newItems;
-
           const existingLinks = new Set(prev.map((item) => item.link));
           const uniqueNewItems = newItems.filter(
             (item) => !existingLinks.has(item.link)
@@ -70,7 +90,6 @@ function NewsPageContent() {
     [activeSearch]
   );
 
-  // 5. activeSearch(초기값 포함)가 있으면 useEffect가 실행되어 fetchNews를 호출합니다.
   useEffect(() => {
     setPage(1);
     setDisplayCount(4);
@@ -147,8 +166,16 @@ function NewsPageContent() {
           </form>
         </div>
 
-        {/* 뉴스 그리드 */}
-        {visibleNews.length > 0 ? (
+        {/* 렌더링 로직 */}
+        {isInitialLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {Array(8)
+              .fill(0)
+              .map((_, index) => (
+                <NewsSkeleton key={`skeleton-${index}`} />
+              ))}
+          </div>
+        ) : visibleNews.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {visibleNews.map((item, index) => (
@@ -161,6 +188,7 @@ function NewsPageContent() {
                       src={item.thumbnail || "/placeholder.png"}
                       alt="thumbnail"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      onError={(e) => (e.currentTarget.style.display = "none")}
                     />
                   </div>
                   <div className="p-7 flex flex-col flex-1">
@@ -214,23 +242,42 @@ function NewsPageContent() {
             )}
           </>
         ) : (
-          !isLoading && (
-            <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed border-slate-200 rounded-[3rem]">
-              <Newspaper className="w-12 h-12 text-slate-200 mb-6" />
-              <h3 className="text-2xl font-black mb-2 text-slate-900">
-                {activeSearch
-                  ? `'${activeSearch}'에 대한 뉴스가 없습니다.`
-                  : "뉴스가 없습니다."}
-              </h3>
+          // [New] 뉴스 Empty State (스티커 적용)
+          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[3rem] border border-dashed border-slate-200 text-center relative overflow-hidden">
+            {/* 배경 데코레이션 */}
+            <div className="absolute top-10 left-10 text-6xl opacity-5 rotate-[-15deg] select-none pointer-events-none">
+              📰
             </div>
-          )
+            <div className="absolute bottom-10 right-10 text-6xl opacity-5 rotate-[15deg] select-none pointer-events-none">
+              🗞️
+            </div>
+
+            {/* 스티커 이모지 */}
+            <div className="relative mb-8 group cursor-default select-none">
+              <div className="text-[80px] drop-shadow-2xl filter hover:scale-110 transition-transform duration-300 rotate-[-5deg] z-10 relative">
+                🤔
+              </div>
+              <div className="absolute -top-6 -right-6 text-[50px] drop-shadow-xl rotate-[15deg] animate-bounce z-20">
+                🔎
+              </div>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/10 blur-md rounded-full"></div>
+            </div>
+
+            <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">
+              {activeSearch
+                ? `'${activeSearch}' 관련 뉴스를 찾을 수 없어요.`
+                : "등록된 뉴스가 없습니다."}
+            </h3>
+            <p className="text-slate-500 mb-0 text-sm font-medium">
+              다른 키워드로 검색하거나 잠시 후 다시 시도해보세요!
+            </p>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-// 6. Suspense로 감싸주기 (useSearchParams 사용 시 필수)
 export default function NewsPage() {
   return (
     <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
