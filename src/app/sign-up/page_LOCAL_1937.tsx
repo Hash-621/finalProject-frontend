@@ -24,14 +24,6 @@ type ValidationState = {
   message: string;
   isError: boolean;
 };
-=======
-  Timer,
-  IdCard, // 이름 아이콘 추가
-} from "lucide-react";
-import { Input } from "@/components/common/Input";
-import Image from "next/image";
-import { userService } from "@/api/services";
->>>>>>> 4e354d46839bd17b7d62b597ea007c39ff4766f7
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -39,10 +31,8 @@ export default function SignUpPage() {
   // [State] 폼 데이터
   const [formData, setFormData] = useState({
     loginId: "",
-    name: "", // 이름(실명) 필드 추가
     nickname: "",
     email: "",
-    emailCode: "",
     password: "",
     confirmPassword: "",
     gender: "MALE",
@@ -53,7 +43,6 @@ export default function SignUpPage() {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
 
-<<<<<<< HEAD
   // [Logic] 실시간 검증 상태 관리
   const [validation, setValidation] = useState<{
     loginId: ValidationState;
@@ -172,90 +161,6 @@ export default function SignUpPage() {
         err.response?.data?.message || "회원가입 중 오류가 발생했습니다."
       );
     }
-=======
-  // --- 상태값들 ---
-  const [isIdChecked, setIsIdChecked] = useState<boolean | null>(null);
-  const [emailStatus, setEmailStatus] = useState<
-    "idle" | "sending" | "sent" | "verified"
-  >("idle");
-  const [timeLeft, setTimeLeft] = useState(180);
-
-  // 타이머 로직
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (emailStatus === "sent" && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [emailStatus, timeLeft]);
-
-  const formatTime = (seconds: number) => {
-    const min = Math.floor(seconds / 60);
-    const sec = seconds % 60;
-    return `${min}:${sec < 10 ? `0${sec}` : sec}`;
-  };
-
-  // 핸들러들
-  const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, loginId: e.target.value });
-    setIsIdChecked(null);
-  };
-
-  const handleCheckId = async () => {
-    if (!formData.loginId) return alert("아이디를 입력해주세요.");
-
-    try {
-      const response = await userService.checkIdDuplicate(formData.loginId);
-
-      const isAvailable = response.data;
-
-      setIsIdChecked(isAvailable);
-
-      if (isAvailable) {
-        alert("사용 가능한 아이디입니다.");
-      } else {
-        alert("이미 사용 중인 아이디입니다.");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("중복 확인 중 오류가 발생했습니다.");
-    }
-  };
-
-  const handleSendEmail = () => {
-    if (!formData.email) return alert("이메일을 입력해주세요.");
-    setEmailStatus("sending");
-    setTimeout(() => {
-      setEmailStatus("sent");
-      setTimeLeft(180);
-      alert("인증번호가 발송되었습니다.");
-    }, 1000);
-  };
-
-  const handleVerifyCode = () => {
-    if (!formData.emailCode) return alert("인증번호를 입력해주세요.");
-    if (formData.emailCode === "1234") {
-      setEmailStatus("verified");
-      alert("이메일 인증이 완료되었습니다.");
-    } else {
-      alert("인증번호가 일치하지 않습니다.");
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.name) return alert("이름을 입력해주세요."); // 이름 유효성 검사
-    if (isIdChecked !== true) return alert("아이디 중복 확인을 해주세요.");
-    if (emailStatus !== "verified") return alert("이메일 인증을 완료해주세요.");
-    if (formData.password !== formData.confirmPassword)
-      return alert("비밀번호가 일치하지 않습니다.");
-    if (!agreed) return alert("약관에 동의해 주세요.");
-
-    console.log("서버로 전송될 데이터:", formData);
->>>>>>> 4e354d46839bd17b7d62b597ea007c39ff4766f7
   };
 
   return (
@@ -314,7 +219,6 @@ export default function SignUpPage() {
               </p>
             </div>
 
-<<<<<<< HEAD
             {/* 아이디 & 닉네임 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
@@ -360,139 +264,6 @@ export default function SignUpPage() {
             />
 
             {/* 생년월일 & 성별 */}
-=======
-            {/* 1. 아이디 섹션 */}
-            <div className="space-y-2">
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <Input
-                    label="아이디"
-                    icon={<User size={18} />}
-                    placeholder="ID 입력"
-                    value={formData.loginId}
-                    onChange={handleIdChange}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCheckId}
-                  disabled={isIdChecked === true}
-                  className={`h-14 px-6 rounded-[1.4rem] font-bold text-sm whitespace-nowrap transition-all ${
-                    isIdChecked === true
-                      ? "bg-green-100 text-green-600 cursor-default"
-                      : "bg-slate-900 text-white hover:bg-slate-800"
-                  }`}
-                >
-                  {isIdChecked === true ? "확인완료" : "중복확인"}
-                </button>
-              </div>
-              {isIdChecked === false && (
-                <p className="text-xs text-red-500 font-bold ml-4">
-                  * 이미 사용 중인 아이디입니다.
-                </p>
-              )}
-            </div>
-
-            {/* 2. 이름 & 닉네임 섹션 (새로 추가 및 정렬) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Input
-                label="이름"
-                icon={<IdCard size={18} />}
-                placeholder="실명 입력"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-              />
-              <Input
-                label="닉네임"
-                icon={<Sparkles size={18} />}
-                placeholder="별명"
-                value={formData.nickname}
-                onChange={(e) =>
-                  setFormData({ ...formData, nickname: e.target.value })
-                }
-              />
-            </div>
-
-            {/* 3. 이메일 인증 섹션 */}
-            <div className="space-y-4">
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <Input
-                    label="이메일 주소"
-                    icon={<Mail size={18} />}
-                    type="email"
-                    placeholder="example@mail.com"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    readOnly={emailStatus === "verified"}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSendEmail}
-                  disabled={
-                    emailStatus === "verified" || emailStatus === "sending"
-                  }
-                  className={`h-14 px-6 rounded-[1.4rem] font-bold text-sm whitespace-nowrap transition-all ${
-                    emailStatus === "verified"
-                      ? "bg-green-100 text-green-600 border border-green-200"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
-                  }`}
-                >
-                  {emailStatus === "sending"
-                    ? "발송중.."
-                    : emailStatus === "verified"
-                    ? "인증완료"
-                    : emailStatus === "sent"
-                    ? "재발송"
-                    : "인증요청"}
-                </button>
-              </div>
-
-              {(emailStatus === "sent" || emailStatus === "verified") && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex gap-3 items-end">
-                    <div className="flex-1 relative">
-                      <Input
-                        label="인증번호"
-                        icon={<ShieldCheck size={18} />}
-                        placeholder="4자리 숫자"
-                        value={formData.emailCode}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            emailCode: e.target.value,
-                          })
-                        }
-                        readOnly={emailStatus === "verified"}
-                      />
-                      {emailStatus === "sent" && (
-                        <div className="absolute right-4 top-[50px] flex items-center gap-1 text-red-500 font-bold text-sm">
-                          <Timer size={14} />
-                          {formatTime(timeLeft)}
-                        </div>
-                      )}
-                    </div>
-                    {emailStatus !== "verified" && (
-                      <button
-                        type="button"
-                        onClick={handleVerifyCode}
-                        className="h-14 px-6 rounded-[1.4rem] bg-green-500 text-white font-bold text-sm whitespace-nowrap hover:bg-green-600 transition-all shadow-lg shadow-green-200"
-                      >
-                        확인
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 4. 생년월일 & 성별 */}
->>>>>>> 4e354d46839bd17b7d62b597ea007c39ff4766f7
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Input
                 label="생년월일"
@@ -524,11 +295,7 @@ export default function SignUpPage() {
               </div>
             </div>
 
-<<<<<<< HEAD
             {/* 비밀번호 & 확인 */}
-=======
-            {/* 5. 비밀번호 섹션 */}
->>>>>>> 4e354d46839bd17b7d62b597ea007c39ff4766f7
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <Input
@@ -575,11 +342,7 @@ export default function SignUpPage() {
               </div>
             </div>
 
-<<<<<<< HEAD
             {/* 약관 동의 */}
-=======
-            {/* 약관 및 제출 버튼 */}
->>>>>>> 4e354d46839bd17b7d62b597ea007c39ff4766f7
             <div className="bg-slate-50/50 p-6 rounded-[2.2rem] border border-slate-100 flex items-center justify-between">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
@@ -610,14 +373,7 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              className={`w-full py-6 rounded-4xl shadow-2xl transition-all flex items-center justify-center gap-3 group font-black ${
-                isIdChecked &&
-                emailStatus === "verified" &&
-                agreed &&
-                formData.name
-                  ? "bg-slate-900 text-white hover:bg-green-600 shadow-slate-200"
-                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
-              }`}
+              className="w-full bg-slate-900 text-white font-black py-6 rounded-4xl hover:bg-green-600 shadow-2xl shadow-slate-200 transition-all flex items-center justify-center gap-3 group"
             >
               가입 완료하고 시작하기
               <ArrowRight
@@ -629,7 +385,6 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      {/* 약관 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
@@ -645,7 +400,6 @@ export default function SignUpPage() {
               </button>
             </div>
             <div className="p-8 overflow-y-auto max-h-[400px] text-sm text-slate-500 leading-relaxed">
-<<<<<<< HEAD
               <p>
                 제 1조 (목적) 본 약관은 다잇슈 대전이 제공하는 서비스의 이용
                 조건 및 절차를 규정함을 목적으로 합니다...
@@ -653,9 +407,6 @@ export default function SignUpPage() {
                 <br />
                 (상세 약관 내용...)
               </p>
-=======
-              <p>약관 내용...</p>
->>>>>>> 4e354d46839bd17b7d62b597ea007c39ff4766f7
             </div>
             <div className="p-8 bg-slate-50 flex gap-4">
               <button

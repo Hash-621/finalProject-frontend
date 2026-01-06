@@ -119,7 +119,7 @@ export default function TourReviewList() {
     <div className="min-h-screen bg-slate-50">
       {/* 1. Hero Section (상단 배너) */}
       <section className="relative h-[400px] w-full overflow-hidden bg-slate-900">
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/90 to-teal-900/80 z-10" />
+        <div className="absolute inset-0 bg-linear-to-r from-emerald-900/90 to-teal-900/80 z-10" />
         <img
           src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop"
           alt="Travel Background"
@@ -131,7 +131,7 @@ export default function TourReviewList() {
           </span>
           <h1 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
             당신의 여행은 <br className="md:hidden" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-teal-300">
               어떤 추억
             </span>
             으로 남았나요?
@@ -140,7 +140,7 @@ export default function TourReviewList() {
             소중한 여행의 순간을 기록하고 공유해보세요.
           </p>
         </div>
-        <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-slate-50 to-transparent z-20" />
+        <div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-slate-50 to-transparent z-20" />
       </section>
 
       {/* 2. Main Content Area */}
@@ -166,7 +166,7 @@ export default function TourReviewList() {
 
           <button
             onClick={() => router.push("/tour/review/write")}
-            className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-emerald-200 transition-all hover:-translate-y-1"
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-emerald-200 transition-all hover:-translate-y-1"
           >
             <Edit3 size={18} />
             <span>인증샷 올리기</span>
@@ -198,9 +198,9 @@ export default function TourReviewList() {
                   <div
                     key={post.id}
                     onClick={() => router.push(`/tour/review/${post.id}`)}
-                    className="group bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-emerald-900/10 transition-all duration-500 cursor-pointer hover:-translate-y-2 flex flex-col h-full"
+                    className="group bg-white rounded-4xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-emerald-900/10 transition-all duration-500 cursor-pointer hover:-translate-y-2 flex flex-col h-full"
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+                    <div className="relative aspect-4/3 overflow-hidden bg-slate-100">
                       {thumbnailSrc ? (
                         <img
                           src={thumbnailSrc}
