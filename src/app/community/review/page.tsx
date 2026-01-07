@@ -12,6 +12,7 @@ import {
   Search,
   Loader2,
   Sparkles,
+  ThumbsUp,
 } from "lucide-react";
 
 import Pagination from "@/components/common/Pagination";
@@ -53,11 +54,30 @@ export default function TourReviewList() {
           params: { category: "TOUR_REVIEW" },
         });
 
-        // 데이터 구조가 배열인지, Page 객체인지 확인 후 세팅
-        const postList = Array.isArray(response.data)
-          ? response.data
-          : response.data.content || [];
-        setPosts(postList);
+        console.log("API 응답 데이터:", response.data); // [디버깅] 콘솔 확인 필수!
+
+        let postList: Post[] = [];
+
+        // 응답 구조에 따라 데이터 추출 (배열 vs Page객체)
+        if (Array.isArray(response.data)) {
+          postList = response.data;
+        } else if (response.data && Array.isArray(response.data.content)) {
+          // Spring Page<T> 리턴 시 content 필드에 리스트가 있음
+          postList = response.data.content;
+        } else if (response.data && Array.isArray(response.data.posts)) {
+          // 커스텀 응답 객체일 경우
+          postList = response.data.posts;
+        }
+
+        // [중요] likeCount가 없는 경우 0으로 초기화 (안전장치)
+        const sanitizedList = postList.map((post: any) => ({
+          ...post,
+          likeCount: post.likeCount ?? 0, // null/undefined면 0
+          viewCount: post.viewCount ?? 0,
+          commentCount: post.commentCount ?? 0,
+        }));
+
+        setPosts(sanitizedList);
       } catch (error) {
         console.error("게시글 로딩 실패:", error);
       } finally {
@@ -246,10 +266,10 @@ export default function TourReviewList() {
                         </div>
                         <div className="flex items-center gap-3 text-slate-400 text-xs font-medium">
                           <span className="flex items-center gap-1">
-                            <Eye size={14} /> {post.viewCount || 0}
+                            <Eye size={14} /> {post.viewCount}
                           </span>
                           <span className="flex items-center gap-1">
-                            <Heart size={14} /> {post.likeCount || 0}
+                            <ThumbsUp size={14} /> {post.likeCount}
                           </span>
                         </div>
                       </div>
