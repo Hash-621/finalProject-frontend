@@ -16,12 +16,18 @@ import {
   Loader2,
   MapPin,
   ThumbsUp,
+  Camera,
 } from "lucide-react";
 // [추가] 모달 컴포넌트 임포트
 import Modal from "@/components/common/Modal";
 
 // 백엔드 이미지 경로 설정을 위한 상수
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+// 테마 색상 설정 (여행 느낌의 Emerald/Teal 톤)
+const THEME_COLOR = "text-emerald-600";
+const THEME_BG = "bg-emerald-50";
+const THEME_BORDER = "border-emerald-200";
 
 export default function TourReviewDetail({
   params,
@@ -102,11 +108,17 @@ export default function TourReviewDetail({
         setPost(postRes.data);
         setLikeCount(postRes.data.likeCount || 0);
 
+        // [조회수 로직] 쿠키 확인 후 증가 요청 (필요시 활성화)
+        // const cookieName = `viewed_tour_${id}`;
+        // if (!Cookies.get(cookieName)) {
+        //    await api.post(`/community/post/${id}/view`); // API 필요
+        //    Cookies.set(cookieName, "true", { expires: 1 });
+        // }
+
         // 3. 댓글 로드
         await fetchComments();
       } catch (err) {
         console.error("상세 로딩 실패:", err);
-        // [수정] alert -> modal
         openModal("게시글을 불러올 수 없습니다.", "error", "오류", () =>
           router.push("/tour/review")
         );
@@ -154,7 +166,6 @@ export default function TourReviewDetail({
 
   const handleLikeClick = async () => {
     if (!currentUser) {
-      // [수정] alert -> modal
       openModal("로그인이 필요한 서비스입니다.", "warning");
       return;
     }
@@ -170,7 +181,6 @@ export default function TourReviewDetail({
   };
 
   const handleDeletePost = () => {
-    // [수정] confirm -> modal (confirm 타입)
     openModal(
       "정말로 이 글을 삭제하시겠습니까?",
       "confirm",
@@ -178,7 +188,6 @@ export default function TourReviewDetail({
       async () => {
         try {
           await api.delete(`/community/post/${id}`);
-          // 삭제 성공 시 모달 -> 이동
           openModal("게시글이 삭제되었습니다.", "success", "삭제 완료", () =>
             router.push("/tour/review")
           );
@@ -190,8 +199,11 @@ export default function TourReviewDetail({
     );
   };
 
-  const handleCommentSubmit = async (parentId: number | null = null) => {
-    const content = parentId ? replyContent : commentContent;
+  // [수정] 대댓글 로직 강화 (커뮤니티와 동일하게)
+  const handleCommentSubmit = async (targetId: number | null = null) => {
+    const finalParentId = targetId || activeReplyId;
+    const content = finalParentId ? replyContent : commentContent;
+
     if (!content.trim()) return openModal("내용을 입력해주세요.", "warning");
     if (!currentUser) return openModal("로그인이 필요합니다.", "warning");
 
@@ -201,10 +213,10 @@ export default function TourReviewDetail({
         userId: currentUser.userId,
         userNickname: currentUser.nickname,
         content: content,
-        parentId: parentId,
+        parentId: finalParentId, // 명확한 ID 전달
       });
 
-      if (parentId) {
+      if (finalParentId) {
         setReplyContent("");
         setActiveReplyId(null);
       } else {
@@ -218,7 +230,6 @@ export default function TourReviewDetail({
   };
 
   const handleDeleteComment = (commentId: number) => {
-    // [수정] confirm -> modal
     openModal("정말 삭제하시겠습니까?", "confirm", "댓글 삭제", async () => {
       try {
         await api.post("/community/comments/delete", { id: commentId });
@@ -229,6 +240,8 @@ export default function TourReviewDetail({
     });
   };
 
+  // ================= 렌더링 =================
+
   const renderComments = (list: any[]) => {
     return list.map((comment) => {
       const isAuthor =
@@ -236,48 +249,64 @@ export default function TourReviewDetail({
       const isReply = !!comment.parentId;
 
       return (
-        <div key={comment.id} className="w-full group/comment">
-          <div className={`flex ${isReply ? "mt-3" : "mt-8"}`}>
+        <div key={comment.id} className="w-full">
+          <div className={`flex ${isReply ? "mt-3" : "mt-6"}`}>
+            {/* 대댓글 화살표 */}
             {isReply && (
-              <div className="flex flex-col items-end mr-4 pt-4 min-w-6">
-                <CornerDownRight className="text-emerald-300 w-5 h-5" />
+              <div className="flex flex-col items-end mr-3 pt-4 min-w-5">
+                <CornerDownRight
+                  className="text-slate-300 w-5 h-5"
+                  strokeWidth={2}
+                />
               </div>
             )}
+
             <div
-              className={`flex-1 rounded-[24px] p-6 transition-all duration-300 ${
-                isReply
-                  ? "bg-slate-50 border border-slate-100"
-                  : "bg-white border border-slate-100 shadow-sm"
-              }`}
+              className={`flex-1 transition-all relative overflow-hidden group
+                 ${
+                   isReply
+                     ? `bg-slate-50 rounded-2xl p-5 border-slate-200`
+                     : "bg-white border border-slate-100 rounded-4xl p-8 "
+                 }`}
             >
-              <div className="flex justify-between items-start mb-4">
+              <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
+                  {/* 프로필 이미지 */}
                   <div
-                    className={`flex items-center justify-center font-bold text-sm rounded-full shrink-0 ${
+                    className={`flex items-center justify-center font-bold text-sm shadow-md rounded-2xl ${
                       isReply
-                        ? "w-8 h-8 bg-white text-slate-400 border border-slate-200"
-                        : "w-10 h-10 text-white bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-200"
+                        ? "w-8 h-8 bg-white text-slate-600 border border-slate-200"
+                        : "w-11 h-11 text-white bg-linear-to-br from-emerald-400 to-teal-500 shadow-emerald-100"
                     }`}
                   >
                     {(comment.userNickname || "?")[0]}
                   </div>
+
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800 text-[15px]">
+                      <span
+                        className={`font-bold ${
+                          isReply
+                            ? "text-slate-700 text-sm"
+                            : "text-slate-900 text-[16px]"
+                        }`}
+                      >
                         {comment.userNickname}
                       </span>
                       {isAuthor && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-emerald-600 bg-emerald-50 border border-emerald-100">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold border bg-emerald-50 text-emerald-600 border-emerald-100">
                           나
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-slate-400 font-medium mt-0.5">
-                      {comment.createdAt?.split("T")[0] || "날짜없음"}
+                      {comment.createdAt?.split("T")[0] || ""}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+
+                {/* 버튼 영역 */}
+                <div className="flex items-center gap-1 opacity-90">
                   {!comment.isDelete && (
                     <button
                       onClick={() =>
@@ -285,49 +314,61 @@ export default function TourReviewDetail({
                           activeReplyId === comment.id ? null : comment.id
                         )
                       }
-                      className="text-xs font-bold text-slate-400 hover:text-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-50"
+                      className="text-xs font-bold text-slate-400 hover:text-emerald-600 px-2 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
                     >
-                      답글달기
+                      답글
                     </button>
                   )}
                   {isAuthor && !comment.isDelete && (
                     <button
                       onClick={() => handleDeleteComment(comment.id)}
-                      className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg"
+                      className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={15} />
                     </button>
                   )}
                 </div>
               </div>
+
+              {/* 댓글 내용 */}
               <p
-                className={`text-[15px] leading-7 pl-1 whitespace-pre-wrap ${
+                className={`whitespace-pre-wrap leading-relaxed ${
                   comment.isDelete
-                    ? "text-slate-400 italic"
-                    : "text-slate-700 font-medium"
+                    ? "text-slate-400 italic text-sm"
+                    : `font-medium ${
+                        isReply
+                          ? "text-slate-600 text-[14px] pl-1"
+                          : "text-slate-800 text-[16px] pl-1"
+                      }`
                 }`}
               >
                 {comment.isDelete ? "삭제된 댓글입니다." : comment.content}
               </p>
+
+              {/* 답글 입력창 */}
               {activeReplyId === comment.id && (
-                <div className="mt-5 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="mt-5 pt-4 border-t border-slate-200/60 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex items-center gap-2 mb-2 text-xs font-bold text-emerald-600 ml-1">
+                    <CornerDownRight size={12} />
+                    <span>@{comment.userNickname}님에게 작성 중...</span>
+                  </div>
                   <textarea
                     value={replyContent}
                     onChange={(e) => setReplyContent(e.target.value)}
-                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm h-24 outline-none resize-none shadow-inner focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all"
-                    placeholder={`@${comment.userNickname} 님에게 답글 작성 중...`}
+                    className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm h-24 outline-none resize-none shadow-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    placeholder="내용을 입력하세요..."
                     autoFocus
                   />
-                  <div className="flex justify-end gap-2 mt-3">
+                  <div className="flex justify-end gap-2 mt-2">
                     <button
                       onClick={() => setActiveReplyId(null)}
-                      className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-xl"
+                      className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                     >
                       취소
                     </button>
                     <button
                       onClick={() => handleCommentSubmit(comment.id)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md shadow-emerald-200"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-bold text-xs transition-all shadow-md shadow-emerald-100"
                     >
                       등록하기
                     </button>
@@ -336,8 +377,10 @@ export default function TourReviewDetail({
               )}
             </div>
           </div>
+
+          {/* 재귀 렌더링 */}
           {comment.children?.length > 0 && (
-            <div className="pl-6 md:pl-12">
+            <div className="pl-6 md:pl-12 my-2">
               {renderComments(comment.children)}
             </div>
           )}
@@ -348,14 +391,14 @@ export default function TourReviewDetail({
 
   if (loading || !post)
     return (
-      <div className="min-h-screen flex justify-center items-center bg-white">
+      <div className="min-h-screen flex justify-center items-center bg-[#F8FAFC]">
         <Loader2 className="animate-spin text-emerald-500 w-10 h-10" />
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* [추가] 모달 렌더링 */}
+    <div className="min-h-screen bg-[#F8FAFC] pb-32">
+      {/* 모달 */}
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={closeModal}
@@ -365,100 +408,128 @@ export default function TourReviewDetail({
         onConfirm={modalConfig.onConfirm}
       />
 
+      {/* 배경 장식 (여행 느낌) */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-100/40 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-100/40 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-emerald-100/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-sky-100/40 rounded-full blur-[120px]" />
       </div>
 
-      <nav className="relative mx-4 md:mx-auto max-w-4xl z-50 pt-6 mb-4">
-        <div className="bg-white/80 backdrop-blur-xl border border-white/60 shadow-sm rounded-full px-4 h-16 flex items-center justify-between">
+      {/* 네비게이션 */}
+      <nav className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100 mb-8">
+        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <button
             onClick={() => router.push("/tour/review")}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-600 hover:text-emerald-600 transition-all group"
+            className="group flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors"
           >
-            <ChevronLeft className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
+            <ChevronLeft
+              size={20}
+              className="group-hover:-translate-x-1 transition-transform"
+            />
+            <span className="font-bold">여행기 목록</span>
           </button>
-          <span className="text-sm font-bold text-slate-500"></span>
-          <div className="w-10" />
         </div>
       </nav>
 
-      <article className="max-w-4xl mx-auto px-6 pb-32 relative z-10">
-        <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-xl shadow-slate-200/50 border border-white overflow-hidden mb-12">
-          <div className="text-center mb-12">
-            <div className="flex justify-center items-center gap-2 mb-6">
+      <article className="max-w-4xl mx-auto px-6 relative z-10">
+        {/* 본문 카드 */}
+        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white overflow-hidden mb-12">
+          {/* 헤더 영역 */}
+          <div className="p-8 md:p-12 pb-6">
+            <div className="flex justify-between items-start mb-6">
               <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 text-[11px] font-extrabold uppercase tracking-wider">
-                <MapPin size={12} /> Visit Review
+                <MapPin size={12} /> Travel Log
               </span>
+
               {currentUser &&
                 String(post.userId) === String(currentUser.userId) && (
                   <button
                     onClick={handleDeletePost}
-                    className="flex items-center gap-1 text-slate-400 hover:text-red-500 px-3 py-1.5 rounded-full hover:bg-red-50 transition-all text-[11px] font-bold"
+                    className="flex items-center gap-1 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all text-xs font-bold"
                   >
-                    <Trash2 size={12} /> 삭제
+                    <Trash2 size={14} /> 삭제
                   </button>
                 )}
             </div>
 
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 leading-tight break-keep tracking-tight mb-8">
+            <h1 className="text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight mb-8 break-keep">
               {post.title}
             </h1>
 
-            <div className="inline-flex items-center gap-6 px-6 py-3 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs shadow-sm">
+            {/* 작성자 정보 */}
+            <div className="flex flex-wrap items-center gap-6 pb-8 border-b border-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-linear-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-emerald-100">
                   {post.userNickname ? post.userNickname[0] : "?"}
                 </div>
-                <span className="text-sm font-bold text-slate-700">
-                  {post.userNickname}
-                </span>
+                <div>
+                  <div className="font-bold text-slate-800">
+                    {post.userNickname}
+                  </div>
+                  <div className="text-xs text-slate-400 font-medium">
+                    Traveler
+                  </div>
+                </div>
               </div>
-              <div className="w-px h-3 bg-slate-300" />
-              <div className="flex items-center gap-4 text-xs font-semibold text-slate-400">
-                <span className="flex items-center gap-1.5">
+
+              <div className="hidden sm:block w-px h-8 bg-slate-100" />
+
+              <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
+                <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-full">
                   <Clock size={14} /> {post.createdAt?.split("T")[0]}
                 </span>
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-full">
                   <Eye size={14} /> {post.viewCount}
                 </span>
               </div>
             </div>
           </div>
 
+          {/* 이미지 영역 (있을 경우만) */}
           {post.filePath && (
-            <div className="relative w-full rounded-[2rem] overflow-hidden bg-slate-50 mb-12 border border-slate-100">
-              <img
-                src={getImageUrl(post.filePath)!}
-                alt="메인 인증샷"
-                className="w-full h-auto max-h-[700px] object-contain mx-auto"
-              />
+            <div className="px-8 md:px-12 pb-8">
+              <div className="relative w-full rounded-4xl overflow-hidden bg-slate-100 border border-slate-100 shadow-inner">
+                <img
+                  src={getImageUrl(post.filePath)!}
+                  alt="여행 사진"
+                  className="w-full h-auto max-h-[700px] object-contain mx-auto hover:scale-[1.02] transition-transform duration-500"
+                />
+                <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5">
+                  <Camera size={14} /> Photo
+                </div>
+              </div>
             </div>
           )}
 
-          <div
-            className="prose prose-lg prose-slate max-w-none text-slate-600 leading-8 px-2"
-            dangerouslySetInnerHTML={{ __html: post.content }}
-          />
+          {/* 본문 내용 */}
+          <div className="px-8 md:px-12 pb-12">
+            <div
+              className="prose prose-lg prose-slate max-w-none text-slate-600 leading-8
+               [&>p]:mb-6 [&>h1]:text-3xl [&>h1]:font-black [&>h1]:text-slate-800
+               [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-emerald-700 [&>h2]:mt-10
+               [&>blockquote]:border-l-4 [&>blockquote]:border-emerald-300 [&>blockquote]:bg-emerald-50/50 [&>blockquote]:py-2 [&>blockquote]:px-4 [&>blockquote]:rounded-r-lg"
+              dangerouslySetInnerHTML={{ __html: post.content }}
+            />
+          </div>
 
-          <div className="mt-16 pt-12 border-t border-slate-100 flex flex-col items-center gap-4">
+          {/* 좋아요 버튼 영역 */}
+          <div className="bg-slate-50 py-10 flex flex-col items-center justify-center gap-4 border-t border-slate-100">
             <button
               onClick={handleLikeClick}
-              className={`flex items-center gap-3 px-8 py-4 rounded-full font-bold transition-all group scale-100 active:scale-95 ${
+              className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-bold transition-all group scale-100 active:scale-95 shadow-lg ${
                 isLiked
-                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200 ring-4 ring-emerald-100"
-                  : "bg-white text-slate-500 border border-slate-200 hover:border-emerald-200 hover:text-emerald-600"
+                  ? "bg-linear-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-200 ring-4 ring-emerald-100"
+                  : "bg-white text-slate-500 border border-slate-200 hover:border-emerald-300 hover:text-emerald-600"
               }`}
             >
               <ThumbsUp
                 size={22}
-                className={`transition-transform group-hover:scale-110 ${
+                className={`transition-transform group-hover:-rotate-12 ${
                   isLiked ? "fill-white" : ""
                 }`}
               />
-              <span className="text-sm">도움이 됐어요</span>
+              <span className="text-sm">여행에 도움이 됐어요</span>
               <span
-                className={`ml-1 px-2.5 py-0.5 rounded-full text-xs font-black ${
+                className={`ml-2 px-2.5 py-0.5 rounded-full text-xs font-black ${
                   isLiked
                     ? "bg-white/20 text-white"
                     : "bg-slate-100 text-slate-600"
@@ -470,34 +541,35 @@ export default function TourReviewDetail({
           </div>
         </div>
 
-        <section className="relative mt-8">
-          <div className="p-4 md:p-8">
-            <h3 className="text-xl font-black text-slate-900 mb-8 flex items-center gap-3 px-4">
+        {/* 댓글 섹션 */}
+        <section className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden mb-20">
+          <div className="p-8 md:p-12">
+            <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
               댓글{" "}
-              <span className="flex items-center justify-center h-6 min-w-[24px] px-1.5 text-xs font-bold bg-emerald-100 text-emerald-600 rounded-full">
+              <span className="text-lg font-bold bg-emerald-50 text-emerald-600 px-3 py-0.5 rounded-full border border-emerald-100">
                 {comments.length}
               </span>
             </h3>
 
-            <div className="relative mb-12 group focus-within:z-10 px-4">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-[2rem] blur opacity-20 group-focus-within:opacity-30 transition-opacity duration-500 -z-10" />
+            {/* 댓글 입력창 */}
+            <div className="relative mb-12">
               <textarea
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
                 placeholder={
                   currentUser
-                    ? "따뜻한 댓글 한마디는 작성자에게 큰 힘이 됩니다 :)"
+                    ? "여행에 대한 궁금한 점이나 따뜻한 댓글을 남겨주세요 :)"
                     : "로그인이 필요합니다."
                 }
                 disabled={!currentUser}
-                className="w-full p-6 bg-white border border-slate-100 rounded-[2rem] focus:border-emerald-100 focus:ring-4 focus:ring-emerald-500/10 h-36 resize-none transition-all text-slate-700 placeholder:text-slate-300 font-medium leading-relaxed disabled:bg-slate-50 disabled:cursor-not-allowed shadow-sm"
+                className="w-full p-6 bg-slate-50 border-none rounded-4xl focus:ring-2 focus:ring-emerald-500/20 focus:bg-white h-36 resize-none transition-all text-slate-700 placeholder:text-slate-400 font-medium shadow-inner"
               />
               <button
                 onClick={() => handleCommentSubmit(null)}
                 disabled={!currentUser}
-                className={`absolute bottom-4 right-8 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 text-sm hover:-translate-y-1 ${
+                className={`absolute bottom-6 right-4 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 text-sm hover:-translate-y-1 ${
                   currentUser
-                    ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"
+                    ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
                     : "bg-slate-300 cursor-not-allowed shadow-none"
                 }`}
               >
@@ -505,13 +577,14 @@ export default function TourReviewDetail({
               </button>
             </div>
 
-            <div className="space-y-4">
+            {/* 댓글 리스트 */}
+            <div className="space-y-1">
               {comments.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-[2.5rem] border border-dashed border-slate-200 mx-4">
+                <div className="text-center py-16 border-2 border-dashed border-slate-100 rounded-4xl">
                   <MessageSquare className="w-12 h-12 text-slate-200 mx-auto mb-3" />
                   <p className="text-slate-400 font-bold">
-                    아직 댓글이 없습니다.
-                    <br />첫 번째 댓글의 주인공이 되어보세요!
+                    아직 작성된 댓글이 없습니다.
+                    <br />첫 번째 방문 흔적을 남겨보세요!
                   </p>
                 </div>
               ) : (

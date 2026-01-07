@@ -129,13 +129,13 @@ export default function TourReviewList() {
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-6 backdrop-blur-sm">
             <Sparkles size={14} /> Travel Community
           </span>
-          <h1 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
+          <h2 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
             당신의 여행은 <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-teal-300">
               어떤 추억
             </span>
             으로 남았나요?
-          </h1>
+          </h2>
           <p className="text-slate-300 text-lg md:text-xl max-w-2xl font-medium leading-relaxed">
             소중한 여행의 순간을 기록하고 공유해보세요.
           </p>
@@ -165,7 +165,7 @@ export default function TourReviewList() {
           </div>
 
           <button
-            onClick={() => router.push("/tour/review/write")}
+            onClick={() => router.push("/community/review/write")}
             className="w-full md:w-auto flex items-center justify-center gap-2 bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-emerald-200 transition-all hover:-translate-y-1"
           >
             <Edit3 size={18} />
@@ -197,7 +197,7 @@ export default function TourReviewList() {
                 return (
                   <div
                     key={post.id}
-                    onClick={() => router.push(`/tour/review/${post.id}`)}
+                    onClick={() => router.push(`/community/review/${post.id}`)}
                     className="group bg-white rounded-4xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-emerald-900/10 transition-all duration-500 cursor-pointer hover:-translate-y-2 flex flex-col h-full"
                   >
                     <div className="relative aspect-4/3 overflow-hidden bg-slate-100">

@@ -11,10 +11,7 @@ export const authService = {
     api.post("/user/checkemail/get-token", { email }),
   verifyEmailCode: (data: { email: string; token: string }) =>
     api.post("/user/checkemail", data),
-  // 카카오 로그인
   kakaoLogin: (code: string) => api.get(`/auth/kakao/callback?code=${code}`),
-
-  // 네이버 로그인 (데이터를 객체로 전달)
   naverLogin: (loginData: { code: string; state: string }) =>
     api.post("/auth/naver/login", loginData, {
       headers: {
@@ -28,6 +25,7 @@ export const userService = {
   getUserInfo: () => api.get("/mypage/info"),
   updateUserInfo: (data: any) => api.put("/mypage/info", data),
   getFavorites: () => api.get("/mypage/favorites"),
+  getRole: () => api.get("/admin/status"),
 };
 
 // 3. 채용 정보 관련 서비스
@@ -65,32 +63,28 @@ export const boardService = {
   // 목록 조회
   getBoardPosts: (category: string) => {
     const endpoint =
-      category === "free" ? "/community/free" : "/community/recommend";
+      category === "free" ? "/community/free" : "/community/notice";
     return api.get(endpoint);
   },
 
   // 상세 조회
   getPostDetail: (category: string, id: string) => {
     const endpoint =
-      category === "free"
-        ? `/community/free/${id}`
-        : `/community/recommend/${id}`;
+      category === "free" ? `/community/free/${id}` : `/community/notice/${id}`;
     return api.get(endpoint);
   },
 
   // 게시글 작성
   createPost: (category: string, data: any) => {
     const endpoint =
-      category === "recommend" ? "/community/recommend" : "/community/free";
+      category === "notice" ? "/community/notice" : "/community/free";
     return api.post(endpoint, data);
   },
 
   // 게시글 삭제
   deletePost: (category: string, id: string | number) => {
     const endpoint =
-      category === "free"
-        ? `/community/free/${id}`
-        : `/community/recommend/${id}`;
+      category === "free" ? `/community/free/${id}` : `/community/notice/${id}`;
     return api.delete(endpoint);
   },
 

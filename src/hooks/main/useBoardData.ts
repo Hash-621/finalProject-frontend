@@ -4,7 +4,7 @@ import { PostData } from "@/types/board";
 
 export const useBoardData = () => {
   const [freePosts, setFreePosts] = useState<PostData[]>([]);
-  const [bestPosts, setBestPosts] = useState<PostData[]>([]);
+  const [noticePosts, setNoticePosts] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export const useBoardData = () => {
         setLoading(true);
         const [freeRes, bestRes] = await Promise.all([
           boardService.getBoardPosts("free"),
-          boardService.getBoardPosts("recommend"),
+          boardService.getBoardPosts("notice"),
         ]);
 
         // 데이터 필드 표준화 함수
@@ -30,7 +30,7 @@ export const useBoardData = () => {
           );
 
         setFreePosts(normalize(freeRes.data));
-        setBestPosts(normalize(bestRes.data));
+        setNoticePosts(normalize(bestRes.data));
       } catch (error) {
         console.error("게시판 데이터 로드 실패:", error);
       } finally {
@@ -40,5 +40,5 @@ export const useBoardData = () => {
     fetchBoards();
   }, []);
 
-  return { freePosts, bestPosts, loading };
+  return { freePosts, noticePosts, loading };
 };

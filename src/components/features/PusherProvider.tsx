@@ -39,6 +39,7 @@ export default function PusherProvider({
     const channel = pusher.subscribe("my-channel");
 
     channel.bind("new-post", (data: NotificationData) => {
+      console.log("🔥 [Pusher 데이터 전체]", data);
       setLastNotification(data);
       showToast(data);
     });

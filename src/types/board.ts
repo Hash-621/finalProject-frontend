@@ -22,14 +22,14 @@ export interface SubPostData {
 }
 
 export interface CommonBoardListProps {
-  theme: "green" | "blue"; // 테마 색상 선택
-  title: string; // 게시판 제목 (예: 자유게시판)
-  description: string; // 게시판 설명
-  headerImage: string; // 상단 배너 이미지 URL
-  apiEndpoint: string; // 데이터를 가져올 API 주소
-  writeLink: string; // 글쓰기 페이지 링크
-  emptyMessage: string; // 게시글이 없을 때 문구
-  badgeText?: string; // 리스트 아이템에 붙을 뱃지 텍스트 (옵션)
+  theme: "green" | "slate";
+  title: string;
+  description: string;
+  headerImage: string;
+  apiEndpoint: string;
+  writeLink: string;
+  emptyMessage: string;
+  badgeText?: string;
 }
 
 export interface PostItem {

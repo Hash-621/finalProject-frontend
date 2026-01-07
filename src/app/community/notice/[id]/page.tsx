@@ -1,7 +1,7 @@
 "use client";
 
 import React, { use } from "react";
-import CommonPostDetail from "@/components/community/CommunutyPostDetail";
+import CommonPostDetail from "@/components/community/CommunityPostDetail";
 
 export default function RecommendPostDetail({
   params,
@@ -13,12 +13,12 @@ export default function RecommendPostDetail({
   return (
     <CommonPostDetail
       postId={id}
-      theme="blue"
-      categoryLabel="Recommendation"
-      listPath="/community/recommend"
+      theme="slate"
+      categoryLabel="Notice"
+      listPath="/community/notice"
       apiEndpoints={{
-        fetchPost: `/community/post/${id}`, // 추천게시판은 엔드포인트가 다름에 주의
-        deletePost: `/community/post/${id}`, // 삭제 기능 활성화
+        fetchPost: `/community/post/${id}`,
+        deletePost: `/community/post/${id}`,
         fetchComments: `/community/comments/${id}`,
         postComment: "/community/comments",
         deleteComment: "/community/comments/delete",

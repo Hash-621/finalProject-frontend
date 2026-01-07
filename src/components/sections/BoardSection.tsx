@@ -7,7 +7,7 @@ export default function BoardSection() {
   const CARD_EFFECT =
     "hover:shadow-[0_15px_35px_-10px_rgba(0,0,0,0.08)] hover:-translate-y-1 group-hover:border-green-200";
 
-  const { freePosts, bestPosts, loading } = useBoardData();
+  const { freePosts, noticePosts, loading } = useBoardData();
 
   return (
     <section className="py-12 bg-gray-50/30">
@@ -21,10 +21,10 @@ export default function BoardSection() {
             cardClassName={CARD_EFFECT}
           />
           <BoardColumn
-            title="추천게시판"
-            posts={bestPosts}
+            title="공지사항"
+            posts={noticePosts}
             loading={loading}
-            type="recommend"
+            type="notice"
             cardClassName={CARD_EFFECT}
           />
         </div>

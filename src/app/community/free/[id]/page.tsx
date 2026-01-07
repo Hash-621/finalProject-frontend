@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import CommonPostDetail from "@/components/community/CommunutyPostDetail";
+import CommonPostDetail from "@/components/community/CommunityPostDetail";
 
 export default function FreeBoardDetail({
   params,

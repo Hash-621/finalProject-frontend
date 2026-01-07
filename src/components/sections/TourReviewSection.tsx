@@ -60,7 +60,7 @@ export default function TourReviewSection() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-2">
               <button
-                onClick={() => router.push("/tour/review")}
+                onClick={() => router.push("/community/review")}
                 className="group/btn relative px-8 py-4 bg-white text-emerald-800 rounded-2xl font-bold shadow-lg shadow-emerald-900/20 hover:shadow-xl hover:shadow-emerald-900/30 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-2 overflow-hidden"
               >
                 <span className="relative z-10">후기 구경하기</span>
@@ -72,7 +72,7 @@ export default function TourReviewSection() {
               </button>
 
               <button
-                onClick={() => router.push("/tour/review/write")}
+                onClick={() => router.push("/community/review/write")}
                 className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-2xl font-bold hover:bg-white/20 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 group/camera"
               >
                 <Camera

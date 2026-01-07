@@ -4,6 +4,10 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import api from "@/api/axios";
 import { SubPostData, CommonBoardListProps } from "@/types/board";
+// [추가] 쿠키 및 유저 서비스 임포트
+import Cookies from "js-cookie";
+import { userService } from "@/api/services";
+
 import {
   User,
   Clock,
@@ -29,16 +33,16 @@ const THEMES = {
     paginationActive: "bg-green-600 shadow-green-200",
     icon: "text-green-500",
   },
-  blue: {
-    bgDark: "bg-blue-900",
-    textMain: "text-blue-600",
-    textLight: "text-blue-100",
-    bgBadge: "bg-blue-50",
-    bar: "bg-blue-500",
-    button: "bg-blue-600 hover:bg-blue-700",
-    shadow: "shadow-blue-100",
-    paginationActive: "bg-blue-600 shadow-blue-100",
-    icon: "text-blue-500",
+  slate: {
+    bgDark: "bg-slate-900",
+    textMain: "text-slate-600",
+    textLight: "text-slate-100",
+    bgBadge: "bg-slate-100",
+    bar: "bg-slate-600",
+    button: "bg-slate-800 hover:bg-slate-900",
+    shadow: "shadow-slate-200",
+    paginationActive: "bg-slate-800 shadow-slate-200",
+    icon: "text-slate-500",
   },
 };
 
@@ -59,9 +63,14 @@ export default function CommunityBoardList({
   const [searchKeyword, setSearchKeyword] = useState("");
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // [추가] 유저 권한 상태 관리
+  const [userRole, setUserRole] = useState<string>("");
+
   const postsPerPage = 10;
 
   useEffect(() => {
+    // 1. 게시글 데이터 로드
     api
       .get(apiEndpoint)
       .then((res) => {
@@ -73,6 +82,24 @@ export default function CommunityBoardList({
       })
       .catch((err) => console.error("게시글 로드 실패:", err))
       .finally(() => setLoading(false));
+
+    // 2. [추가] 유저 정보(권한) 로드
+    const fetchUserRole = async () => {
+      const token = Cookies.get("token");
+      if (token) {
+        try {
+          const res = await userService.getUserInfo();
+          if (res?.data) {
+            // 백엔드에서 넘겨주는 권한 필드명 확인 필요 (role 또는 roles 등)
+            // 보통 res.data.role 형태라고 가정
+            setUserRole(res.data.role || "USER");
+          }
+        } catch (error) {
+          console.error("유저 정보 로드 실패", error);
+        }
+      }
+    };
+    fetchUserRole();
   }, [apiEndpoint]);
 
   const handleSearch = () => {
@@ -123,9 +150,24 @@ export default function CommunityBoardList({
     return pages;
   };
 
+  // [추가] 글쓰기 버튼 표시 여부 판별 함수
+  const shouldShowWriteButton = () => {
+    // 1. 공지사항 페이지인지 확인 (title 또는 apiEndpoint로 구분)
+    const isNoticePage = title === "공지사항" || apiEndpoint.includes("notice");
+
+    if (isNoticePage) {
+      // 공지사항이면 관리자(ROLE_ADMIN)만 true
+      return userRole === "ROLE_ADMIN";
+    }
+
+    // 공지사항이 아니면(자유게시판 등) 누구나(혹은 로그인한 사람) 보임
+    // 여기서는 기본적으로 true로 두고, 클릭 시 로그인 체크는 별도로 하거나 그대로 둠
+    return true;
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-12 md:pb-24">
-      {/* 헤더 영역 - 모바일 높이 축소 */}
+      {/* 헤더 영역 */}
       <div
         className={`relative h-[220px] md:h-[350px] w-full ${styles.bgDark} flex items-center justify-center overflow-hidden`}
       >
@@ -151,7 +193,7 @@ export default function CommunityBoardList({
         <div
           className={`bg-white rounded-3xl md:rounded-4xl shadow-xl ${styles.shadow} border border-slate-100 overflow-hidden`}
         >
-          {/* 툴바 - 모바일 최적화 */}
+          {/* 툴바 */}
           <div className="p-5 md:p-8 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2 self-start sm:self-center">
               <span
@@ -184,13 +226,16 @@ export default function CommunityBoardList({
                 </button>
               </div>
 
-              <Link
-                href={writeLink}
-                className={`${styles.button} text-white px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-lg text-sm shrink-0`}
-              >
-                <PenTool size={16} />{" "}
-                <span className="hidden xs:inline">글쓰기</span>
-              </Link>
+              {/* [수정] 조건부 렌더링 적용 */}
+              {shouldShowWriteButton() && (
+                <Link
+                  href={writeLink}
+                  className={`${styles.button} text-white px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-lg text-sm shrink-0`}
+                >
+                  <PenTool size={16} />{" "}
+                  <span className="hidden xs:inline">글쓰기</span>
+                </Link>
+              )}
             </div>
           </div>
 
@@ -220,7 +265,6 @@ export default function CommunityBoardList({
                   >
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-2 md:space-y-3 flex-1 min-w-0">
-                        {/* 제목 및 배지 - line-clamp 적용 */}
                         <div className="flex flex-col xs:flex-row xs:items-center gap-1.5 md:gap-2">
                           {badgeText && (
                             <span
@@ -229,12 +273,11 @@ export default function CommunityBoardList({
                               {badgeText}
                             </span>
                           )}
-                          <h3 className="text-[15px] md:text-xl font-bold text-slate-800 group-hover:text-blue-600 transition line-clamp-1 md:line-clamp-2 pr-2">
+                          <h3 className="text-[15px] md:text-xl font-bold text-slate-800 group-hover:text-slate-600 transition line-clamp-1 md:line-clamp-2 pr-2">
                             {post.title}
                           </h3>
                         </div>
 
-                        {/* 메타 정보 - 모바일 폰트 축소 */}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] md:text-sm text-slate-400 font-medium">
                           <span className="flex items-center gap-1 text-slate-600">
                             <User size={12} className={styles.icon} />{" "}
@@ -268,7 +311,7 @@ export default function CommunityBoardList({
             )}
           </div>
 
-          {/* 페이지네이션 - 모바일 크기 축소 */}
+          {/* 페이지네이션 */}
           {totalPages > 1 && (
             <div className="p-6 md:p-10 border-t border-slate-50 flex justify-center bg-slate-50/30">
               <div className="flex items-center gap-1 md:gap-2">

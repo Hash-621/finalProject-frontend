@@ -34,8 +34,13 @@ export const menuData: MenuStructure = {
           src: "",
         },
         {
-          name: "추천게시판",
-          href: "/community/recommend",
+          name: "리뷰게시판",
+          href: "/community/review",
+          src: "",
+        },
+        {
+          name: "공지사항",
+          href: "/community/notice",
           src: "",
         },
       ],
