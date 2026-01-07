@@ -18,6 +18,7 @@ import {
 import { Line, Doughnut } from "react-chartjs-2";
 import { fetchClient } from "@/utils/api";
 import useAdminCheck from "@/hooks/useAdminCheck";
+import { useRouter } from "next/navigation";
 
 ChartJS.register(
   CategoryScale,
@@ -165,6 +166,7 @@ const ServerTrafficChart = ({ data }: { data: ServerTraffic }) => {
 
 // --- 3. 메인 페이지 ---
 export default function AdminPage() {
+  const router = useRouter();
   const { isAdmin, loading: authLoading } = useAdminCheck();
 
   const [metrics, setMetrics] = useState<DashboardDto>({
@@ -210,6 +212,13 @@ export default function AdminPage() {
     const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!authLoading && !isAdmin) {
+      alert("접근 권한이 없습니다.");
+      router.replace("/");
+    }
+  }, [authLoading, isAdmin, router]);
 
   if (authLoading || !isAdmin) {
     return (
