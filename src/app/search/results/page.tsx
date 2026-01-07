@@ -286,9 +286,19 @@ function SearchResultsContent() {
           ) : Object.values(results).every(
               (arr) => !arr || arr.length === 0
             ) ? (
-            <div className="py-20 text-center text-gray-500 border-2 border-dashed rounded-xl bg-gray-50">
-              <p className="text-lg">'{keyword}'에 대한 결과가 없습니다.</p>
-              <p className="text-sm mt-2">다른 검색어로 다시 시도해보세요.</p>
+            // [검색 결과 없음 디자인 수정]
+            <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
+              <div className="text-[90px] mb-6 animate-bounce filter drop-shadow-lg leading-none">
+                🧐
+              </div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                '<span className="text-green-600">{keyword}</span>'에 대한 검색
+                결과가 없어요
+              </h3>
+              <div className="text-gray-500 text-center space-y-1 bg-gray-50 px-8 py-6 rounded-2xl">
+                <p>단어의 철자가 정확한지 확인해 주세요.</p>
+                <p>검색어를 조금 더 짧게, 혹은 다른 단어로 시도해 보세요!</p>
+              </div>
             </div>
           ) : (
             <>

@@ -121,8 +121,26 @@ function CategoryResultContent() {
   // -----------------------------------------------------------------------
   const renderContent = () => {
     if (currentItems.length === 0) {
+      // [검색 결과 없음 디자인 수정]
       return (
-        <div className="text-center py-20 text-gray-500">결과가 없습니다.</div>
+        <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
+          <div className="text-[100px] mb-6 animate-bounce filter drop-shadow-lg leading-none">
+            📭
+          </div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-3">
+            결과가 없습니다
+          </h3>
+          <div className="text-gray-500 text-center space-y-1 bg-gray-50 px-8 py-6 rounded-2xl">
+            <p>'{pageTitle}' 카테고리에 대한 데이터가 없거나,</p>
+            <p>검색어와 일치하는 내용을 찾을 수 없어요.</p>
+          </div>
+          <button
+            onClick={() => router.push("/")}
+            className="mt-8 px-6 py-2.5 bg-gray-100 hover:bg-green-100 hover:text-green-700 text-gray-600 rounded-full font-medium transition-colors text-sm"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
       );
     }
 
