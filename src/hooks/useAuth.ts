@@ -1,6 +1,10 @@
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+<<<<<<< HEAD
 import { authService } from "@/api/services";
+=======
+import { authService, userService } from "@/api/services";
+>>>>>>> f1fff284662489c5164e4a4f2050d0d67fc3db7c
 
 export const useAuth = () => {
   const router = useRouter();
@@ -8,12 +12,22 @@ export const useAuth = () => {
   const login = async (formData: any) => {
     try {
       // 백엔드가 Set-Cookie 헤더로 응답하면, 브라우저가 자동으로 저장합니다.
+<<<<<<< HEAD
       const response = await authService.login(formData);
       // ❌ 더 이상 프론트엔드에서 토큰을 직접 세팅할 필요가 없습니다.
       const token = response.data.token || response.data.accessToken;
       if (token) {
         Cookies.set("token", token, { expires: 7, path: "/" });
       }
+=======
+      await authService.login(formData);
+
+      // ❌ 더 이상 프론트엔드에서 토큰을 직접 세팅할 필요가 없습니다.
+      // const token = response.data.token || response.data.accessToken;
+      // if (token) {
+      //   Cookies.set("token", token, { expires: 7, path: "/" });
+      // }
+>>>>>>> f1fff284662489c5164e4a4f2050d0d67fc3db7c
 
       // 로그인 성공 시 페이지 이동만 처리
       window.location.href = "/";
