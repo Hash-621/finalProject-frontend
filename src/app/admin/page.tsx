@@ -35,7 +35,6 @@ ChartJS.register(
 interface VisitorTrend {
   labels: string[];
   thisWeek: number[];
-  // lastWeek: number[]; // ❌ 삭제
 }
 
 interface TrafficSource {
@@ -69,7 +68,6 @@ const VisitorChart = ({ data }: { data: VisitorTrend }) => {
         tension: 0.4,
         fill: true,
       },
-      // ❌ 지난주 데이터셋(회색 점선) 삭제됨
     ],
   };
 
@@ -169,9 +167,8 @@ const ServerTrafficChart = ({ data }: { data: ServerTraffic }) => {
 export default function AdminPage() {
   const { isAdmin, loading: authLoading } = useAdminCheck();
 
-  // 초기 상태에서 lastWeek 제거
   const [metrics, setMetrics] = useState<DashboardDto>({
-    visitorTrend: { labels: [], thisWeek: [] }, // ❌ lastWeek 제거
+    visitorTrend: { labels: [], thisWeek: [] },
     trafficSource: { labels: [], data: [] },
     serverTraffic: { labels: [], cpu: [] },
   });

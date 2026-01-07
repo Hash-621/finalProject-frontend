@@ -18,7 +18,7 @@ export default function useAdminCheck() {
           setIsAdmin(true);
         } else {
           alert("관리자 권한이 없습니다.");
-          // router.replace("/"); // 메인으로 쫓아냄
+          router.replace("/"); // 메인으로 쫓아냄
         }
       } catch (error) {
         console.error("인증 실패:", error);
