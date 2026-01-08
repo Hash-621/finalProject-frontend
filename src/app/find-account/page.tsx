@@ -165,7 +165,22 @@ export default function Page() {
           openModal("아이디 찾기 실패: " + responseData, "error");
           return;
         }
+        if (responseData === "kakao" || responseData === "naver") {
+          let serviceName = "";
+          if (responseData === "naver") {
+            serviceName = "네이버";
+            console.log("네이버 소셜 로그인 회원");
+          } else if (responseData === "kakao") {
+            console.log("카카오 소셜 로그인 회원");
+            serviceName = "카카오";
+          }
+          openModal(
+            `소셜로 가입한 회원님은 해당 서비스에서 아이디를 확인해주세요. 가입한 소셜 : ${serviceName}`,
+            "error"
+          );
 
+          return;
+        }
         console.log("찾은 아이디:", responseData);
 
         // [중요] 아이디 찾기 성공 시 모달 띄우고, 확인 누르면 로그인 페이지로 이동
