@@ -9,7 +9,8 @@ import React, {
   useMemo, // 값 캐싱 (성능 최적화)
   useEffect, // 화면이 그려진 후 실행될 작업 (초기화 등)
   useCallback, // 함수 캐싱 (성능 최적화)
-  useRef, // DOM 요소에 직접 접근하거나 값을 유지할 때 사용
+  useRef,
+  use, // DOM 요소에 직접 접근하거나 값을 유지할 때 사용
 } from "react";
 
 // Next.js 관련 기능 임포트
@@ -38,6 +39,7 @@ import "react-quill-new/dist/quill.snow.css";
 // 커스텀 모달 컴포넌트 (알림창)
 import Modal from "@/components/common/Modal";
 
+const serverURL = process.env.NEXT_PUBLIC_API_URL;
 // --- [1. 텍스트 에디터 동적 임포트 설정] ---
 // ReactQuill은 브라우저의 'document' 객체를 사용하므로 서버 사이드 렌더링(SSR)을 하면 에러가 납니다.
 // 그래서 dynamic()을 사용하여 '브라우저에서만' 실행되도록 설정합니다.
@@ -187,10 +189,19 @@ function WriteContent() {
         // API 응답에서 ID와 닉네임 추출
         const fetchedId = res.data.userId || res.data.id || res.data.loginId;
         const fetchedNickname = res.data.userNickname || res.data.nickname;
+        const response = await fetch(`${serverURL}/api/v1/admin/isAdmin`, {
+          method: "post",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ loginId: res.data.loginId }),
+        });
+        const isUserAdmin = await response.json();
 
         // [추가] 관리자 여부 확인 (API에서 role 정보를 준다고 가정)
+
         const fetchedRole = res.data.role || "USER";
-        const isUserAdmin = fetchedRole === "ADMIN";
+        // const isUserAdmin = fetchedRole === "ADMIN";
 
         if (fetchedId) {
           // 상태 업데이트

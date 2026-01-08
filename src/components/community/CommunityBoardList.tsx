@@ -26,6 +26,8 @@ import {
   ThumbsUp, // 따봉 아이콘 (데이터 없을 때 사용)
 } from "lucide-react";
 
+const serverURL = process.env.NEXT_PUBLIC_API_URL;
+
 // --- [테마 설정 객체] ---
 // 'theme' 값(green 또는 slate)에 따라 사용할 CSS 클래스들을 미리 정의해둡니다.
 // 이렇게 하면 나중에 색상만 쏙쏙 골라 쓸 수 있어 코드가 깔끔해집니다.
@@ -112,10 +114,24 @@ export default function CommunityBoardList({
         try {
           // 유저 정보 조회 API 호출
           const res = await userService.getUserInfo();
-          if (res?.data) {
-            // 응답 데이터에서 권한(role) 정보를 꺼내 저장합니다.
-            // (백엔드 필드명이 role인지 roles인지 확인 필요, 여기선 role로 가정)
-            setUserRole(res.data.role || "USER");
+          // if (res?.data) {
+
+          //   // 응답 데이터에서 권한(role) 정보를 꺼내 저장합니다.
+          //   // (백엔드 필드명이 role인지 roles인지 확인 필요, 여기선 role로 가정)
+          //   setUserRole(res.data.role || "USER");
+          // }
+          const response = await fetch(`${serverURL}/api/v1/admin/isAdmin`, {
+            method: "post",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ loginId: res.data.loginId }),
+          });
+          const isUserAdmin = await response.json();
+          if (response.ok && isUserAdmin) {
+            setUserRole("ROLE_ADMIN");
+          } else {
+            setUserRole("ROLE_USER");
           }
         } catch (error) {
           console.error("유저 정보 로드 실패", error);
