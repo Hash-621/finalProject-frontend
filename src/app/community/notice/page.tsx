@@ -15,7 +15,7 @@ export default function NoticeBoardList() {
     <CommonBoardList
       theme="slate" // 6. 테마 색상을 '회색(slate)' 계열로 설정합니다. (공지사항다운 차분하고 공식적인 느낌)
       title="공지사항" // 7. 페이지 최상단에 큰 글씨로 표시될 제목입니다.
-      description="Local Hub의 새로운 소식과 주요 업데이트를 확인하세요." // 8. 제목 아래에 들어갈 부가 설명입니다.
+      description="새로운 소식과 주요 업데이트를 확인하세요." // 8. 제목 아래에 들어갈 부가 설명입니다.
       // 9. 상단 배너에 사용할 배경 이미지 주소입니다. (오피스 느낌이 나는 깔끔한 이미지를 사용했네요.)
       headerImage="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1920"
       // 10. [핵심] 데이터를 가져올 API 주소입니다.

@@ -91,9 +91,6 @@ function WriteContent() {
   // 관리자 여부 (true면 공지사항 작성 가능)
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // 공지사항 상단 고정 여부 (관리자 전용 기능)
-  const [isFixed, setIsFixed] = useState(false);
-
   // --- [모달(알림창) 설정] ---
   const [modalConfig, setModalConfig] = useState({
     isOpen: false, // 열림 여부
@@ -348,7 +345,6 @@ function WriteContent() {
         title: title,
         content: content,
         category: category,
-        isFixed: isFixed, // 상단 고정 여부
         viewCount: 0,
         likeCount: 0,
         commentCount: 0,
@@ -499,20 +495,6 @@ function WriteContent() {
             </select>
 
             {/* 상단 고정 체크박스 (관리자이고 공지사항일 때만 보임) */}
-            {isAdmin && category === "NOTICE" && (
-              <button
-                onClick={() => setIsFixed(!isFixed)}
-                className={`flex items-center gap-1.5 ml-4 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
-                  isFixed
-                    ? "bg-green-100 text-green-600" // 체크됨
-                    : "bg-slate-50 text-slate-400 hover:bg-slate-100" // 체크 안 됨
-                }`}
-              >
-                {/* 체크 여부에 따라 아이콘 변경 */}
-                {isFixed ? <CheckSquare size={14} /> : <Square size={14} />}
-                <span>상단 고정</span>
-              </button>
-            )}
 
             {/* 작성자 닉네임 표시 */}
             {userData && (
@@ -676,7 +658,7 @@ export default function WritePage() {
 
 // 카테고리 변경:
 
-// 관리자: 드롭다운을 눌러 '공지사항'을 선택할 수 있습니다. 선택 시 isFixed(상단 고정) 체크박스가 추가로 렌더링됩니다.
+// 관리자: 드롭다운을 눌러 '공지사항'을 선택할 수 있습니다.
 
 // 일반 유저: 드롭다운이 비활성화(disabled)되어 있어 변경 자체가 불가능합니다.
 
