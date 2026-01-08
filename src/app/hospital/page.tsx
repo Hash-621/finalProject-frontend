@@ -1,15 +1,19 @@
+// 1. "use client": 이 파일이 브라우저(클라이언트) 환경에서 실행됨을 명시합니다.
+// (지도 라이브러리, 훅 사용 등을 위해 필수)
 "use client";
 
+// --- [라이브러리 및 컴포넌트 임포트] ---
 import {
-  useKakaoLoader,
-  Map,
-  MapMarker,
-  MarkerClusterer,
-  Roadview,
+  useKakaoLoader, // 카카오맵 SDK를 비동기로 로드하는 훅
+  Map, // 지도 컴포넌트
+  MapMarker, // 지도 위 마커 컴포넌트
+  MarkerClusterer, // 마커가 많을 때 그룹화해주는 컴포넌트
+  Roadview, // 로드뷰 컴포넌트
 } from "react-kakao-maps-sdk";
-import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { hospitalService, userService } from "@/api/services";
+import { useEffect, useState, useMemo } from "react"; // 리액트 기본 훅
+import { useRouter } from "next/navigation"; // 페이지 이동 훅
+import { hospitalService, userService } from "@/api/services"; // API 서비스 함수들
+// 각종 아이콘 임포트
 import {
   Search,
   MapPin,
@@ -22,7 +26,8 @@ import {
   Heart,
 } from "lucide-react";
 
-// [UI] 병원 리스트 스켈레톤
+// --- [UI 컴포넌트: 병원 리스트 스켈레톤] ---
+// 데이터 로딩 중에 보여줄 뼈대 UI입니다. (깜빡이는 회색 박스)
 const HospitalListSkeleton = () => (
   <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm animate-pulse mb-6">
     <div className="flex justify-between items-start mb-4">
@@ -39,32 +44,39 @@ const HospitalListSkeleton = () => (
   </div>
 );
 
+// --- [메인 페이지 컴포넌트] ---
 export default function Page() {
-  const router = useRouter();
+  const router = useRouter(); // 라우터 객체 생성
 
-  // 카카오 맵 로더
+  // 1. 카카오맵 스크립트 로드
+  // 환경변수에서 API 키를 가져와 지도를 띄울 준비를 합니다.
+  // libraries: ["services", "clusterer"] -> 장소 검색 및 마커 클러스터링 기능 사용 설정
   const [mapLoading] = useKakaoLoader({
     appkey: process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "",
     libraries: ["services", "clusterer"],
   });
 
-  const [map, setMap] = useState<kakao.maps.Map | null>(null);
+  const [map, setMap] = useState<kakao.maps.Map | null>(null); // 지도 객체 저장 상태
 
-  // [수정 1] 지도 중심 좌표를 state로 관리
+  // [수정 1] 지도 중심 좌표 관리 (초기값: 대전 시청 근처)
   const [mapCenter, setMapCenter] = useState({ lat: 36.3504, lng: 127.3845 });
 
-  const [hospitals, setHospitals] = useState<any[]>([]);
-  const [filteredHospitals, setFilteredHospitals] = useState<any[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [visibleCount, setVisibleCount] = useState(6);
-  const [filterCategory, setFilterCategory] = useState("전체");
+  // --- [상태 관리] ---
+  const [hospitals, setHospitals] = useState<any[]>([]); // 전체 병원 데이터 (원본)
+  const [filteredHospitals, setFilteredHospitals] = useState<any[]>([]); // 필터링된 병원 데이터 (화면 표시용)
+  const [selectedId, setSelectedId] = useState<number | null>(null); // 현재 선택된(클릭된) 병원 ID
+  const [visibleCount, setVisibleCount] = useState(6); // 리스트에 보여줄 개수 (더보기 기능용)
+  const [filterCategory, setFilterCategory] = useState("전체"); // 진료과목 필터 상태
 
-  const [dataLoading, setDataLoading] = useState(true);
-  const [keyword, setKeyword] = useState("");
+  const [dataLoading, setDataLoading] = useState(true); // 데이터 로딩 상태
+  const [keyword, setKeyword] = useState(""); // 검색어 상태
 
+  // 로드뷰 관련 상태
   const [isRoadviewOpen, setIsRoadviewOpen] = useState(false);
   const [roadviewPos, setRoadviewPos] = useState({ lat: 0, lng: 0 });
 
+  // --- [스크롤 설정] ---
+  // 페이지 진입 시 전체 스크롤을 허용하고, 나갈 때 원래대로 되돌립니다.
   useEffect(() => {
     const wrapElement = document.querySelector(".wrap") as HTMLElement;
     if (wrapElement) wrapElement.style.overflow = "visible";
@@ -73,12 +85,14 @@ export default function Page() {
     };
   }, []);
 
+  // --- [데이터 로드 및 지오코딩 (핵심 로직)] ---
   useEffect(() => {
-    if (mapLoading) return;
+    if (mapLoading) return; // 지도 스크립트가 아직 로드 안 됐으면 대기
 
     const fetchAndGeocodeHospitals = async () => {
-      setDataLoading(true);
+      setDataLoading(true); // 로딩 시작
       try {
+        // 1. 병원 목록과 즐겨찾기 목록을 동시에 호출 (병렬 처리)
         const [hospitalsRes, favoritesRes] = await Promise.allSettled([
           hospitalService.getHospitals(),
           userService.getFavorites(),
@@ -87,10 +101,10 @@ export default function Page() {
         let dbData: any[] = [];
         const myFavoriteIds = new Set<number>();
 
+        // 2. 응답 데이터 정리
         if (hospitalsRes.status === "fulfilled") {
           dbData = hospitalsRes.value.data;
         }
-
         if (favoritesRes.status === "fulfilled") {
           const favoriteList = favoritesRes.value.data;
           if (Array.isArray(favoriteList)) {
@@ -98,60 +112,74 @@ export default function Page() {
           }
         }
 
+        // [UX] 스켈레톤 보여주기 위해 0.5초 지연
         await new Promise((resolve) => setTimeout(resolve, 500));
 
+        // 3. 주소 -> 좌표 변환 (Geocoding)
+        // 카카오 주소 검색 객체 생성
         const geocoder = new window.kakao.maps.services.Geocoder();
+
+        // 모든 병원 주소를 좌표로 변환하는 비동기 작업 배열 생성
         const promises = dbData.map((item: any) => {
           return new Promise((resolve) => {
             geocoder.addressSearch(item.address, (result, status) => {
               if (status === window.kakao.maps.services.Status.OK) {
+                // 변환 성공 시: 기존 데이터에 lat, lng, isFavorite 정보 추가해서 반환
                 resolve({
                   ...item,
                   lat: Number(result[0].y),
                   lng: Number(result[0].x),
                   isFavorite: myFavoriteIds.has(item.id),
                 });
-              } else resolve(null);
+              } else resolve(null); // 실패 시 null
             });
           });
         });
 
+        // 모든 변환 작업이 끝날 때까지 대기
         const results = await Promise.all(promises);
-        const validHospitals = results.filter((h) => h !== null);
+        const validHospitals = results.filter((h) => h !== null); // 유효한 데이터만 필터링
 
         setHospitals(validHospitals);
         setFilteredHospitals(validHospitals);
       } catch (err) {
         console.error("데이터 로드 실패:", err);
       } finally {
-        setDataLoading(false);
+        setDataLoading(false); // 로딩 종료
       }
     };
 
     fetchAndGeocodeHospitals();
-  }, [mapLoading]);
+  }, [mapLoading]); // mapLoading 상태가 변할 때(로드 완료 시) 실행
 
+  // --- [카테고리 목록 생성] ---
+  // 병원 데이터에서 진료과목들만 뽑아서 중복 제거 후 배열 생성 (Memoization)
   const categories = useMemo(() => {
     const sets = new Set(hospitals.map((h) => h.treatCategory));
     return ["전체", ...Array.from(sets)];
   }, [hospitals]);
 
+  // --- [필터링 및 검색 로직] ---
+  // 데이터, 카테고리, 검색어가 바뀔 때마다 실행되어 리스트를 갱신
   useEffect(() => {
     let result = hospitals;
 
+    // 1. 카테고리 필터링
     if (filterCategory !== "전체") {
       result = result.filter((h) => h.treatCategory === filterCategory);
     }
 
+    // 2. 키워드 검색 필터링 (다중 검색어 지원)
     const trimmedKeyword = keyword.trim();
     if (trimmedKeyword !== "") {
-      const searchTerms = trimmedKeyword.split(/\s+/);
+      const searchTerms = trimmedKeyword.split(/\s+/); // 공백으로 검색어 분리
 
       result = result.filter((h) => {
         const name = h.name || "";
         const address = h.address || "";
         const category = h.treatCategory || "";
 
+        // 모든 검색어가 포함되어야 함 (AND 조건)
         return searchTerms.every((term) => {
           return (
             name.toLowerCase().includes(term.toLowerCase()) ||
@@ -165,9 +193,12 @@ export default function Page() {
     setFilteredHospitals(result);
   }, [hospitals, filterCategory, keyword]);
 
+  // --- [즐겨찾기 토글 핸들러] ---
   const toggleFavorite = async (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    const previousHospitals = [...hospitals];
+    e.stopPropagation(); // 카드 클릭 이벤트 버블링 방지
+    const previousHospitals = [...hospitals]; // 롤백용 백업
+
+    // 화면 즉시 업데이트 함수
     const updateList = (list: any[]) =>
       list.map((item) =>
         item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
@@ -177,21 +208,24 @@ export default function Page() {
     setFilteredHospitals((prev) => updateList(prev));
 
     try {
-      await hospitalService.toggleFavorite(id);
+      await hospitalService.toggleFavorite(id); // 서버 요청
     } catch (error) {
       console.error("즐겨찾기 실패:", error);
+      // 실패 시 원상복구
       setHospitals(previousHospitals);
       setFilteredHospitals(previousHospitals);
       alert("로그인이 필요합니다.");
     }
   };
 
+  // --- [병원 클릭 핸들러 (지도 이동)] ---
   const handleHospitalClick = (h: any) => {
     setSelectedId(h.id);
 
-    // [수정 2] 중심 좌표 State 업데이트 (리렌더링 시에도 이 위치 유지)
+    // [수정 2] 지도 중심을 해당 병원 위치로 이동시킴
     setMapCenter({ lat: h.lat, lng: h.lng });
 
+    // 모바일 화면일 경우, 스크롤을 지도 위치로 부드럽게 이동
     if (window.innerWidth < 1024) {
       const mapElement = document.getElementById("hospital-map-section");
       if (mapElement) {
@@ -206,26 +240,26 @@ export default function Page() {
       }
     }
 
-    // [수정 3] map.panTo는 isPanto={true}가 있으면 자동으로 처리되지만,
-    // 확실한 레벨 변경을 위해 남겨둠. 단, panTo 호출은 mapCenter 변경으로 대체 가능하므로 생략하거나 유지해도 됨.
+    // [수정 3] 줌 레벨 조정
     if (map) {
-      // setMapCenter를 했으므로 panTo는 React Props에 의해 자동 처리됨 (isPanto 옵션 덕분)
-      // 하지만 레벨 변경은 명시적으로 필요
-      map.setLevel(3);
+      map.setLevel(3); // 좀 더 확대해서 보여줌
     }
   };
 
+  // --- [로드뷰 열기 핸들러] ---
   const handleOpenRoadview = (h: any) => {
     setRoadviewPos({ lat: h.lat, lng: h.lng });
     setIsRoadviewOpen(true);
   };
 
+  // --- [필터 버튼 핸들러] ---
   const handleFilter = (cat: string) => {
     setFilterCategory(cat);
-    setVisibleCount(6);
-    setSelectedId(null);
+    setVisibleCount(6); // 더보기 초기화
+    setSelectedId(null); // 선택 초기화
   };
 
+  // --- [화면 렌더링 1: 지도 로딩 중] ---
   if (mapLoading)
     return (
       <div className="h-screen flex items-center justify-center bg-white">
@@ -233,14 +267,16 @@ export default function Page() {
       </div>
     );
 
+  // --- [화면 렌더링 2: 메인 화면] ---
   return (
     <div className="w-full bg-[#fbfcfd] min-h-screen pb-24">
-      {/* 헤더 섹션 */}
+      {/* 1. 헤더 섹션 (제목, 검색창, 필터 버튼들) */}
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
             <div className="space-y-5">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight">
+                {/* 깜빡이는 녹색 점 애니메이션 */}
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -258,6 +294,8 @@ export default function Page() {
                 리스트입니다.
               </p>
             </div>
+
+            {/* 검색창 */}
             <div className="relative w-full lg:w-96 mb-15">
               <Search
                 className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -270,6 +308,7 @@ export default function Page() {
                 onChange={(e) => setKeyword(e.target.value)}
                 className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-3xl text-sm font-bold shadow-sm focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all"
               />
+              {/* 검색어 삭제 버튼 */}
               {keyword && (
                 <button
                   onClick={() => setKeyword("")}
@@ -281,6 +320,7 @@ export default function Page() {
             </div>
           </div>
 
+          {/* 카테고리 필터 버튼 목록 */}
           <div className="flex flex-wrap items-center gap-3">
             {categories.map((cat) => (
               <button
@@ -301,8 +341,9 @@ export default function Page() {
 
       <div className="w-full lg:max-w-7xl mx-auto px-4 lg:px-5 mt-10">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start relative">
-          {/* 좌측 리스트 */}
+          {/* 2. 좌측 리스트 섹션 (2/5 공간 차지) */}
           <div className="w-full lg:col-span-2 space-y-6 order-1">
+            {/* 리스트 헤더 (개수 표시) */}
             <div className="flex items-center justify-between px-2 mb-4">
               <div className="flex flex-col">
                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
@@ -317,35 +358,39 @@ export default function Page() {
               </span>
             </div>
 
+            {/* 데이터 로딩 중: 스켈레톤 표시 */}
             {dataLoading ? (
               Array(4)
                 .fill(0)
                 .map((_, i) => <HospitalListSkeleton key={i} />)
             ) : filteredHospitals.length === 0 ? (
+              // 검색 결과 없음 표시
               <div className="py-20 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 border-dashed relative overflow-hidden">
-                {/* Empty State UI 생략 (기존과 동일) */}
                 <p className="text-slate-800 font-bold text-lg mb-1">
                   검색된 병원이 없습니다.
                 </p>
               </div>
             ) : (
+              // 실제 병원 리스트
               <>
                 {filteredHospitals.slice(0, visibleCount).map((h) => (
                   <div
                     key={h.id}
-                    onClick={() => handleHospitalClick(h)}
+                    onClick={() => handleHospitalClick(h)} // 클릭 시 지도 이동
                     className={`group bg-white rounded-[2.5rem] p-8 border transition-all cursor-pointer relative ${
                       selectedId === h.id
-                        ? "border-green-500 shadow-2xl shadow-green-500/10 -translate-y-1"
+                        ? "border-green-500 shadow-2xl shadow-green-500/10 -translate-y-1" // 선택된 카드 강조
                         : "border-slate-100 hover:border-green-200 shadow-sm"
                     }`}
                   >
-                    {/* 리스트 아이템 내부 (기존과 동일) */}
+                    {/* 카드 내부 내용 */}
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-2">
+                        {/* 진료과목 뱃지 */}
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-[10px] font-black rounded-md uppercase tracking-widest shadow-lg shadow-green-200">
                           {h.treatCategory}
                         </div>
+                        {/* 즐겨찾기 하트 버튼 */}
                         <button
                           onClick={(e) => toggleFavorite(e, h.id)}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
@@ -386,6 +431,7 @@ export default function Page() {
                           Clinic Open
                         </span>
                       </div>
+                      {/* 상세 정보 버튼 */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -398,6 +444,7 @@ export default function Page() {
                     </div>
                   </div>
                 ))}
+                {/* 더보기 버튼 */}
                 {visibleCount < filteredHospitals.length && (
                   <button
                     onClick={() => setVisibleCount((v) => v + 5)}
@@ -410,31 +457,34 @@ export default function Page() {
             )}
           </div>
 
-          {/* 우측 지도 섹션 */}
+          {/* 3. 우측 지도 섹션 (3/5 공간 차지, 스크롤 시 고정됨) */}
           <div
             id="hospital-map-section"
             className="w-full h-[500px] lg:h-[calc(100vh-140px)] lg:col-span-3 lg:sticky lg:top-[100px] lg:self-start mt-8 lg:mt-0 order-2"
           >
             <div className="w-full h-full rounded-[3.5rem] overflow-hidden border-12px border-white shadow-2xl relative bg-slate-50">
+              {/* 카카오맵 컴포넌트 */}
               <Map
-                // [수정 4] 고정값 대신 state 사용 & isPanto 추가
+                // [수정 4] 지도 중심 좌표 및 이동 설정
                 center={mapCenter}
-                isPanto={true}
+                isPanto={true} // 부드러운 이동 효과 켜기
                 style={{ width: "100%", height: "100%" }}
-                level={7}
-                onCreate={setMap}
+                level={7} // 초기 줌 레벨
+                onCreate={setMap} // 맵 객체 생성 시 상태에 저장
               >
+                {/* 마커 클러스터러: 마커가 겹치면 숫자로 표시해줌 */}
                 <MarkerClusterer averageCenter={true} key={filterCategory}>
                   {filteredHospitals.map((h) => (
                     <MapMarker
                       key={`marker-${h.id}`}
                       position={{ lat: h.lat, lng: h.lng }}
-                      onClick={() => setSelectedId(h.id)}
+                      onClick={() => setSelectedId(h.id)} // 마커 클릭 시 해당 병원 선택
                       image={{
                         src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
                         size: { width: 32, height: 44 },
                       }}
                     >
+                      {/* 마커 클릭 시 나타나는 정보창 (커스텀 오버레이) */}
                       {selectedId === h.id && (
                         <div className="p-0 min-w-64 overflow-hidden rounded-2xl shadow-2xl bg-white border-none">
                           <div className="bg-slate-900 p-5 text-white">
@@ -477,6 +527,7 @@ export default function Page() {
                   ))}
                 </MarkerClusterer>
 
+                {/* 로드뷰 오버레이 (조건부 렌더링) */}
                 {isRoadviewOpen && (
                   <div className="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center">
                     <div className="w-full h-full bg-white rounded-3xl overflow-hidden relative shadow-2xl">
@@ -503,3 +554,36 @@ export default function Page() {
     </div>
   );
 }
+// 1. 페이지 진입 및 초기화 (Initialization)
+
+// 페이지가 열리면 mapLoading 때문에 잠시 하얀 화면에 로딩 바가 돕니다.
+
+// 카카오맵 SDK 로드가 완료되면 useEffect가 실행되어 데이터를 가져오기 시작합니다.
+
+// 동시에 스켈레톤 UI가 깜빡이며 사용자에게 "로딩 중"임을 알립니다.
+
+// 2. 데이터 수집 및 지오코딩 (Data Fetching & Geocoding)
+
+// 서버에서 병원 주소 목록과 내 즐겨찾기 목록을 가져옵니다.
+
+// 카카오 Geocoder를 사용해 텍스트 주소("대전 서구 둔산동...")를 위도/경도 좌표(lat, lng)로 변환합니다. (이 과정은 비동기로 병렬 처리됩니다.)
+
+// 변환된 데이터에 즐겨찾기 여부(isFavorite)를 합쳐서 상태(hospitals)에 저장합니다.
+
+// 3. 화면 렌더링 (Rendering)
+
+// 로딩이 끝나면 좌측에는 병원 리스트 카드들이, 우측에는 지도가 나타납니다.
+
+// 지도에는 병원 위치마다 마커가 찍히고, 너무 촘촘하면 클러스터(숫자 원)로 묶여서 보입니다.
+
+// 4. 상호작용 (Interaction)
+
+// 사용자가 필터에서 **[내과]**를 클릭합니다. 리스트와 지도의 마커가 내과 병원들로만 싹 바뀝니다.
+
+// 리스트에서 "튼튼내과" 카드를 클릭합니다.
+
+// handleHospitalClick이 실행되어 지도가 "튼튼내과" 위치로 부드럽게 이동(panTo)하고 확대됩니다.
+
+// 해당 병원의 마커 위에 정보창(Overlay)이 뜹니다.
+
+// 정보창에서 **[로드뷰 보기]**를 누르면 지도 위에 로드뷰 화면이 덮어씌워지며 실제 거리 풍경을 보여줍니다.
