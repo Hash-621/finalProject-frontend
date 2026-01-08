@@ -1,8 +1,12 @@
+// 1. "use client": 이 파일이 브라우저에서 실행되는 클라이언트 컴포넌트임을 선언합니다.
+// (사용자 입력, 상태 관리, 타이머, 모달 제어 등을 위해 필수입니다.)
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+// --- [라이브러리 및 컴포넌트 임포트] ---
+import React, { useState, useEffect } from "react"; // 리액트 훅 (상태, 효과)
+import Link from "next/link"; // 페이지 이동 컴포넌트
+import { useRouter } from "next/navigation"; // 라우팅 훅
+// 아이콘 라이브러리
 import {
   User,
   Mail,
@@ -16,41 +20,44 @@ import {
   Timer,
   IdCard,
 } from "lucide-react";
-import { Input } from "@/components/common/Input";
-import Image from "next/image";
-import { authService, userService } from "@/api/services";
-// [추가] 모달 컴포넌트 임포트 (경로 확인해주세요)
+import { Input } from "@/components/common/Input"; // 공통 입력 컴포넌트
+import Image from "next/image"; // 이미지 최적화 컴포넌트
+import { authService, userService } from "@/api/services"; // API 서비스 함수들
+// [추가] 모달 컴포넌트 임포트 (알림창용)
 import Modal from "@/components/common/Modal";
 
+// --- [메인 페이지 컴포넌트] ---
 export default function SignUpPage() {
-  const router = useRouter();
+  const router = useRouter(); // 라우터 객체 생성
 
+  // --- [입력 폼 상태 관리] ---
   const [formData, setFormData] = useState({
-    loginId: "",
-    name: "",
-    nickname: "",
-    email: "",
-    emailCode: "",
-    password: "",
-    confirmPassword: "",
-    gender: "M",
-    birthDate: "",
+    loginId: "", // 아이디
+    name: "", // 이름
+    nickname: "", // 닉네임
+    email: "", // 이메일
+    emailCode: "", // 인증번호 입력값
+    password: "", // 비밀번호
+    confirmPassword: "", // 비밀번호 확인
+    gender: "M", // 성별 (기본값 남성)
+    birthDate: "", // 생년월일
   });
 
-  // 약관 모달용 상태 (기존 유지)
-  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
-  const [agreed, setAgreed] = useState(false);
+  // --- [약관 모달 상태] ---
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false); // 약관 모달 열림 여부
+  const [agreed, setAgreed] = useState(false); // 약관 동의 여부
 
-  // --- 알림 팝업용 모달 상태 (새로 추가) ---
+  // --- [알림 팝업용 모달 상태] ---
   const [modalConfig, setModalConfig] = useState({
-    isOpen: false,
-    title: "",
-    content: "",
-    type: "success" as "success" | "error" | "warning" | "confirm",
-    onConfirm: undefined as (() => void) | undefined,
+    isOpen: false, // 알림 모달 열림 여부
+    title: "", // 제목
+    content: "", // 내용
+    type: "success" as "success" | "error" | "warning" | "confirm", // 타입
+    onConfirm: undefined as (() => void) | undefined, // 확인 버튼 콜백
   });
 
-  // 모달 열기 헬퍼 함수
+  // --- [모달 헬퍼 함수] ---
+  // 모달을 쉽게 띄우기 위한 함수입니다.
   const openModal = (
     content: string,
     type: "success" | "error" | "warning" | "confirm" = "success",
@@ -61,6 +68,7 @@ export default function SignUpPage() {
       isOpen: true,
       content,
       type,
+      // 제목이 없으면 타입에 따라 자동 설정
       title:
         title ||
         (type === "error" ? "오류 발생" : type === "success" ? "알림" : "확인"),
@@ -68,19 +76,20 @@ export default function SignUpPage() {
     });
   };
 
-  // 모달 닫기 함수
   const closeModal = () => {
     setModalConfig((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // --- 상태값들 ---
-  const [isIdChecked, setIsIdChecked] = useState<boolean | null>(null);
+  // --- [검증 상태값들] ---
+  const [isIdChecked, setIsIdChecked] = useState<boolean | null>(null); // 아이디 중복 확인 여부 (true: 사용 가능)
+  // 이메일 인증 상태 (idle: 대기, sending: 전송중, sent: 전송됨, verified: 인증됨)
   const [emailStatus, setEmailStatus] = useState<
     "idle" | "sending" | "sent" | "verified"
   >("idle");
-  const [timeLeft, setTimeLeft] = useState(180);
+  const [timeLeft, setTimeLeft] = useState(180); // 타이머 시간 (3분 = 180초)
 
-  // 타이머 로직
+  // --- [타이머 로직 (useEffect)] ---
+  // 이메일이 발송된 상태(sent)이고 시간이 남아있으면 1초마다 줄어듭니다.
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (emailStatus === "sent" && timeLeft > 0) {
@@ -88,21 +97,25 @@ export default function SignUpPage() {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => clearInterval(interval); // 컴포넌트 언마운트 시 타이머 해제
   }, [emailStatus, timeLeft]);
 
+  // 초 단위를 "분:초" 형식으로 변환하는 함수
   const formatTime = (seconds: number) => {
     const min = Math.floor(seconds / 60);
     const sec = seconds % 60;
     return `${min}:${sec < 10 ? `0${sec}` : sec}`;
   };
 
-  // 핸들러들
+  // --- [핸들러 함수들] ---
+
+  // 아이디 입력 변경 시 (중복 확인 상태 초기화)
   const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, loginId: e.target.value });
-    setIsIdChecked(null);
+    setIsIdChecked(null); // 아이디를 고치면 다시 중복 확인을 받아야 함
   };
 
+  // 아이디 중복 확인 요청
   const handleCheckId = async () => {
     if (!formData.loginId) {
       openModal("아이디를 입력해주세요.", "warning");
@@ -111,7 +124,7 @@ export default function SignUpPage() {
 
     try {
       const response = await authService.checkIdDuplicate(formData.loginId);
-      const isAvailable = response.data; // 백엔드 리턴값 확인 필요 (Boolean 가정)
+      const isAvailable = response.data; // 백엔드에서 true/false 반환 가정
 
       setIsIdChecked(isAvailable);
 
@@ -126,6 +139,7 @@ export default function SignUpPage() {
     }
   };
 
+  // 이메일 인증번호 발송 요청
   const handleSendEmail = async () => {
     const emailToSubmit = formData.email.trim();
 
@@ -133,27 +147,29 @@ export default function SignUpPage() {
       openModal("이메일을 입력해주세요.", "warning");
       return;
     }
+    // 이미 인증됐거나 전송 중이면 무시
     if (emailStatus === "verified" || emailStatus === "sending") return;
 
     try {
-      setEmailStatus("sending");
+      setEmailStatus("sending"); // 전송 중 상태로 변경
 
       const response = await authService.sendEmailVerification(emailToSubmit);
 
-      setEmailStatus("sent");
-      setTimeLeft(180);
+      setEmailStatus("sent"); // 전송 완료 상태로 변경
+      setTimeLeft(180); // 타이머 리셋
       openModal(response.data || "인증번호가 발송되었습니다.", "success");
 
       setFormData((prev) => ({ ...prev, email: emailToSubmit }));
     } catch (error: any) {
       console.error(error);
-      setEmailStatus("idle");
+      setEmailStatus("idle"); // 실패 시 대기 상태로 복귀
       const errorMsg =
         error.response?.data || "이메일 발송 중 오류가 발생했습니다.";
       openModal(errorMsg, "error");
     }
   };
 
+  // 인증번호 확인 요청
   const handleVerifyCode = async () => {
     if (!formData.emailCode) {
       openModal("인증번호를 입력해주세요.", "warning");
@@ -169,7 +185,7 @@ export default function SignUpPage() {
       const response = await authService.verifyEmailCode(checkEmailDto);
 
       if (response.status === 200) {
-        setEmailStatus("verified");
+        setEmailStatus("verified"); // 인증 완료 상태로 변경
         openModal(response.data || "이메일 인증이 완료되었습니다.", "success");
       }
     } catch (error: any) {
@@ -179,9 +195,11 @@ export default function SignUpPage() {
     }
   };
 
+  // 최종 회원가입 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 최종 유효성 검사
     if (!formData.name) return openModal("이름을 입력해주세요.", "warning");
     if (isIdChecked !== true)
       return openModal("아이디 중복 확인을 해주세요.", "warning");
@@ -192,6 +210,7 @@ export default function SignUpPage() {
     if (!agreed) return openModal("약관에 동의해 주세요.", "warning");
 
     try {
+      // 서버로 보낼 데이터 정리 (생년월일이 비어있으면 null로 처리)
       const dataToSend = {
         ...formData,
         birthDate: formData.birthDate === "" ? null : formData.birthDate,
@@ -199,6 +218,7 @@ export default function SignUpPage() {
 
       console.log("서버로 전송될 데이터:", dataToSend);
 
+      // 회원가입 요청
       await authService.signUp(dataToSend);
 
       // 성공 시 모달 -> 확인 버튼 누르면 로그인 페이지 이동
@@ -220,9 +240,10 @@ export default function SignUpPage() {
     }
   };
 
+  // --- [화면 렌더링] ---
   return (
     <div className="min-h-screen bg-[#fcfdfc] flex items-center justify-center p-4 md:p-12">
-      {/* --- [추가] 커스텀 모달 컴포넌트 렌더링 --- */}
+      {/* 1. 알림 팝업 모달 컴포넌트 */}
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={closeModal}
@@ -233,7 +254,7 @@ export default function SignUpPage() {
       />
 
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 bg-white rounded-[3.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.06)] border border-slate-50 overflow-hidden min-h-[850px]">
-        {/* 왼쪽 브랜드 섹션 */}
+        {/* 2. 왼쪽 브랜드 섹션 (PC용) */}
         <div className="lg:col-span-5 flex flex-col justify-between p-12 md:p-16 bg-slate-900 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-green-500 rounded-full blur-[120px] opacity-20 -mr-32 -mt-32" />
           <div className="relative z-10">
@@ -256,6 +277,7 @@ export default function SignUpPage() {
               </span>
             </h2>
             <div className="space-y-10">
+              {/* 단계 표시용 아이템 */}
               <Step
                 icon={<User size={24} />}
                 title="계정 만들기"
@@ -272,6 +294,7 @@ export default function SignUpPage() {
           </div>
         </div>
 
+        {/* 3. 오른쪽 입력 폼 섹션 */}
         <div className="lg:col-span-7 p-8 md:p-20 flex flex-col justify-center bg-white">
           <form
             onSubmit={handleSubmit}
@@ -286,7 +309,7 @@ export default function SignUpPage() {
               </p>
             </div>
 
-            {/* 1. 아이디 섹션 */}
+            {/* (1) 아이디 입력 및 중복 확인 */}
             <div className="space-y-2">
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
@@ -311,6 +334,7 @@ export default function SignUpPage() {
                   {isIdChecked === true ? "확인완료" : "중복확인"}
                 </button>
               </div>
+              {/* 중복일 경우 빨간 에러 메시지 */}
               {isIdChecked === false && (
                 <p className="text-xs text-red-500 font-bold ml-4">
                   * 이미 사용 중인 아이디입니다.
@@ -318,7 +342,7 @@ export default function SignUpPage() {
               )}
             </div>
 
-            {/* 2. 이름 & 닉네임 섹션 */}
+            {/* (2) 이름 & 닉네임 입력 (2열 그리드) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Input
                 label="이름"
@@ -340,7 +364,7 @@ export default function SignUpPage() {
               />
             </div>
 
-            {/* 3. 이메일 인증 섹션 */}
+            {/* (3) 이메일 인증 섹션 */}
             <div className="space-y-4">
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
@@ -353,7 +377,7 @@ export default function SignUpPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    readOnly={emailStatus === "verified"}
+                    readOnly={emailStatus === "verified"} // 인증 완료 시 수정 불가
                   />
                 </div>
                 <button
@@ -368,6 +392,7 @@ export default function SignUpPage() {
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
                   }`}
                 >
+                  {/* 상태에 따라 버튼 텍스트 변경 */}
                   {emailStatus === "sending"
                     ? "발송중.."
                     : emailStatus === "verified"
@@ -378,6 +403,7 @@ export default function SignUpPage() {
                 </button>
               </div>
 
+              {/* 인증번호 입력란 (이메일 발송 후 나타남) */}
               {(emailStatus === "sent" || emailStatus === "verified") && (
                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="flex gap-3 items-end">
@@ -395,6 +421,7 @@ export default function SignUpPage() {
                         }
                         readOnly={emailStatus === "verified"}
                       />
+                      {/* 타이머 표시 */}
                       {emailStatus === "sent" && (
                         <div className="absolute right-4 top-[50px] flex items-center gap-1 text-red-500 font-bold text-sm">
                           <Timer size={14} />
@@ -402,6 +429,7 @@ export default function SignUpPage() {
                         </div>
                       )}
                     </div>
+                    {/* 인증 확인 버튼 */}
                     {emailStatus !== "verified" && (
                       <button
                         type="button"
@@ -416,7 +444,7 @@ export default function SignUpPage() {
               )}
             </div>
 
-            {/* 4. 생년월일 & 성별 */}
+            {/* (4) 생년월일 & 성별 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Input
                 label="생년월일"
@@ -439,7 +467,7 @@ export default function SignUpPage() {
                       onClick={() => setFormData({ ...formData, gender })}
                       className={`flex-1 rounded-[1.8rem] font-black text-sm transition-all border ${
                         formData.gender === gender
-                          ? "bg-slate-900 text-white border-slate-900"
+                          ? "bg-slate-900 text-white border-slate-900" // 선택된 성별
                           : "bg-slate-50/50 text-slate-400 border-slate-100 hover:bg-slate-100"
                       }`}
                     >
@@ -450,7 +478,7 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {/* 5. 비밀번호 섹션 */}
+            {/* (5) 비밀번호 입력 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Input
                 label="비밀번호"
@@ -474,7 +502,7 @@ export default function SignUpPage() {
               />
             </div>
 
-            {/* 약관 및 제출 버튼 */}
+            {/* (6) 약관 동의 및 제출 버튼 */}
             <div className="bg-slate-50/50 p-6 rounded-[2.2rem] border border-slate-100 flex items-center justify-between">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
@@ -489,8 +517,7 @@ export default function SignUpPage() {
               </label>
               <button
                 type="button"
-                // 기존 약관 모달은 isTermsModalOpen 사용
-                onClick={() => setIsTermsModalOpen(true)}
+                onClick={() => setIsTermsModalOpen(true)} // 약관 상세 모달 열기
                 className="text-[10px] font-black text-slate-400 underline"
               >
                 약관보기
@@ -504,8 +531,8 @@ export default function SignUpPage() {
                 emailStatus === "verified" &&
                 agreed &&
                 formData.name
-                  ? "bg-slate-900 text-white hover:bg-green-600 shadow-slate-200"
-                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  ? "bg-slate-900 text-white hover:bg-green-600 shadow-slate-200" // 모든 조건 만족 시 활성화
+                  : "bg-slate-200 text-slate-400 cursor-not-allowed" // 조건 불충족 시 비활성화 스타일
               }`}
             >
               가입 완료하고 시작하기{" "}
@@ -518,7 +545,7 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      {/* 약관 모달 (기존 코드 유지, 상태 변수명만 isTermsModalOpen으로 변경) */}
+      {/* 4. 약관 상세 모달 */}
       {isTermsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
@@ -539,7 +566,7 @@ export default function SignUpPage() {
             <div className="p-8 bg-slate-50 flex gap-4">
               <button
                 onClick={() => {
-                  setAgreed(true);
+                  setAgreed(true); // 동의 처리
                   setIsTermsModalOpen(false);
                 }}
                 className="flex-1 bg-green-500 text-white font-black py-4 rounded-2xl hover:bg-green-600 transition-all"
@@ -554,7 +581,7 @@ export default function SignUpPage() {
   );
 }
 
-// 하단 컴포넌트: 단계 표시용
+// --- [서브 컴포넌트: 단계 표시] ---
 const Step = ({ icon, title, desc, active }: any) => (
   <div
     className={`flex gap-5 items-start ${
@@ -576,3 +603,35 @@ const Step = ({ icon, title, desc, active }: any) => (
     </div>
   </div>
 );
+
+// 1. 페이지 진입 및 아이디 입력 (Step 1)
+
+// 사용자가 페이지에 들어와 아이디를 입력하고 [중복확인] 버튼을 누릅니다.
+
+// handleCheckId가 실행되어 서버에 확인 요청을 보냅니다.
+
+// "사용 가능한 아이디입니다" 모달이 뜨고, isIdChecked가 true가 됩니다. 버튼은 녹색으로 변해 완료됨을 알립니다.
+
+// 2. 이메일 인증 (Step 2)
+
+// 이메일을 입력하고 [인증요청] 버튼을 누릅니다.
+
+// handleSendEmail이 실행되어 인증 메일을 발송하고, 타이머(3분)가 돌아가기 시작합니다. 화면엔 인증번호 입력칸이 나타납니다.
+
+// 사용자가 메일함에서 번호를 확인해 입력하고 [확인] 버튼을 누릅니다.
+
+// handleVerifyCode가 실행되어 번호가 맞는지 검증합니다. 맞으면 "인증 완료" 상태가 됩니다.
+
+// 3. 정보 입력 및 약관 동의 (Step 3)
+
+// 이름, 닉네임, 생년월일, 비밀번호 등을 입력합니다.
+
+// **[약관보기]**를 눌러 모달을 띄우고 내용을 확인한 뒤 **[동의하고 닫기]**를 누릅니다. 체크박스가 체크됩니다.
+
+// 4. 최종 제출 (Step 4)
+
+// 모든 필수 항목이 채워지면 하단 [가입 완료하고 시작하기] 버튼이 활성화됩니다. (검은색으로 변함)
+
+// 버튼을 누르면 handleSubmit이 실행되어 최종 데이터를 서버로 보냅니다.
+
+// 성공 시 "가입 완료" 모달이 뜨고, 확인을 누르면 로그인 페이지로 이동합니다.
