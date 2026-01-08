@@ -9,6 +9,7 @@ import {
   Clock,
   User,
   ChevronRight,
+  Megaphone,
 } from "lucide-react";
 
 const formatDate = (dateString: string) => {
@@ -47,7 +48,7 @@ export const PostCard = ({
             }`}
           >
             {isRecommendBoard ? (
-              <ThumbsUp className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.2} />
+              <Megaphone className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.2} />
             ) : (
               <MessageSquareText
                 className="w-4 h-4 md:w-5 md:h-5"
