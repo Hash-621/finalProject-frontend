@@ -27,7 +27,7 @@ const fadeInUp: Variants = {
 
 // 메인 페이지 컴포넌트
 export default function Home() {
-  const serverURL = process.env.NEXT_PUBLIC_API_URL;
+  const serverURL = process.env.NEXT_PUBLIC_API_SERVER_URL;
   // React 18에서는 useEffect가 두 번 실행될 수 있으므로(Strict Mode),
   // 중복 전송 방지용 Ref 사용
   const isLogged = useRef(false);
