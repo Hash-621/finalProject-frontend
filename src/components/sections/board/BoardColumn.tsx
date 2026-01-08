@@ -4,13 +4,13 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import api from "@/api/axios";
 import { PostData } from "@/types/board";
-import { PostCard } from "@/components/boardTools/PostCard";
+import { PostCard } from "@/components/sections/board/PostCard";
 
 interface BoardColumnProps {
   title: string;
   posts: PostData[];
   loading: boolean;
-  type: "free" | "notice"; // API 엔드포인트와 매칭되는 값
+  type: "free" | "notice";
   cardClassName?: string;
 }
 

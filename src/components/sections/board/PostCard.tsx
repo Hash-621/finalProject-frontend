@@ -33,19 +33,17 @@ export const PostCard = ({
   className?: string;
   type: string;
 }) => {
-  const isRecommendBoard = type === "recommend" || type === "best";
+  const isRecommendBoard = type === "recommend" || type === "notice";
 
   return (
     <Link href={`/community/${type}/${post.id}`} className="group block">
       <div className={`${BASE_STYLE} ${className}`}>
-        {/* 왼쪽 섹션: 아이콘 + 제목 + 유저정보 */}
         <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 p-4 md:p-5">
-          {/* 아이콘 박스 - 모바일에서 크기 축소 및 유연한 대응 */}
           <div
             className={`flex shrink-0 w-9 h-9 md:w-11 md:h-11 items-center justify-center rounded-xl md:rounded-2xl transition-all duration-300 ${
               isRecommendBoard
-                ? "bg-blue-50 text-blue-500 group-hover:bg-blue-500 group-hover:text-white"
-                : "bg-slate-50 text-slate-400 group-hover:bg-green-500 group-hover:text-white"
+                ? "bg-blue-50 text-slate-500 group-hover:bg-slate-500 group-hover:text-white"
+                : "bg-slate-50 text-green-400 group-hover:bg-green-500 group-hover:text-white"
             }`}
           >
             {isRecommendBoard ? (
