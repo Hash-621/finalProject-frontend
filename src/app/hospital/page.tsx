@@ -327,7 +327,7 @@ export default function Page() {
               // 2. 결과 없음 (Empty State)
               <div className="py-20 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-slate-100 border-dashed relative overflow-hidden">
                 {/* 배경 데코레이션 */}
-                <div className="absolute top-4 right-4 text-4xl opacity-10 rotate-[15deg]">
+                <div className="absolute top-4 right-4 text-4xl opacity-10 rotate-15">
                   🚑
                 </div>
                 <div className="absolute bottom-4 left-4 text-4xl opacity-10 rotate-[-10deg]">
