@@ -1,44 +1,51 @@
+// 1. "use client": 이 파일이 브라우저에서 동작하는 클라이언트 컴포넌트임을 선언합니다.
+// (useState, useEffect, 이벤트 핸들러 등을 사용하기 위해 필수입니다.)
 "use client";
 
-import { useSearchParams } from "next/navigation";
+// --- [라이브러리 및 훅 임포트] ---
+import { useSearchParams } from "next/navigation"; // URL 쿼리 파라미터(?keyword=...)를 읽어오는 훅
 import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  Suspense,
+  useEffect, // 데이터 로딩 등 부수 효과 처리
+  useState, // 상태 관리
+  useCallback, // 함수 캐싱 (성능 최적화)
+  useMemo, // 값 캐싱 (성능 최적화)
+  Suspense, // 비동기 컴포넌트 로딩 대기 (useSearchParams 사용 시 필요)
 } from "react";
-import api from "@/api/axios";
+import api from "@/api/axios"; // 서버 통신을 위한 axios 인스턴스
+// 화면에 쓰일 아이콘들을 가져옵니다.
 import { Loader2, RefreshCw, Search, Filter, X } from "lucide-react";
 
-// 컴포넌트 및 타입
-import JobCard from "@/components/jobTools/JobCard";
-import JobDetailModal from "@/components/jobTools/JobDetailModal";
-import Pagination from "@/components/common/Pagination";
-import { JOB_DETAILS_DB } from "@/data/jobDetailData";
-import { JobData, ApplyFormData, ApplyStep, DetailContent } from "@/types/job";
+// --- [하위 컴포넌트 및 데이터 임포트] ---
+import JobCard from "@/components/jobTools/JobCard"; // 채용 공고 카드 컴포넌트
+import JobDetailModal from "@/components/jobTools/JobDetailModal"; // 상세 보기 모달 컴포넌트
+import Pagination from "@/components/common/Pagination"; // 페이지네이션 컴포넌트
+import { JOB_DETAILS_DB } from "@/data/jobDetailData"; // 상세 정보 더미 데이터 (임시)
+import { JobData, ApplyFormData, ApplyStep, DetailContent } from "@/types/job"; // 타입 정의
 
-// [UI] 채용 공고 스켈레톤 UI
+// --- [UI 컴포넌트: 스켈레톤 로딩] ---
+// 데이터 로딩 중에 보여줄 '뼈대' UI입니다. 깜빡이는 효과(animate-pulse)로 로딩 중임을 알립니다.
 const JobSkeleton = () => (
   <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-sm animate-pulse h-[280px] flex flex-col">
     <div className="flex justify-between items-start mb-6">
-      <div className="h-6 bg-slate-200 rounded-lg w-20" /> {/* D-Day 배지 */}
-      <div className="h-6 bg-slate-200 rounded-full w-8" /> {/* 북마크 버튼 */}
+      <div className="h-6 bg-slate-200 rounded-lg w-20" />{" "}
+      {/* D-Day 뱃지 자리 */}
+      <div className="h-6 bg-slate-200 rounded-full w-8" />{" "}
+      {/* 북마크 버튼 자리 */}
     </div>
     <div className="space-y-3 mb-6 flex-1">
-      <div className="h-5 bg-slate-200 rounded w-1/3" /> {/* 회사명 */}
-      <div className="h-7 bg-slate-200 rounded w-3/4" /> {/* 공고 제목 */}
+      <div className="h-5 bg-slate-200 rounded w-1/3" /> {/* 회사명 자리 */}
+      <div className="h-7 bg-slate-200 rounded w-3/4" /> {/* 공고 제목 자리 */}
       <div className="flex gap-2 pt-2">
-        <div className="h-4 bg-slate-200 rounded w-16" /> {/* 태그 1 */}
-        <div className="h-4 bg-slate-200 rounded w-16" /> {/* 태그 2 */}
+        <div className="h-4 bg-slate-200 rounded w-16" /> {/* 태그 자리 1 */}
+        <div className="h-4 bg-slate-200 rounded w-16" /> {/* 태그 자리 2 */}
       </div>
     </div>
     <div className="h-12 bg-slate-200 rounded-2xl w-full mt-auto" />{" "}
-    {/* 버튼 영역 */}
+    {/* 버튼 자리 */}
   </div>
 );
 
-// [UI] 추천 검색어 목록
+// --- [추천 검색어 목록 상수] ---
 const RECOMMEND_KEYWORDS = [
   "개발자",
   "마케팅",
@@ -48,70 +55,86 @@ const RECOMMEND_KEYWORDS = [
   "재택근무",
 ];
 
+// --- [메인 콘텐츠 컴포넌트] ---
 function JobPageContent() {
+  // URL에서 쿼리 파라미터를 읽어옵니다. (예: /job?keyword=삼성전자 -> initialKeyword = "삼성전자")
   const searchParams = useSearchParams();
   const initialKeyword = searchParams.get("keyword") || "";
 
-  const [jobs, setJobs] = useState<JobData[]>([]);
-  // [Fix] 초기 로딩 상태 true (스켈레톤 즉시 노출)
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9;
+  // --- [상태 관리 (State)] ---
+  const [jobs, setJobs] = useState<JobData[]>([]); // 채용 공고 데이터 목록
+  const [loading, setLoading] = useState(true); // 로딩 상태 (초기값 true -> 바로 스켈레톤 보임)
+  const [currentPage, setCurrentPage] = useState(1); // 현재 페이지 번호
+  const itemsPerPage = 9; // 한 페이지당 보여줄 아이템 수
 
+  // 임시 필터 상태 (검색 버튼 누르기 전까지 입력값 저장)
   const [tempFilters, setTempFilters] = useState({
     keyword: initialKeyword,
     career: "",
     education: "",
   });
 
+  // 활성 필터 상태 (실제 API 요청에 사용되는 값)
   const [activeFilters, setActiveFilters] = useState({
     keyword: initialKeyword,
     career: "",
     education: "",
   });
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<JobData | null>(null);
-  const [applyStep, setApplyStep] = useState<ApplyStep>("NONE");
+  // 모달 관련 상태
+  const [isModalOpen, setIsModalOpen] = useState(false); // 모달 열림 여부
+  const [detailLoading, setDetailLoading] = useState(false); // 모달 내부 데이터 로딩 여부
+  const [selectedJob, setSelectedJob] = useState<JobData | null>(null); // 선택된 공고 정보
+  const [applyStep, setApplyStep] = useState<ApplyStep>("NONE"); // 지원 단계 (NONE -> FORM -> DONE)
   const [applyForm, setApplyForm] = useState<ApplyFormData>({
+    // 지원서 입력 데이터
     name: "",
     phone: "",
     message: "",
   });
-  const [detailContent, setDetailContent] = useState<DetailContent | null>(
+  const [detailContent, setDetailContent] = useState<DetailContent | null>( // 상세 공고 내용
     null
   );
 
+  // --- [데이터 로드 함수 (API 호출)] ---
+  // activeFilters가 바뀔 때마다 실행되어 데이터를 새로 가져옵니다.
   const fetchJobs = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); // 로딩 시작 (스켈레톤 표시)
     try {
+      // 필터 객체를 쿼리 스트링으로 변환 (예: keyword=java&career=신입)
       const queryParams = new URLSearchParams(activeFilters);
+      // 서버 API 호출
       const res = await api.get(`/job/crawl?${queryParams.toString()}`);
 
-      // 스켈레톤 확인용 지연 (0.5초)
+      // [UX 개선] 로딩이 너무 빨리 끝나면 깜빡임처럼 보이므로, 최소 0.5초간 스켈레톤을 유지합니다.
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      setJobs(res.data || []);
-      setCurrentPage(1);
+      setJobs(res.data || []); // 받아온 데이터 저장
+      setCurrentPage(1); // 검색 결과가 바뀌면 1페이지로 리셋
     } catch (e) {
       console.error("공고 로드 실패:", e);
-      setJobs([]);
+      setJobs([]); // 에러 시 빈 목록
     } finally {
-      setLoading(false);
+      setLoading(false); // 로딩 종료 (스켈레톤 숨김)
     }
   }, [activeFilters]);
 
+  // 컴포넌트 마운트 시 또는 fetchJobs 변경 시 실행
   useEffect(() => {
     fetchJobs();
   }, [fetchJobs]);
 
+  // --- [이벤트 핸들러] ---
+
+  // 검색 버튼 클릭 시: 임시 필터를 활성 필터로 적용 -> API 호출 유발
   const handleSearch = () => setActiveFilters(tempFilters);
 
+  // 엔터키 입력 시 검색 실행
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSearch();
   };
 
+  // 필터 입력값 변경 (검색창, 드롭다운)
   const handleFilterChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
   ) => {
@@ -119,41 +142,48 @@ function JobPageContent() {
     setTempFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 키워드 클릭 핸들러
+  // 추천 키워드 클릭 핸들러
   const handleKeywordClick = (keyword: string) => {
     const newFilters = { ...tempFilters, keyword };
-    setTempFilters(newFilters);
-    setActiveFilters(newFilters);
+    setTempFilters(newFilters); // 입력창 값 업데이트
+    setActiveFilters(newFilters); // 즉시 검색 실행
   };
 
-  // 페이지네이션용 데이터 계산
+  // --- [페이지네이션 계산 (메모이제이션)] ---
+  // 전체 페이지 수 계산
   const totalPages = useMemo(
     () => Math.ceil(jobs.length / itemsPerPage) || 1,
     [jobs]
   );
 
+  // 현재 페이지에 보여줄 데이터 슬라이싱
   const currentJobs = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return jobs.slice(start, start + itemsPerPage);
   }, [jobs, currentPage]);
 
+  // --- [모달 스크롤 제어] ---
+  // 모달이 열리면 뒷배경 스크롤을 막고, 닫히면 풉니다.
   useEffect(() => {
     if (isModalOpen) {
       const scrollBarWidth =
         window.innerWidth - document.documentElement.clientWidth;
-      document.body.style.overflow = "hidden";
-      document.body.style.paddingRight = `${scrollBarWidth}px`;
+      document.body.style.overflow = "hidden"; // 스크롤 잠금
+      document.body.style.paddingRight = `${scrollBarWidth}px`; // 스크롤바 너비만큼 패딩 추가 (화면 밀림 방지)
     } else {
-      document.body.style.overflow = "";
+      document.body.style.overflow = ""; // 잠금 해제
       document.body.style.paddingRight = "";
     }
   }, [isModalOpen]);
 
+  // --- [공고 클릭 시 상세 모달 열기] ---
   const handleDetailClick = (job: JobData) => {
-    setSelectedJob(job);
-    setIsModalOpen(true);
-    setDetailLoading(true);
-    setApplyStep("NONE");
+    setSelectedJob(job); // 선택된 공고 저장
+    setIsModalOpen(true); // 모달 열기
+    setDetailLoading(true); // 상세 로딩 시작
+    setApplyStep("NONE"); // 지원 단계 초기화
+
+    // (임시) 더미 데이터에서 상세 정보 매칭 (나중엔 API 호출로 변경 가능)
     const matchedDetail = JOB_DETAILS_DB[job.title];
     setDetailContent(
       matchedDetail || {
@@ -165,29 +195,34 @@ function JobPageContent() {
         preference: ["유관 업무 경험자 우대", "즉시 출근 가능자"],
       }
     );
-    setDetailLoading(false);
+    setDetailLoading(false); // 상세 로딩 끝
   };
 
+  // --- [지원하기 폼 제출] ---
   const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!applyForm.name || !applyForm.phone)
-      return alert("필수 정보를 입력해주세요.");
+      return alert("필수 정보를 입력해주세요."); // 간단 유효성 검사
     try {
+      // 지원 API 호출
       await api.post("/job/apply", {
         ...applyForm,
         companyName: selectedJob?.companyName,
         jobTitle: selectedJob?.title,
       });
-      setApplyStep("DONE");
+      setApplyStep("DONE"); // 완료 화면으로 전환
     } catch (error) {
-      setApplyStep("DONE");
+      setApplyStep("DONE"); // 에러가 나도 일단 완료 화면으로 (실무에선 에러 처리 필요)
     }
   };
 
+  // --- [화면 렌더링] ---
   return (
     <section className="py-16 bg-gray-50/30 overflow-hidden min-h-screen">
       <div className="w-full lg:max-w-7xl mx-auto px-4 lg:px-5">
+        {/* 1. 상단 헤더 섹션 (타이틀, 배지, 새로고침 버튼) */}
         <div className="w-full shrink-0 space-y-5 relative mb-12">
+          {/* 큐레이션 배지 */}
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold tracking-tight">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -195,6 +230,7 @@ function JobPageContent() {
             </span>
             SMART CURATION
           </div>
+          {/* 페이지 타이틀 */}
           <h2 className="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
             맞춤형{" "}
             <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
@@ -207,11 +243,12 @@ function JobPageContent() {
             한눈에 보여드립니다.
           </p>
 
+          {/* 필터 초기화(새로고침) 버튼 */}
           <button
             onClick={() => {
               const reset = { keyword: "", career: "", education: "" };
               setTempFilters(reset);
-              setActiveFilters(reset);
+              setActiveFilters(reset); // 필터 초기화 후 재검색
             }}
             className="flex items-center gap-2 p-3 md:px-6 md:py-3 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-green-600 hover:border-green-200 transition-all shadow-sm text-sm font-bold group absolute right-0 bottom-0"
             title="필터 초기화 및 새로고침"
@@ -220,7 +257,7 @@ function JobPageContent() {
               size={18}
               className={
                 loading
-                  ? "animate-spin text-green-500"
+                  ? "animate-spin text-green-500" // 로딩 중이면 아이콘 회전
                   : "group-hover:rotate-180 transition-transform duration-500"
               }
             />
@@ -229,9 +266,10 @@ function JobPageContent() {
         </div>
 
         <div className="flex-1 min-w-0 space-y-8">
-          {/* 검색/필터 바 */}
+          {/* 2. 검색 및 필터 바 */}
           <div className="bg-white p-4 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
             <div className="flex flex-col md:flex-row gap-3">
+              {/* 검색어 입력창 */}
               <div className="flex-1 relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
@@ -243,6 +281,7 @@ function JobPageContent() {
                   placeholder="기업명 혹은 직무 검색"
                   className="w-full pl-12 pr-4 py-4 bg-slate-50/50 border-none rounded-2xl focus:ring-2 focus:ring-green-500/20 focus:bg-white transition-all text-sm outline-none font-bold text-slate-700 placeholder:font-medium"
                 />
+                {/* 검색어 삭제 버튼 (입력값이 있을 때만 표시) */}
                 {tempFilters.keyword && (
                   <button
                     onClick={() =>
@@ -254,6 +293,7 @@ function JobPageContent() {
                   </button>
                 )}
               </div>
+              {/* 경력 선택 드롭다운 & 검색 버튼 */}
               <div className="flex gap-3">
                 <select
                   name="career"
@@ -277,9 +317,9 @@ function JobPageContent() {
             </div>
           </div>
 
-          {/* 결과 리스트 영역 */}
+          {/* 3. 공고 목록 표시 영역 */}
           {loading ? (
-            // [New] 로딩 시 스켈레톤 UI 표시
+            // (1) 로딩 중일 때: 스켈레톤 6개 표시
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {Array(6)
                 .fill(0)
@@ -288,9 +328,9 @@ function JobPageContent() {
                 ))}
             </div>
           ) : jobs.length === 0 ? (
-            // [New] 검색 결과 없음 (Empty State - 스티커 적용)
+            // (2) 데이터가 없을 때: Empty State UI 표시
             <div className="py-24 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-center px-4 relative overflow-hidden">
-              {/* 배경 데코레이션 */}
+              {/* 배경 장식 이모지들 */}
               <div className="absolute top-10 left-10 text-6xl opacity-5 rotate-[-15deg] select-none pointer-events-none">
                 💼
               </div>
@@ -298,7 +338,7 @@ function JobPageContent() {
                 📄
               </div>
 
-              {/* 스티커 이모지 */}
+              {/* 중앙 메인 아이콘 */}
               <div className="relative mb-8 group cursor-default select-none">
                 <div className="text-[80px] drop-shadow-2xl filter hover:scale-110 transition-transform duration-300 rotate-[-5deg] z-10 relative">
                   👨‍💼
@@ -316,6 +356,7 @@ function JobPageContent() {
                 단어의 철자가 정확한지 확인하시거나, 다른 키워드로 검색해보세요.
               </p>
 
+              {/* 추천 검색어 버튼들 */}
               <div className="flex flex-col items-center gap-4">
                 <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">
                   Recommend Keywords
@@ -334,6 +375,7 @@ function JobPageContent() {
               </div>
             </div>
           ) : (
+            // (3) 데이터가 있을 때: 공고 카드 그리드 및 페이지네이션 표시
             <div className="space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {currentJobs.map((job, i) => (
@@ -341,6 +383,7 @@ function JobPageContent() {
                     key={`${job.companyName}-${i}`}
                     className="transform hover:scale-[1.02] transition-transform duration-300"
                   >
+                    {/* 카드 클릭 시 상세 모달 오픈 */}
                     <JobCard job={job} onClick={handleDetailClick} />
                   </div>
                 ))}
@@ -358,6 +401,7 @@ function JobPageContent() {
         </div>
       </div>
 
+      {/* 상세 보기 모달 (포탈처럼 동작) */}
       <JobDetailModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -374,7 +418,8 @@ function JobPageContent() {
   );
 }
 
-// Suspense 감싸기 (useSearchParams 사용 시 필수)
+// --- [최상위 페이지 컴포넌트] ---
+// useSearchParams를 쓰기 위해 Suspense로 감싸줍니다. (빌드 에러 방지)
 export default function Page() {
   return (
     <Suspense
@@ -388,3 +433,37 @@ export default function Page() {
     </Suspense>
   );
 }
+
+// 1. 페이지 진입 및 초기 데이터 로드 (Mount)
+
+// 사용자가 페이지에 접속합니다. loading = true이므로 화면에는 깜빡이는 스켈레톤(JobSkeleton) 6개가 먼저 보입니다.
+
+// 동시에 useEffect가 실행되어 fetchJobs()를 호출, 서버에 공고 데이터를 요청합니다.
+
+// 데이터가 도착하면 setJobs로 저장하고, 스켈레톤을 끄고 실제 채용 공고 카드들을 보여줍니다.
+
+// 2. 검색 및 필터링 (Search Interaction)
+
+// 사용자가 검색창에 "마케팅"을 입력하고 [검색] 버튼을 누릅니다.
+
+// handleSearch가 실행되어 activeFilters 상태가 업데이트됩니다.
+
+// useEffect가 필터 변경을 감지하고, 다시 fetchJobs()를 호출합니다. 이번엔 ?keyword=마케팅 파라미터를 달고 요청합니다.
+
+// 새로운 데이터로 목록이 갱신됩니다. 만약 결과가 없으면 **Empty State(스티커 화면)**를 보여줍니다.
+
+// 3. 상세 확인 (Detail Modal)
+
+// 목록에서 관심 있는 공고를 클릭합니다. handleDetailClick이 실행됩니다.
+
+// isModalOpen = true가 되면서 화면 위에 모달 창이 뜹니다. 뒷배경은 스크롤되지 않도록 막힙니다.
+
+// 모달 내부에서 JOB_DETAILS_DB를 뒤져 상세 정보를 찾아 보여줍니다.
+
+// 4. 지원하기 (Apply Flow)
+
+// 모달 안에서 [지원하기] 버튼을 누르면 ApplyForm이 나옵니다.
+
+// 이름과 연락처를 쓰고 제출하면 handleApplySubmit이 실행되어 서버로 지원 정보를 보냅니다.
+
+// 성공하면 applyStep이 "DONE"으로 바뀌며 "지원이 완료되었습니다!" 화면이 뜹니다.
