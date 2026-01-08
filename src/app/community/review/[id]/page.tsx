@@ -105,10 +105,8 @@ export default function TourReviewDetail({
 
         // 2. 게시글 로드
         const postRes = await api.get(`/community/post/${id}`);
-        const userLikedRes = await api.get(`/community/post/${id}/isuserliked`);
         setPost(postRes.data);
         setLikeCount(postRes.data.likeCount || 0);
-        setIsLiked(userLikedRes.data);
 
         // [조회수 로직] 쿠키 확인 후 증가 요청 (필요시 활성화)
         // const cookieName = `viewed_tour_${id}`;
@@ -174,9 +172,8 @@ export default function TourReviewDetail({
 
     try {
       const res = await api.post(`/community/post/${id}/like`);
-      const likeRes = await api.get(`/community/post/${id}/likecount`);
       setIsLiked(!isLiked);
-      setLikeCount(likeRes.data);
+      setLikeCount(res.data.likeCount);
     } catch (error) {
       console.error("좋아요 처리 실패:", error);
       openModal("좋아요 처리에 실패했습니다.", "error");

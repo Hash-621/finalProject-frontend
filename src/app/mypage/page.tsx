@@ -15,7 +15,6 @@ import {
   UtensilsCrossed,
   Newspaper,
   Sparkles,
-  Clock,
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
@@ -204,7 +203,7 @@ export default function MyPage() {
                   {activeTab === "info"
                     ? "Settings"
                     : activeTab === "favorites"
-                    ? "Favorites"
+                    ? "favorites"
                     : "History"}
                 </h2>
               </div>
@@ -395,7 +394,7 @@ export default function MyPage() {
                         const detailPath = `/community/${category}/${postId}`;
                         const rawText =
                           activeTab === "posts" ? item.title : item.content;
-                        const createdAt = item.createdAt;
+
                         return (
                           <Link
                             key={item.id}
@@ -411,16 +410,9 @@ export default function MyPage() {
                                         ? "POST"
                                         : "COMMENT"}
                                     </span>
-                                    <span className="text-gray-400 ml-1">
-                                      <Clock size={17} />
-                                      {""}
-                                    </span>
-                                    <span className="text-gray-400 text-[13px]">
-                                      {createdAt}
-                                    </span>
                                   </div>
                                   {/* 🔹 동적 글자수 제한 적용 */}
-                                  <h3 className="text-sm md:text-[18px] font-bold text-slate-800 group-hover:text-green-600 transition-colors">
+                                  <h3 className="text-sm md:text-xl font-black text-slate-800 group-hover:text-green-600 transition-colors">
                                     {truncateText(rawText)}
                                   </h3>
                                 </div>
