@@ -17,7 +17,7 @@ export default function TourRouteSubPage() {
               07 Special Courses
             </div>
 
-            <h2 className="text-3xl lg:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.1]">
+            <h2 className="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
               대전의{" "}
               <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
                 다채로운 매력을

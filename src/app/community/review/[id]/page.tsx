@@ -504,7 +504,7 @@ export default function TourReviewDetail({
       <nav className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100 mb-8">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <button
-            onClick={() => router.push("/tour/review")}
+            onClick={() => router.push("/community/review")}
             className="group flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors"
           >
             <ChevronLeft
