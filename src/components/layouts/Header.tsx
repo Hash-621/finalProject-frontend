@@ -18,17 +18,20 @@ import { useRouter } from "next/navigation";
 import api from "@/api/axios";
 import Cookies from "js-cookie";
 import Image from "next/image";
-// [추가] 모달 컴포넌트 임포트
 import Modal from "@/components/common/Modal";
+
+// [추가] 서버 URL 상수 (환경 변수 또는 직접 입력)
+const serverURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export default function Header() {
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
   const router = useRouter();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // [추가] 관리자 여부 상태
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- [추가] 모달 상태 관리 ---
+  // --- 모달 상태 관리 ---
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     title: "",
@@ -57,52 +60,78 @@ export default function Header() {
   };
   // ---------------------------
 
-  // 1. 로그인 상태 확인
+  // 1. 로그인 및 권한 확인 (통합 로직)
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthAndRole = async () => {
       const token = Cookies.get("token");
 
       if (!token) {
         setIsLoggedIn(false);
+        setIsAdmin(false);
         setIsLoading(false);
         return;
       }
 
       try {
+        // 1) 로그인 정보 확인
         const res = await api.get("/mypage/info");
         if (res.status === 200) {
           setIsLoggedIn(true);
+
+          // 2) [추가] 관리자 여부 확인 (로그인 성공 시에만 실행)
+          // 기존 제공해주신 로직 활용 (fetch 사용)
+          try {
+            const adminRes = await fetch(`${serverURL}/api/v1/admin/isAdmin`, {
+              method: "post",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              // mypage/info 응답에 loginId가 있다고 가정 (없다면 백엔드 확인 필요)
+              body: JSON.stringify({ loginId: res.data.loginId }),
+            });
+
+            if (adminRes.ok) {
+              const isUserAdmin = await adminRes.json();
+              setIsAdmin(isUserAdmin); // true면 관리자, false면 일반 유저
+            } else {
+              setIsAdmin(false);
+            }
+          } catch (adminErr) {
+            console.error("관리자 권한 확인 실패:", adminErr);
+            setIsAdmin(false); // 에러 나면 안전하게 일반 유저로 처리
+          }
         }
       } catch (err) {
+        // 토큰 만료 등으로 로그인 정보 조회 실패 시 로그아웃 처리
         Cookies.remove("token", { path: "/" });
         setIsLoggedIn(false);
+        setIsAdmin(false);
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkAuth();
+    checkAuthAndRole();
   }, []);
 
   // 2. 로그아웃 수행 함수
   const performLogout = async () => {
     try {
-      await api.post("/user/logout").catch(() => {}); // 서버 로그아웃 시도 (실패해도 진행)
+      await api.post("/user/logout").catch(() => {});
       Cookies.remove("token", { path: "/" });
       setIsLoggedIn(false);
+      setIsAdmin(false); // [추가] 로그아웃 시 관리자 권한도 해제
 
-      // 로그아웃 성공 모달 -> 확인 시 메인으로 이동
       openModal("로그아웃 되었습니다.", "success", "완료", () => {
         window.location.href = "/";
       });
     } catch (error) {
-      // 에러 발생 시에도 클라이언트 로그아웃은 처리
       Cookies.remove("token", { path: "/" });
+      setIsAdmin(false);
       window.location.href = "/";
     }
   };
 
-  // [수정] 로그아웃 버튼 핸들러 (모달 띄우기)
   const handleLogoutClick = () => {
     openModal(
       "정말 로그아웃 하시겠습니까?",
@@ -120,6 +149,20 @@ export default function Header() {
     if (isLoggedIn) {
       return (
         <div className="flex items-center space-x-3">
+          {/* [추가] 관리자일 때만 보이는 버튼 */}
+          {isAdmin && (
+            <>
+              <Link
+                href="/admin" // 관리자 페이지 경로
+                className="text-sm font-medium text-gray-700 hover:text-gray-400 transition-colors"
+                onClick={() => isMobile && setOpenMobileMenu(false)}
+              >
+                관리자
+              </Link>
+              <span aria-hidden="true" className="h-4 w-px bg-gray-200" />
+            </>
+          )}
+
           <Link
             href="/mypage"
             className="text-sm font-bold text-green-600 hover:text-green-400 transition-colors"
@@ -129,7 +172,7 @@ export default function Header() {
           </Link>
           <span aria-hidden="true" className="h-4 w-px bg-gray-200" />
           <button
-            onClick={handleLogoutClick} // [수정] 모달 핸들러 연결
+            onClick={handleLogoutClick}
             className="text-sm font-medium text-gray-700 hover:text-gray-400 transition-colors cursor-pointer"
           >
             로그아웃
@@ -161,7 +204,6 @@ export default function Header() {
 
   return (
     <>
-      {/* [추가] 모달 컴포넌트 렌더링 */}
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={closeModal}
@@ -171,11 +213,13 @@ export default function Header() {
         onConfirm={modalConfig.onConfirm}
       />
 
+      {/* ... (Dialog 컴포넌트는 기존 코드 유지) ... */}
       <Dialog
         open={openMobileMenu}
         onClose={setOpenMobileMenu}
         className="relative z-100 lg:hidden"
       >
+        {/* ... (기존 모바일 메뉴 코드) ... */}
         <DialogBackdrop
           transition
           className="fixed inset-0 bg-black/25 transition-opacity duration-300 data-closed:opacity-0"
@@ -195,6 +239,7 @@ export default function Header() {
                 <XMarkIcon aria-hidden="true" className="size-6" />
               </button>
             </div>
+            {/* ... (나머지 모바일 메뉴 내용) ... */}
             <SearchBar
               idPrefix="sidebar"
               className="h-14 px-4 bg-gray-50 text-sm items-center w-full"

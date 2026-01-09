@@ -89,7 +89,7 @@ const VisitorChart = ({ data }: { data: VisitorTrend }) => {
     maintainAspectRatio: false, // 부모 컨테이너 크기에 맞춤
     plugins: {
       legend: { display: false }, // 범례 숨김 (데이터가 1개라 불필요)
-      title: { display: true, text: "최근 7일 가입자 추이" }, // 차트 제목
+      title: { display: true, text: "최근 7일 방문자 추이" }, // 차트 제목
     },
     scales: {
       y: {
@@ -131,7 +131,7 @@ const TrafficSourceChart = ({ data }: { data: TrafficSource }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: { position: "right" }, // 범례를 오른쪽에 배치
-      title: { display: true, text: "가입 경로" },
+      title: { display: true, text: "접속 경로" },
     },
   };
 
