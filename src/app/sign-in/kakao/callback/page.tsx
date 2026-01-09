@@ -31,8 +31,14 @@ function KakaoCallbackContent() {
             ? JSON.stringify(errbody, null, 2)
             : errbody;
         setStatus("Login Failed");
-        alert(`카카오 로그인에 실패했습니다. : ${errorMessage}`);
-        // router.push("/sign-in");
+        alert(
+          `카카오 로그인에 실패했습니다. : ${
+            errbody.details === "null"
+              ? "이미 가입된 메일 입니다"
+              : errorMessage
+          }`
+        );
+        router.push("/sign-in");
       });
   }, [code, router]);
 
