@@ -14,4 +14,7 @@ export interface RestaurantData {
   url: string | null;
   imagePath: string;
   isFavorite: boolean;
+  lat?: number;
+  lng?: number;
+  reviewCount?: number;
 }

@@ -328,7 +328,7 @@ function TourReviewContent() {
           "여행 리뷰가 성공적으로 등록되었습니다!",
           "success",
           "등록 완료",
-          () => router.push("/tour/review")
+          () => router.push("/community/review")
         );
       }
     } catch (error: any) {
@@ -383,7 +383,7 @@ function TourReviewContent() {
         <div className="flex items-center justify-between mb-8 px-4">
           {/* 목록으로 돌아가기 버튼 */}
           <button
-            onClick={() => router.push("/tour/review")}
+            onClick={() => router.push("/comminity/review")}
             className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-all font-bold group"
           >
             <ArrowLeft

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import { MapPin, MessageCircle, Clock } from "lucide-react";
 import { RestaurantData } from "@/types/restaurant";
 
+// [핵심] Props 인터페이스에 item 정의
 interface Props {
   item: RestaurantData;
 }
@@ -11,6 +12,7 @@ interface Props {
 export default function RestaurantCard({ item }: Props) {
   return (
     <div className="relative h-full overflow-hidden rounded-4xl group">
+      {/* 배경 이미지 */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-110"
         style={{
@@ -23,8 +25,24 @@ export default function RestaurantCard({ item }: Props) {
 
       <div className="relative h-full flex flex-col justify-end p-6 text-white">
         <div className="animate-fadeIn">
-          <div className="inline-block px-2 py-1 bg-green-500 text-white text-[10px] font-black rounded-md tracking-tighter shadow-sm mb-2 uppercase">
-            {item.restCategory}
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-2">
+              {/* 카테고리 뱃지 */}
+              <div className="inline-block px-2 py-1 bg-green-500 text-white text-[10px] font-black rounded-md tracking-tighter shadow-sm uppercase">
+                {item.restCategory}
+              </div>
+
+              {/* [New] 리뷰 개수 뱃지 (리뷰가 1개 이상일 때만 표시) */}
+              {item.reviewCount !== undefined && item.reviewCount > 0 && (
+                <div className="flex items-center gap-1 text-[10px] font-bold bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full text-white/90 border border-white/10">
+                  <MessageCircle
+                    size={10}
+                    className="text-yellow-400 fill-yellow-400"
+                  />
+                  <span>{item.reviewCount}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <h2 className="text-xl font-bold mb-2 line-clamp-1 group-hover:text-orange-400 transition-colors">
