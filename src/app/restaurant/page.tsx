@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import Link from "next/link";
 import { restaurantService, userService } from "@/api/services";
 import { RestaurantData } from "@/types/restaurant";
@@ -21,8 +27,9 @@ import {
   Undo2,
 } from "lucide-react";
 import Pagination from "@/components/common/Pagination";
+// react-kakao-maps-sdk 라이브러리
 import {
-  Map,
+  Map as KakaoMap,
   MapMarker,
   MarkerClusterer,
   useKakaoLoader,
@@ -39,232 +46,332 @@ interface ExtendedRestaurantData extends RestaurantData {
   lng?: number;
 }
 
-// --- [지도 & 로드뷰 전용 컨테이너 컴포넌트] ---
-const KakaoMapContainer = ({
-  data,
-  activeId,
-  onMarkerClick,
-  onMapClick,
-}: {
-  data: ExtendedRestaurantData[];
-  activeId: number | null;
-  onMarkerClick: (item: ExtendedRestaurantData) => void;
-  onMapClick: () => void;
-}) => {
-  const mapRef = useRef<kakao.maps.Map | null>(null);
-
-  // 로드뷰 상태 관리
-  const [isRoadviewMode, setIsRoadviewMode] = useState(false);
-  // [수정] radius 속성 명시하여 타입 에러 해결
-  const [roadviewPosition, setRoadviewPosition] = useState<{
-    lat: number;
-    lng: number;
-    radius: number;
-  }>({
-    lat: 0,
-    lng: 0,
-    radius: 50,
-  });
-
-  const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
-
-  // 1. 지도 컴포넌트 내부용 로더 (UI 표시용)
-  const [loading, error] = useKakaoLoader({
-    appkey: kakaoKey || "dummy_key",
-    libraries: ["services", "clusterer"],
-    id: "kakao-map-script", // 부모와 동일한 ID 사용으로 스크립트 공유
-  });
-
-  // 2. 로딩 강제 종료 안전장치 (무한 로딩 방지)
-  const [isForceLoaded, setIsForceLoaded] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.kakao && window.kakao.maps) {
-      setIsForceLoaded(true);
-      return;
-    }
-    const timer = setTimeout(() => {
-      // 3초가 지나면 로딩 상태 강제 해제 (지도 스크립트가 있든 없든 화면 표시 시도)
-      setIsForceLoaded(true);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // 3. [핵심 기능] 사이드바 아이템 클릭 시 지도 이동 및 확대
-  useEffect(() => {
-    if (!mapRef.current || !activeId || isRoadviewMode) return;
-
-    const target = data.find((d) => d.id === activeId);
-
-    // 좌표가 유효한지 체크
-    if (
-      target &&
-      typeof target.lat === "number" &&
-      typeof target.lng === "number"
-    ) {
-      const moveLatLon = new kakao.maps.LatLng(target.lat, target.lng);
-
-      // (1) 줌 레벨을 3(상세)으로 변경하여 확대 (애니메이션 효과)
-      mapRef.current.setLevel(3, { animate: true });
-
-      // (2) 해당 위치로 부드럽게 이동
-      // setLevel 애니메이션과 겹치지 않게 약간의 지연 후 이동하거나 바로 이동
-      mapRef.current.panTo(moveLatLon);
-    }
-  }, [activeId, data, isRoadviewMode]);
-
-  // 로드뷰 보기 핸들러
-  const handleOpenRoadview = (lat: number, lng: number) => {
-    setRoadviewPosition({ lat, lng, radius: 50 });
-    setIsRoadviewMode(true);
-  };
-
-  // --- [렌더링 분기] ---
-  if (!kakaoKey) {
+// --- [최적화 1] 사이드바 리스트 아이템 컴포넌트 ---
+const RestaurantListItem = React.memo(
+  ({
+    item,
+    activeId,
+    onClick,
+    onFavorite,
+  }: {
+    item: ExtendedRestaurantData;
+    activeId: number | null;
+    onClick: (id: number) => void;
+    onFavorite: (e: React.MouseEvent, id: number) => void;
+  }) => {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-slate-50 text-slate-500">
-        <AlertCircle size={40} className="mb-2 text-red-400" />
-        <p className="font-bold">API 키 확인 필요</p>
-      </div>
-    );
-  }
-
-  // 로딩 중이면서 강제 로드도 안 된 경우 스피너 표시
-  if (loading && !isForceLoaded) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full bg-slate-50">
-        <Loader2 className="animate-spin text-green-500 mb-2" size={32} />
-        <p className="text-sm font-bold text-slate-400">
-          지도를 불러오는 중...
-        </p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full bg-slate-50 text-red-500">
-        <AlertCircle size={32} className="mb-2" />
-        <p>지도 로드 실패</p>
-      </div>
-    );
-  }
-
-  // --- [로드뷰 모드] ---
-  if (isRoadviewMode) {
-    return (
-      <div className="relative w-full h-full">
-        <button
-          onClick={() => setIsRoadviewMode(false)}
-          className="absolute top-4 left-4 z-50 bg-white px-4 py-2 rounded-lg shadow-lg border border-slate-200 text-slate-700 font-bold flex items-center gap-2 hover:bg-slate-50 transition-transform hover:scale-105"
-        >
-          <Undo2 size={18} /> 지도 보기
-        </button>
-        <Roadview position={roadviewPosition} className="w-full h-full" />
-      </div>
-    );
-  }
-
-  // --- [지도 모드] ---
-  return (
-    // [중요] Tailwind CSS 이미지 스타일 간섭 방지 클래스 유지
-    <div className="w-full h-full [&_img]:max-w-none [&_img]:h-auto [&_img]:border-none">
-      <Map
-        center={{ lat: 36.3504, lng: 127.3845 }} // 대전 시청 중심
-        className="w-full h-full"
-        level={7}
-        onCreate={(map) => (mapRef.current = map)}
-        onClick={onMapClick}
+      <div
+        onClick={() => onClick(item.id)}
+        className={`flex gap-4 p-4 border-b border-slate-100 cursor-pointer transition-colors bg-white hover:bg-slate-50 ${
+          activeId === item.id
+            ? "bg-green-50 border-green-200 ring-1 ring-inset ring-green-200"
+            : ""
+        }`}
       >
-        <MarkerClusterer averageCenter={true} minLevel={6}>
-          {data.map(
-            (item) =>
-              // lat, lng가 유효한 경우에만 마커 표시
-              typeof item.lat === "number" &&
-              typeof item.lng === "number" && (
-                <MapMarker
-                  key={item.id}
-                  position={{ lat: item.lat, lng: item.lng }}
-                  onClick={() => onMarkerClick(item)}
-                  image={{
-                    src:
-                      activeId === item.id
-                        ? "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png"
-                        : "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png",
-                    size:
-                      activeId === item.id
-                        ? { width: 29, height: 42 }
-                        : { width: 24, height: 35 },
+        <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 border border-slate-100 bg-slate-100">
+          <img
+            src={`/images/restaurantImages/${item.imagePath}`}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <div className="flex justify-between items-start">
+            <h4
+              className={`font-bold text-sm truncate ${
+                activeId === item.id ? "text-green-700" : "text-slate-900"
+              }`}
+            >
+              {item.name}
+            </h4>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5 truncate">
+            {item.address}
+          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className="text-[10px] font-bold text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded bg-white">
+              {item.restCategory}
+            </span>
+            {item.businessStatus === "OPEN" && (
+              <span className="text-[10px] font-bold text-green-600 flex items-center gap-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>{" "}
+                영업중
+              </span>
+            )}
+            {item.businessStatus === "BREAK" && (
+              <span className="text-[10px] font-bold text-orange-500">
+                브레이크타임
+              </span>
+            )}
+            {item.businessStatus === "CLOSED" && (
+              <span className="text-[10px] font-bold text-slate-400">
+                영업종료
+              </span>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={(e) => onFavorite(e, item.id)}
+          className="absolute top-2 right-2 p-2 text-slate-300 hover:text-orange-500 transition-colors"
+        >
+          <Heart
+            size={16}
+            className={item.isFavorite ? "fill-orange-500 text-orange-500" : ""}
+          />
+        </button>
+      </div>
+    );
+  }
+);
+RestaurantListItem.displayName = "RestaurantListItem";
+
+// --- [최적화 2] 지도 컨테이너 컴포넌트 ---
+const KakaoMapContainer = React.memo(
+  ({
+    data,
+    activeId,
+    isSidebarOpen,
+    onMarkerClick,
+    onMapClick,
+  }: {
+    data: ExtendedRestaurantData[];
+    activeId: number | null;
+    isSidebarOpen: boolean;
+    onMarkerClick: (item: ExtendedRestaurantData) => void;
+    onMapClick: () => void;
+  }) => {
+    const mapRef = useRef<kakao.maps.Map | null>(null);
+
+    const [isRoadviewMode, setIsRoadviewMode] = useState(false);
+    const [roadviewPosition, setRoadviewPosition] = useState<{
+      lat: number;
+      lng: number;
+      radius: number;
+    }>({
+      lat: 0,
+      lng: 0,
+      radius: 50,
+    });
+
+    const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+
+    const [loading, error] = useKakaoLoader({
+      appkey: kakaoKey || "dummy_key",
+      libraries: ["services", "clusterer"],
+      id: "kakao-map-script",
+    });
+
+    const [isForceLoaded, setIsForceLoaded] = useState(false);
+
+    useEffect(() => {
+      if (typeof window !== "undefined" && window.kakao && window.kakao.maps) {
+        setIsForceLoaded(true);
+        return;
+      }
+      const timer = setTimeout(() => {
+        setIsForceLoaded(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }, []);
+
+    // 사이드바 토글 시 지도 레이아웃 재계산
+    useEffect(() => {
+      if (mapRef.current) {
+        setTimeout(() => {
+          mapRef.current?.relayout();
+        }, 300);
+      }
+    }, [isSidebarOpen]);
+
+    // [핵심 수정] 지도 이동 및 확대 로직 개선 (위치 튐 방지)
+    useEffect(() => {
+      if (!mapRef.current || !activeId || isRoadviewMode) return;
+
+      const target = data.find((d) => d.id === activeId);
+
+      if (
+        target &&
+        typeof target.lat === "number" &&
+        typeof target.lng === "number"
+      ) {
+        const moveLatLon = new kakao.maps.LatLng(target.lat, target.lng);
+        const currentLevel = mapRef.current.getLevel();
+
+        // 줌 레벨이 4보다 크면(멀면) 3으로 확대 후 이동
+        if (currentLevel > 4) {
+          mapRef.current.setLevel(3, { animate: true });
+
+          // [수정] 줌 애니메이션과 이동이 겹치지 않게 지연 시간 부여
+          // 이렇게 해야 좌표가 꼬이지 않고 정확하게 중앙으로 옵니다.
+          setTimeout(() => {
+            mapRef.current?.panTo(moveLatLon);
+          }, 150);
+        } else {
+          // 이미 확대된 상태면 바로 부드럽게 이동
+          mapRef.current.panTo(moveLatLon);
+        }
+      }
+    }, [activeId, data, isRoadviewMode]);
+
+    const handleOpenRoadview = useCallback((lat: number, lng: number) => {
+      setRoadviewPosition({ lat, lng, radius: 50 });
+      setIsRoadviewMode(true);
+    }, []);
+
+    // 현재 선택된 아이템 찾기 (오버레이 독립 렌더링용)
+    const activeItem = useMemo(
+      () => data.find((d) => d.id === activeId),
+      [data, activeId]
+    );
+
+    if (!kakaoKey) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full bg-slate-50 text-slate-500">
+          <AlertCircle size={40} className="mb-2 text-red-400" />
+          <p className="font-bold">API 키 확인 필요</p>
+        </div>
+      );
+    }
+
+    if (loading && !isForceLoaded) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full bg-slate-50">
+          <Loader2 className="animate-spin text-green-500 mb-2" size={32} />
+          <p className="text-sm font-bold text-slate-400">
+            지도를 불러오는 중...
+          </p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full bg-slate-50 text-red-500">
+          <AlertCircle size={32} className="mb-2" />
+          <p>지도 로드 실패</p>
+        </div>
+      );
+    }
+
+    if (isRoadviewMode) {
+      return (
+        <div className="relative w-full h-full">
+          <button
+            onClick={() => setIsRoadviewMode(false)}
+            className="absolute top-4 left-4 z-50 bg-white px-4 py-2 rounded-lg shadow-lg border border-slate-200 text-slate-700 font-bold flex items-center gap-2 hover:bg-slate-50 transition-transform hover:scale-105"
+          >
+            <Undo2 size={18} /> 지도 보기
+          </button>
+          <Roadview position={roadviewPosition} className="w-full h-full" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full h-full [&_img]:max-w-none [&_img]:h-auto [&_img]:border-none">
+        <KakaoMap
+          center={{ lat: 36.3504, lng: 127.3845 }}
+          className="w-full h-full"
+          level={7}
+          onCreate={(map) => (mapRef.current = map)}
+          onClick={onMapClick}
+        >
+          <MarkerClusterer averageCenter={true} minLevel={6}>
+            {data.map(
+              (item) =>
+                typeof item.lat === "number" &&
+                typeof item.lng === "number" && (
+                  <MapMarker
+                    key={item.id}
+                    position={{ lat: item.lat, lng: item.lng }}
+                    onClick={() => onMarkerClick(item)}
+                    image={{
+                      src:
+                        activeId === item.id
+                          ? "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png"
+                          : "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png",
+                      size:
+                        activeId === item.id
+                          ? { width: 29, height: 42 }
+                          : { width: 24, height: 35 },
+                      options: {
+                        offset:
+                          activeId === item.id
+                            ? { x: 14.5, y: 42 }
+                            : { x: 12, y: 35 },
+                      },
+                    }}
+                    zIndex={activeId === item.id ? 9999 : 1}
+                    clickable={true}
+                  />
+                )
+            )}
+          </MarkerClusterer>
+
+          {/* [핵심 수정] 오버레이를 MarkerClusterer 밖으로 빼서 독립적으로 렌더링 */}
+          {/* 이렇게 하면 마커가 클러스터링 되거나 리렌더링 되는 순간에도 오버레이는 유지됩니다. */}
+          {activeItem && activeItem.lat && activeItem.lng && (
+            <CustomOverlayMap
+              position={{ lat: activeItem.lat, lng: activeItem.lng }}
+              yAnchor={1.4}
+              zIndex={10000}
+              clickable={true}
+            >
+              <div
+                className="bg-white p-3 rounded-xl shadow-2xl border border-slate-100 w-56 animate-in zoom-in duration-200 relative pointer-events-auto cursor-default"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMapClick();
                   }}
-                  zIndex={activeId === item.id ? 9999 : 1}
-                  clickable={true}
+                  className="absolute top-2 right-2 text-slate-300 hover:text-red-500 bg-white rounded-full p-0.5 transition-colors z-10"
                 >
-                  {/* 상세정보 오버레이 */}
-                  {activeId === item.id && (
-                    <CustomOverlayMap
-                      position={{ lat: item.lat, lng: item.lng }}
-                      yAnchor={1.4}
-                      zIndex={10000}
-                      clickable={true}
-                    >
-                      <div
-                        className="bg-white p-3 rounded-xl shadow-2xl border border-slate-100 w-56 animate-in zoom-in duration-200 relative pointer-events-auto cursor-default"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onMapClick();
-                          }}
-                          className="absolute top-2 right-2 text-slate-300 hover:text-red-500 bg-white rounded-full p-0.5 transition-colors z-10"
-                        >
-                          <X size={16} />
-                        </button>
+                  <X size={16} />
+                </button>
 
-                        <div className="mb-2 pr-5">
-                          <h5 className="font-black text-sm text-slate-900 truncate">
-                            {item.name}
-                          </h5>
-                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                            {item.address}
-                          </p>
-                        </div>
+                <div className="mb-2 pr-5">
+                  <h5 className="font-black text-sm text-slate-900 truncate">
+                    {activeItem.name}
+                  </h5>
+                  <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                    {activeItem.address}
+                  </p>
+                </div>
 
-                        <div className="flex gap-2 mt-3">
-                          <Link
-                            href={`/restaurant/${item.id}`}
-                            className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold text-center rounded-lg transition-colors"
-                          >
-                            상세정보
-                          </Link>
-                          <button
-                            onClick={() =>
-                              handleOpenRoadview(item.lat!, item.lng!)
-                            }
-                            className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 rounded-lg transition-colors flex items-center justify-center"
-                            title="로드뷰 보기"
-                          >
-                            <Eye size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </CustomOverlayMap>
-                  )}
-                </MapMarker>
-              )
+                <div className="flex gap-2 mt-3">
+                  <Link
+                    href={`/restaurant/${activeItem.id}`}
+                    className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold text-center rounded-lg transition-colors"
+                  >
+                    상세정보
+                  </Link>
+                  <button
+                    onClick={() =>
+                      handleOpenRoadview(activeItem.lat!, activeItem.lng!)
+                    }
+                    className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 rounded-lg transition-colors flex items-center justify-center"
+                    title="로드뷰 보기"
+                  >
+                    <Eye size={16} />
+                  </button>
+                </div>
+              </div>
+            </CustomOverlayMap>
           )}
-        </MarkerClusterer>
-      </Map>
-    </div>
-  );
-};
+        </KakaoMap>
+      </div>
+    );
+  }
+);
+KakaoMapContainer.displayName = "KakaoMapContainer";
 
 // --- [메인 페이지 컴포넌트] ---
 export default function RestaurantListPage() {
   const [restaurants, setRestaurants] = useState<ExtendedRestaurantData[]>([]);
-  const [filteredList, setFilteredList] = useState<ExtendedRestaurantData[]>(
-    []
-  );
+
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [keyword, setKeyword] = useState("");
@@ -279,101 +386,105 @@ export default function RestaurantListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // [수정] Geocoding 안정성을 위해 부모 컴포넌트에서도 로더 상태를 구독합니다.
-  // 이 훅은 싱글톤으로 동작하므로 자식 컴포넌트와 상태를 공유합니다.
+  // 부모 컴포넌트에서도 로더 상태 구독
   const [mapScriptLoading] = useKakaoLoader({
     appkey: process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "dummy_key",
     libraries: ["services", "clusterer"],
     id: "kakao-map-script",
   });
 
-  // Helper Functions
-  const parseTime = (str: string) => {
+  // Helpers
+  const parseTime = useCallback((str: string) => {
     const [h, m] = str.split(":").map(Number);
     return h * 60 + m;
-  };
+  }, []);
 
-  const getBusinessStatus = (
-    timeString: string | undefined
-  ): { status: "OPEN" | "BREAK" | "CLOSED"; todayStr: string } => {
-    if (!timeString) return { status: "CLOSED", todayStr: "정보 없음" };
+  const getBusinessStatus = useCallback(
+    (
+      timeString: string | undefined
+    ): { status: "OPEN" | "BREAK" | "CLOSED"; todayStr: string } => {
+      if (!timeString) return { status: "CLOSED", todayStr: "정보 없음" };
 
-    const now = new Date();
-    const dayIndex = now.getDay();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const daysKor = [
-      "일요일",
-      "월요일",
-      "화요일",
-      "수요일",
-      "목요일",
-      "금요일",
-      "토요일",
-    ];
-    const todayLabel = daysKor[dayIndex];
-    const isWeekend = dayIndex === 0 || dayIndex === 6;
+      const now = new Date();
+      const dayIndex = now.getDay();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const daysKor = [
+        "일요일",
+        "월요일",
+        "화요일",
+        "수요일",
+        "목요일",
+        "금요일",
+        "토요일",
+      ];
+      const todayLabel = daysKor[dayIndex];
+      const isWeekend = dayIndex === 0 || dayIndex === 6;
 
-    const rules = timeString.split("|").map((s) => s.trim());
-    let targetRule = "";
+      const rules = timeString.split("|").map((s) => s.trim());
+      let targetRule = "";
 
-    for (const rule of rules) {
-      if (rule.includes(todayLabel)) {
-        targetRule = rule;
-        break;
-      }
-    }
-    if (!targetRule) {
       for (const rule of rules) {
-        if (isWeekend && (rule.includes("주말") || rule.includes("공휴일"))) {
-          targetRule = rule;
-          break;
-        }
-        if (!isWeekend && rule.includes("평일")) {
+        if (rule.includes(todayLabel)) {
           targetRule = rule;
           break;
         }
       }
-    }
-    if (!targetRule) {
-      for (const rule of rules) {
-        if (
-          rule.includes("매일") ||
-          !rule.match(/(월|화|수|목|금|토|일)요일|평일|주말/)
-        ) {
-          targetRule = rule;
-          break;
+      if (!targetRule) {
+        for (const rule of rules) {
+          if (isWeekend && (rule.includes("주말") || rule.includes("공휴일"))) {
+            targetRule = rule;
+            break;
+          }
+          if (!isWeekend && rule.includes("평일")) {
+            targetRule = rule;
+            break;
+          }
         }
       }
-    }
-
-    if (!targetRule || targetRule.includes("휴무"))
-      return { status: "CLOSED", todayStr: "금일 휴무" };
-
-    const timeMatch = targetRule.match(/(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2})/);
-    if (!timeMatch) return { status: "CLOSED", todayStr: targetRule };
-
-    const [_, openStr, closeStr] = timeMatch;
-    const openMin = parseTime(openStr);
-    let closeMin = parseTime(closeStr);
-    if (closeMin < openMin) closeMin += 24 * 60;
-
-    const breakMatch = timeString.match(
-      /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2}).*(브레이크|break)/i
-    );
-    if (breakMatch) {
-      const [__, bStart, bEnd] = breakMatch;
-      const bStartMin = parseTime(bStart);
-      const bEndMin = parseTime(bEnd);
-      if (currentMinutes >= bStartMin && currentMinutes < bEndMin) {
-        return { status: "BREAK", todayStr: `${openStr} ~ ${closeStr}` };
+      if (!targetRule) {
+        for (const rule of rules) {
+          if (
+            rule.includes("매일") ||
+            !rule.match(/(월|화|수|목|금|토|일)요일|평일|주말/)
+          ) {
+            targetRule = rule;
+            break;
+          }
+        }
       }
-    }
 
-    if (currentMinutes >= openMin && currentMinutes < closeMin) {
-      return { status: "OPEN", todayStr: `${openStr} ~ ${closeStr}` };
-    }
-    return { status: "CLOSED", todayStr: `${openStr} ~ ${closeStr}` };
-  };
+      if (!targetRule || targetRule.includes("휴무"))
+        return { status: "CLOSED", todayStr: "금일 휴무" };
+
+      const timeMatch = targetRule.match(
+        /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2})/
+      );
+      if (!timeMatch) return { status: "CLOSED", todayStr: targetRule };
+
+      const [_, openStr, closeStr] = timeMatch;
+      const openMin = parseTime(openStr);
+      let closeMin = parseTime(closeStr);
+      if (closeMin < openMin) closeMin += 24 * 60;
+
+      const breakMatch = timeString.match(
+        /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2}).*(브레이크|break)/i
+      );
+      if (breakMatch) {
+        const [__, bStart, bEnd] = breakMatch;
+        const bStartMin = parseTime(bStart);
+        const bEndMin = parseTime(bEnd);
+        if (currentMinutes >= bStartMin && currentMinutes < bEndMin) {
+          return { status: "BREAK", todayStr: `${openStr} ~ ${closeStr}` };
+        }
+      }
+
+      if (currentMinutes >= openMin && currentMinutes < closeMin) {
+        return { status: "OPEN", todayStr: `${openStr} ~ ${closeStr}` };
+      }
+      return { status: "CLOSED", todayStr: `${openStr} ~ ${closeStr}` };
+    },
+    [parseTime]
+  );
 
   // Data Fetching
   useEffect(() => {
@@ -411,7 +522,6 @@ export default function RestaurantListPage() {
         });
 
         setRestaurants(mergedList);
-        setFilteredList(mergedList);
       } catch (error) {
         console.error("Error fetching:", error);
       } finally {
@@ -419,14 +529,16 @@ export default function RestaurantListPage() {
       }
     };
     fetchRestaurants();
-  }, []);
+  }, [getBusinessStatus]);
 
-  // Filtering
-  useEffect(() => {
+  // Filtering (useMemo)
+  const filteredList = useMemo(() => {
     let result = restaurants;
+
     if (selectedCategory !== "전체") {
       result = result.filter((item) => item.restCategory === selectedCategory);
     }
+
     const trimmedKeyword = keyword.trim();
     if (trimmedKeyword !== "") {
       const searchTerms = trimmedKeyword.split(/\s+/);
@@ -442,74 +554,104 @@ export default function RestaurantListPage() {
         );
       });
     }
+
     if (showOpenOnly) {
       result = result.filter((item) => item.businessStatus === "OPEN");
     }
-    setFilteredList(result);
-    setCurrentPage(1);
+
+    return result;
   }, [restaurants, selectedCategory, keyword, showOpenOnly]);
 
-  // [수정] Geocoding (좌표 변환) - 안정성 강화
-  // mapScriptLoading이 false가 되면(스크립트 로드 완료 시) 즉시 Geocoding을 수행합니다.
   useEffect(() => {
-    // 1. 데이터 없음 체크
+    setCurrentPage(1);
+  }, [selectedCategory, keyword, showOpenOnly]);
+
+  // Geocoding (순차 처리)
+  useEffect(() => {
     if (filteredList.length === 0) return;
 
-    // 2. 이미 모든 데이터에 좌표가 있다면 중단 (불필요한 연산 방지)
     const itemsToGeocode = filteredList.filter(
       (item) => !item.lat && item.address
     );
     if (itemsToGeocode.length === 0) return;
 
-    // 3. 로딩 상태 체크: 스크립트가 아직 로딩 중이면 대기
-    if (mapScriptLoading) return;
-
-    // 4. window.kakao 객체 유효성 최종 확인
     if (
+      mapScriptLoading ||
       typeof window === "undefined" ||
       !window.kakao ||
-      !window.kakao.maps ||
-      !window.kakao.maps.services
+      !window.kakao.maps?.services
     ) {
       return;
     }
 
     const geocoder = new window.kakao.maps.services.Geocoder();
 
-    itemsToGeocode.forEach((item) => {
-      if (!item.address) return;
-      geocoder.addressSearch(item.address, (result, status) => {
-        if (status === window.kakao.maps.services.Status.OK) {
-          // 좌표 변환 성공 시 상태 업데이트
-          setRestaurants((prev) =>
-            prev.map((r) =>
-              r.id === item.id
-                ? { ...r, lat: Number(result[0].y), lng: Number(result[0].x) }
-                : r
-            )
-          );
-        }
+    const processGeocoding = async () => {
+      const updatedCoords = new Map<number, { lat: number; lng: number }>();
+
+      const promises = itemsToGeocode.map((item) => {
+        return new Promise<void>((resolve) => {
+          if (!item.address) {
+            resolve();
+            return;
+          }
+          geocoder.addressSearch(item.address, (result, status) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              updatedCoords.set(item.id, {
+                lat: Number(result[0].y),
+                lng: Number(result[0].x),
+              });
+            }
+            resolve();
+          });
+        });
       });
-    });
-  }, [filteredList, mapScriptLoading]); // mapScriptLoading이 변경될 때 효과가 트리거됩니다.
 
-  // Actions
-  const toggleFavorite = async (e: React.MouseEvent, id: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      await restaurantService.toggleFavorite(id);
-      setRestaurants((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
-        )
-      );
-    } catch (error) {
-      alert("로그인이 필요합니다.");
-    }
-  };
+      await Promise.all(promises);
 
-  const handleFilter = (category: string) => setSelectedCategory(category);
+      if (updatedCoords.size > 0) {
+        setRestaurants((prev) =>
+          prev.map((item) => {
+            const coords = updatedCoords.get(item.id);
+            return coords
+              ? { ...item, lat: coords.lat, lng: coords.lng }
+              : item;
+          })
+        );
+      }
+    };
+
+    processGeocoding();
+  }, [filteredList, mapScriptLoading]);
+
+  // Handlers
+  const toggleFavorite = useCallback(
+    async (e: React.MouseEvent, id: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await restaurantService.toggleFavorite(id);
+        setRestaurants((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
+          )
+        );
+      } catch (error) {
+        alert("로그인이 필요합니다.");
+      }
+    },
+    []
+  );
+
+  const handleFilter = useCallback(
+    (category: string) => setSelectedCategory(category),
+    []
+  );
+  const handleMarkerClick = useCallback(
+    (item: ExtendedRestaurantData) => setActiveId(item.id),
+    []
+  );
+  const handleMapClick = useCallback(() => setActiveId(null), []);
 
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
   const currentItems = filteredList.slice(
@@ -517,7 +659,6 @@ export default function RestaurantListPage() {
     currentPage * itemsPerPage
   );
 
-  // --- [Render] ---
   return (
     <div className="w-full bg-[#fcfcfc] min-h-screen pb-24 font-pretendard">
       {/* 1. Header */}
@@ -718,60 +859,13 @@ export default function RestaurantListPage() {
                   </div>
                 ) : (
                   filteredList.map((item) => (
-                    <div
+                    <RestaurantListItem
                       key={item.id}
-                      onClick={() => setActiveId(item.id)}
-                      className={`flex gap-4 p-4 border-b border-slate-100 cursor-pointer transition-colors bg-white hover:bg-slate-50 ${
-                        activeId === item.id
-                          ? "bg-green-50 border-green-200 ring-1 ring-inset ring-green-200"
-                          : ""
-                      }`}
-                    >
-                      <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 border border-slate-100 bg-slate-100">
-                        <img
-                          src={`/images/restaurantImages/${item.imagePath}`}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex justify-between items-start">
-                          <h4
-                            className={`font-bold text-sm truncate ${
-                              activeId === item.id
-                                ? "text-green-700"
-                                : "text-slate-900"
-                            }`}
-                          >
-                            {item.name}
-                          </h4>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5 truncate">
-                          {item.address}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <span className="text-[10px] font-bold text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded bg-white">
-                            {item.restCategory}
-                          </span>
-                          {item.businessStatus === "OPEN" && (
-                            <span className="text-[10px] font-bold text-green-600 flex items-center gap-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>{" "}
-                              영업중
-                            </span>
-                          )}
-                          {item.businessStatus === "BREAK" && (
-                            <span className="text-[10px] font-bold text-orange-500">
-                              브레이크타임
-                            </span>
-                          )}
-                          {item.businessStatus === "CLOSED" && (
-                            <span className="text-[10px] font-bold text-slate-400">
-                              영업종료
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      item={item}
+                      activeId={activeId}
+                      onClick={setActiveId}
+                      onFavorite={toggleFavorite}
+                    />
                   ))
                 )}
               </div>
@@ -791,8 +885,9 @@ export default function RestaurantListPage() {
               <KakaoMapContainer
                 data={filteredList}
                 activeId={activeId}
-                onMarkerClick={(item) => setActiveId(item.id)}
-                onMapClick={() => setActiveId(null)}
+                isSidebarOpen={isSidebarOpen}
+                onMarkerClick={handleMarkerClick}
+                onMapClick={handleMapClick}
               />
             </div>
           </div>
@@ -834,6 +929,7 @@ export default function RestaurantListPage() {
                           src={`/images/restaurantImages/${item.imagePath}`}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                           alt={item.name}
+                          loading="lazy"
                         />
                         <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-green-600 shadow-sm">
                           {item.restCategory}

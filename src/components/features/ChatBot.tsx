@@ -1,98 +1,201 @@
-// 1. "use client": 이 컴포넌트는 브라우저에서 실행됩니다. (채팅 입력, 애니메이션 등)
+// 1. "use client": 이 컴포넌트는 브라우저에서 실행됩니다.
 "use client";
 
 // --- [라이브러리 및 훅 임포트] ---
-import { useState, useRef, useEffect } from "react"; // 리액트 기본 훅
-import api from "@/api/axios"; // 서버 통신용 axios
-// 아이콘 라이브러리 (전송, 닫기, 말풍선, 로봇 아이콘)
-import { SendHorizontal, X, MessageCircleMore, Bot } from "lucide-react";
-// 애니메이션 라이브러리 (채팅창이 부드럽게 뜨고 사라짐)
+import { useState, useRef, useEffect } from "react";
+import api from "@/api/axios";
+import {
+  SendHorizontal,
+  X,
+  MessageCircleMore,
+  Bot,
+  Sparkles,
+  MapPin,
+} from "lucide-react"; // 아이콘 추가
 import { motion, AnimatePresence } from "framer-motion";
-// 마크다운 렌더링 라이브러리 (AI 답변의 볼드체, 링크 등을 예쁘게 표시)
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm"; // 마크다운 표, 취소선 등 확장 기능 지원
-import Link from "next/link"; // 내부 링크 이동용
+import remarkGfm from "remark-gfm";
+import Link from "next/link";
 
-// --- [메인 컴포넌트 정의] ---
+// --- [타이핑 효과 컴포넌트] ---
+// AI 답변이 타닥타닥 찍히는 듯한 연출을 위한 컴포넌트입니다.
+const TypingEffect = ({
+  text,
+  onComplete,
+}: {
+  text: string;
+  onComplete: () => void;
+}) => {
+  const [displayedText, setDisplayedText] = useState("");
+
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < text.length) {
+        setDisplayedText((prev) => prev + text.charAt(i));
+        i++;
+      } else {
+        clearInterval(interval);
+        onComplete(); // 타이핑 완료 시 콜백
+      }
+    }, 15); // 속도 조절 (작을수록 빠름)
+    return () => clearInterval(interval);
+  }, [text]);
+
+  // 타이핑 중에도 마크다운 렌더링 적용
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      {displayedText}
+    </ReactMarkdown>
+  );
+};
+
+// --- [마크다운 스타일 정의] ---
+// 재사용을 위해 컴포넌트 객체를 밖으로 뺐습니다.
+const markdownComponents: any = {
+  // 1. 링크(장소 추천)를 버튼처럼 예쁘게 꾸미기
+  a: ({ node, ...props }: any) => (
+    <Link
+      href={props.href || "#"}
+      className="inline-flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-bold transition-colors mx-1 no-underline transform hover:scale-105"
+      target={props.href?.startsWith("http") ? "_blank" : "_self"}
+    >
+      <MapPin size={10} />
+      {props.children}
+    </Link>
+  ),
+  ul: ({ node, ...props }: any) => (
+    <ul className="list-none pl-1 my-2 space-y-2" {...props} />
+  ),
+  ol: ({ node, ...props }: any) => (
+    <ol className="list-decimal pl-4 my-2 space-y-2 text-gray-700" {...props} />
+  ),
+  li: ({ node, ...props }: any) => <li className="pl-1" {...props} />,
+  strong: ({ node, ...props }: any) => (
+    <strong
+      className="font-extrabold text-green-800 bg-green-50/50 px-1 rounded"
+      {...props}
+    />
+  ),
+  p: ({ node, ...props }: any) => (
+    <p className="mb-2 last:mb-0 leading-relaxed" {...props} />
+  ),
+  hr: ({ node, ...props }: any) => (
+    <hr className="my-3 border-gray-200 border-dashed" {...props} />
+  ),
+};
+
 export default function ChatBot() {
   // --- [상태 관리] ---
-  const [isOpen, setIsOpen] = useState(false); // 채팅창 열림/닫힘 상태
-  // 채팅 메시지 목록 (초기값: AI의 첫 인사말)
+  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
-      role: "ai", // 메시지 보낸 사람 ('ai' 또는 'user')
-      text: "반가워요! 대전의 핫플을 꿰뚫고 있는 '다잇슈' 봇입니다. 🍯 대전에 대해 궁금한 게 있으신가요?",
+      role: "ai",
+      text: "반가워요! 대전 여행 전문가 '다잇슈' 봇입니다. 🍯\n어떤 여행을 계획 중이신가요? 맛집, 명소, 데이트 코스 등 무엇이든 물어보세요!",
+      isTyping: false, // 이미 완료된 메시지
     },
   ]);
-  const [input, setInput] = useState(""); // 사용자 입력창 상태
-  const [isLoading, setIsLoading] = useState(false); // AI 답변 기다리는 중인지 여부
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 스크롤 자동 이동을 위한 ref (채팅창 맨 아래 요소)
+  // 자동 스크롤용 Ref
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // --- [스크롤 자동 이동 함수] ---
-  // 새 메시지가 오거나 창이 열릴 때마다 맨 아래로 스크롤을 내립니다.
+  // --- [추천 질문 리스트 (Chips)] ---
+  // 사용자가 뭘 물어볼지 모를 때 클릭 유도
+  const suggestedPrompts = [
+    {
+      label: "❤️ 데이트 코스 추천",
+      query: "주말에 연인과 가기 좋은 대전 데이트 코스 짜줘",
+    },
+    {
+      label: "👨‍👩‍👧‍👦 아이와 함께",
+      query: "아이들과 가볼 만한 대전 가족 여행지 추천해줘",
+    },
+    {
+      label: "🍞 빵지순례",
+      query: "성심당 말고 다른 맛있는 빵집이나 디저트 카페 알려줘",
+    },
+    {
+      label: "🌧 비 오는 날",
+      query: "비 오는 날 실내에서 놀기 좋은 곳 추천해줘",
+    },
+  ];
+
   const scrollToBottom = () =>
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  useEffect(() => scrollToBottom(), [messages, isOpen]); // messages나 isOpen이 변할 때 실행
+  useEffect(() => scrollToBottom(), [messages, isOpen, isLoading]);
 
-  // --- [메시지 전송 핸들러] ---
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault(); // 폼 제출 시 새로고침 방지
-    // 빈 내용이거나 이미 로딩 중이면 무시
-    if (!input.trim() || isLoading) return;
+  // --- [메시지 전송 함수] ---
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
-    const userMsg = input; // 입력값 저장
-    // 1. 사용자 메시지를 화면에 즉시 추가 ('user' 역할)
-    setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
-    setInput(""); // 입력창 비우기
-    setIsLoading(true); // 로딩 시작 (점 3개 애니메이션 표시용)
+    // 1. 사용자 메시지 추가
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", text: text, isTyping: false },
+    ]);
+    setInput("");
+    setIsLoading(true);
 
     try {
-      // 2. 서버에 메시지 전송 (POST 요청)
-      const res = await api.post("/chatbot/chat", { message: userMsg });
-      // 3. 서버 응답(AI 답변)을 메시지 목록에 추가 ('ai' 역할)
-      setMessages((prev) => [...prev, { role: "ai", text: res.data.response }]);
+      const res = await api.post("/chatbot/chat", { message: text });
+
+      // 2. AI 메시지 추가 (isTyping: true로 시작)
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: res.data.response, isTyping: true }, // 타이핑 효과 시작
+      ]);
     } catch (error) {
-      // 4. 에러 발생 시 안내 메시지 추가
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: "잠시 연결이 원활하지 않아요. 😥 다시 한 번 말씀해 주시겠어요?",
+          text: "죄송해요, 잠시 연결 상태가 좋지 않아요. 😥 잠시 후 다시 시도해주세요.",
+          isTyping: false,
         },
       ]);
     } finally {
-      setIsLoading(false); // 로딩 종료
+      setIsLoading(false);
     }
   };
 
-  // --- [화면 렌더링 (JSX)] ---
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage(input);
+  };
+
+  // 타이핑 완료 핸들러
+  const handleTypingComplete = (index: number) => {
+    setMessages((prev) =>
+      prev.map((msg, i) => (i === index ? { ...msg, isTyping: false } : msg))
+    );
+  };
+
   return (
     <>
-      {/* 1. 우측 하단 플로팅 버튼 (토글 버튼) */}
+      {/* 1. 플로팅 버튼 */}
       <button
-        onClick={() => setIsOpen(!isOpen)} // 클릭 시 열림/닫힘 반전
-        className={`cursor-pointer fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white p-4 rounded-2xl transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center
-    ${
-      // 열려있으면 그림자 제거, 닫혀있으면 그림자 표시
-      isOpen ? "shadow-none" : "shadow-[0_10px_30px_-5px_rgba(34,197,94,0.5)]"
-    }`}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`cursor-pointer fixed bottom-6 right-6 z-50 bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center
+        ${
+          isOpen
+            ? "shadow-none rotate-90"
+            : "shadow-[0_8px_30px_rgb(22,163,74,0.4)]"
+        }`}
       >
-        {/* 상태에 따라 아이콘 변경 (X 또는 말풍선) */}
         {isOpen ? (
-          <X className="w-7 h-7" strokeWidth={2.5} />
+          <X className="w-7 h-7" />
         ) : (
-          <MessageCircleMore className="w-8 h-8" strokeWidth={2} />
+          <MessageCircleMore className="w-8 h-8" />
         )}
       </button>
 
-      {/* 2. 채팅창 본문 (AnimatePresence로 사라질 때도 애니메이션 적용) */}
+      {/* 2. 채팅창 본문 */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            // 등장 애니메이션 설정 (아래에서 위로, 투명도 0->1)
             initial={{
               opacity: 0,
               y: 50,
@@ -100,144 +203,122 @@ export default function ChatBot() {
               transformOrigin: "bottom right",
             }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            // 퇴장 애니메이션 설정
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[400px] h-[650px] bg-white border border-gray-100 rounded-[2.5rem] flex flex-col overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)]"
+            className="fixed bottom-24 right-6 z-50 w-[calc(100vw-2rem)] sm:w-[380px] h-[600px] bg-white border border-gray-100 rounded-[2rem] flex flex-col overflow-hidden shadow-2xl font-pretendard"
           >
-            {/* (1) 채팅창 헤더 */}
-            <div className="bg-linear-to-br from-green-500 to-green-600 p-6 text-white">
+            {/* (1) 헤더 */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner">
-                  <Bot className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
+                  <Sparkles className="w-5 h-5 text-yellow-300 fill-yellow-300" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg leading-tight">다잇슈 AI</h3>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {/* 온라인 상태 표시 (깜빡이는 점) */}
-                    <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
-                    <span className="text-xs text-green-100 font-medium">
-                      온라인 · 실시간 도움말
+                  <h3 className="font-bold text-base">방방곡곡 AI 가이드</h3>
+                  <div className="flex items-center gap-1.5 opacity-90">
+                    <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse" />
+                    <span className="text-[11px] font-medium">
+                      대전 여행 코스 설계 중...
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* (2) 메시지 목록 영역 (스크롤 가능) */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-6 bg-[#F8F9FA] custom-scrollbar">
+            {/* (2) 메시지 영역 */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-5 bg-slate-50 custom-scrollbar">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  // 내 메시지는 오른쪽(reverse), AI 메시지는 왼쪽 정렬
-                  className={`flex items-end gap-2 ${
+                  className={`flex items-end gap-2.5 ${
                     msg.role === "user" ? "flex-row-reverse" : "flex-row"
                   }`}
                 >
-                  {/* AI일 때만 프로필 아이콘 표시 */}
+                  {/* AI 프로필 */}
                   {msg.role === "ai" && (
-                    <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0 shadow-sm mb-1">
-                      <Bot className="w-4 h-4 text-green-500" />
+                    <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center shrink-0 shadow-sm mb-1 overflow-hidden">
+                      <Bot className="w-5 h-5 text-green-600" />
                     </div>
                   )}
 
-                  {/* 말풍선 디자인 */}
+                  {/* 말풍선 */}
                   <div
-                    className={`max-w-[85%] p-3.5 px-4 rounded-2xl text-[14px] leading-relaxed shadow-sm ${
+                    className={`max-w-[85%] p-3.5 px-4 rounded-2xl text-[13px] leading-relaxed shadow-sm relative ${
                       msg.role === "user"
-                        ? "bg-green-500 text-white rounded-br-none" // 내 말풍선 (초록)
-                        : "bg-white text-gray-800 border border-gray-100 rounded-bl-none" // AI 말풍선 (흰색)
+                        ? "bg-green-600 text-white rounded-br-none"
+                        : "bg-white text-gray-800 border border-gray-100 rounded-tl-none"
                     }`}
                   >
-                    {msg.role === "user" ? (
-                      msg.text // 내 메시지는 그냥 텍스트 출력
-                    ) : (
-                      // AI 메시지는 마크다운 렌더링 (링크, 리스트 등 표현)
+                    {msg.role === "ai" && msg.isTyping ? (
+                      // 타이핑 효과 중일 때
+                      <TypingEffect
+                        text={msg.text}
+                        onComplete={() => handleTypingComplete(idx)}
+                      />
+                    ) : // 일반 렌더링 (Markdown)
+                    msg.role === "ai" ? (
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
-                        components={{
-                          // 링크 렌더링 커스텀
-                          a: ({ node, ...props }: any) => (
-                            <Link
-                              href={props.href || "#"}
-                              className="text-blue-600 underline font-bold hover:text-blue-800 mx-1"
-                              target={
-                                props.href?.startsWith("http")
-                                  ? "_blank"
-                                  : "_self"
-                              }
-                            >
-                              {props.children}
-                            </Link>
-                          ),
-                          // 리스트 스타일링
-                          ul: ({ node, ...props }: any) => (
-                            <ul
-                              className="list-disc pl-4 my-2 space-y-1"
-                              {...props}
-                            />
-                          ),
-                          ol: ({ node, ...props }: any) => (
-                            <ol
-                              className="list-decimal pl-4 my-2 space-y-1"
-                              {...props}
-                            />
-                          ),
-                          // 강조 텍스트 스타일링
-                          strong: ({ node, ...props }: any) => (
-                            <strong
-                              className="font-bold text-green-700"
-                              {...props}
-                            />
-                          ),
-                          // 문단 간격 조절
-                          p: ({ node, ...props }: any) => (
-                            <p className="mb-1 last:mb-0" {...props} />
-                          ),
-                        }}
+                        components={markdownComponents}
                       >
                         {msg.text}
                       </ReactMarkdown>
+                    ) : (
+                      msg.text
                     )}
                   </div>
                 </div>
               ))}
 
-              {/* (3) 로딩 인디케이터 (AI 답변 기다릴 때) */}
+              {/* 로딩 표시 */}
               {isLoading && (
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm">
-                    <Bot className="w-4 h-4 text-green-500 animate-bounce" />
+                  <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm">
+                    <Bot className="w-5 h-5 text-green-600 animate-pulse" />
                   </div>
-                  {/* 점 3개가 순차적으로 깜빡이는 애니메이션 */}
-                  <div className="bg-white border border-gray-100 p-3 px-5 rounded-2xl rounded-tl-none flex gap-1.5 items-center">
-                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none flex gap-1 items-center shadow-sm">
                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce" />
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce [animation-delay:0.2s]" />
                   </div>
                 </div>
               )}
-              {/* 스크롤 위치 보정용 빈 div */}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* (4) 입력 폼 영역 (하단 고정) */}
+            {/* (3) 추천 질문 칩 (Quick Prompts) - 스크롤 가능하게 */}
+            <div className="bg-white border-t border-gray-50 px-4 py-3 shrink-0">
+              <p className="text-[10px] text-gray-400 mb-2 font-bold ml-1">
+                💡 이런 질문은 어떠세요?
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {suggestedPrompts.map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => sendMessage(item.query)}
+                    className="whitespace-nowrap px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-full text-[11px] font-bold hover:bg-green-100 transition-colors active:scale-95"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* (4) 입력 폼 */}
             <form
               onSubmit={handleSend}
-              className="p-4 bg-white border-t border-gray-50 flex items-center gap-2 mb-2"
+              className="p-3 bg-white border-t border-gray-100 flex items-center gap-2"
             >
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="궁금한 맛집이나 여행지를 물어보세요..."
-                  className="w-full bg-gray-100 text-gray-800 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all border-none"
-                />
-              </div>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="궁금한 코스를 물어보세요..."
+                className="flex-1 bg-gray-50 text-gray-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:bg-white transition-all border border-transparent focus:border-green-200"
+              />
               <button
                 type="submit"
-                disabled={isLoading || !input.trim()} // 로딩 중이거나 빈 값이면 비활성화
-                className="cursor-pointer bg-green-500 text-white p-3.5 rounded-2xl hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-md active:scale-90"
+                disabled={isLoading || !input.trim()}
+                className="bg-green-600 text-white p-3 rounded-xl hover:bg-green-700 disabled:bg-gray-200 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 flex items-center justify-center"
               >
                 <SendHorizontal className="w-5 h-5" />
               </button>
@@ -248,41 +329,3 @@ export default function ChatBot() {
     </>
   );
 }
-
-// 1. 채팅창 열기 (Open)
-
-// 사용자가 우측 하단의 말풍선 버튼을 클릭합니다.
-
-// isOpen이 true가 되면서 AnimatePresence 안의 motion.div가 렌더링 됩니다.
-
-// 채팅창이 아래에서 위로 부드럽게 올라오며 나타납니다.
-
-// 2. 메시지 입력 및 전송 (User Action)
-
-// 사용자가 "성심당 말고..."를 입력하고 전송 버튼을 누릅니다.
-
-// handleSend 함수가 실행됩니다.
-
-// 사용자가 입력한 텍스트가 즉시 messages 배열에 추가되어 화면 오른쪽(초록색 말풍선)에 나타납니다.
-
-// 입력창은 비워지고, isLoading이 true가 되어 화면 왼쪽 하단에 점 3개가 깜빡이는 로딩 애니메이션이 표시됩니다.
-
-// 3. 서버 통신 (Server Request)
-
-// api.post("/chatbot/chat", ...)가 실행되어 사용자의 질문을 백엔드 서버로 보냅니다.
-
-// 브라우저는 응답이 올 때까지 대기합니다.
-
-// 4. 답변 수신 및 렌더링 (AI Response)
-
-// 서버에서 답변("칼국수는 어떠세요? ...")이 도착합니다.
-
-// messages 배열에 AI의 답변이 추가되고, isLoading은 false가 되어 로딩 애니메이션이 사라집니다.
-
-// 화면 왼쪽에 흰색 말풍선으로 AI의 답변이 표시됩니다.
-
-// 이때 **ReactMarkdown**이 작동하여, 답변 텍스트 중에 굵은 글씨나 [링크]가 있다면 적절한 스타일(초록색 볼드체, 파란색 링크)로 변환해 보여줍니다.
-
-// 5. 자동 스크롤 (Auto Scroll)
-
-// 메시지가 추가되어 화면이 길어지면, useEffect가 감지하고 messagesEndRef 위치(채팅창 맨 아래)로 스크롤을 자동으로 내립니다. 사용자는 항상 최신 메시지를 볼 수 있습니다.
