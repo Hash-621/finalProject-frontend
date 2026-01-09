@@ -17,23 +17,30 @@ export default function Modal({
   type = "success",
   onConfirm,
 }: ModalProps) {
+  // 모달의 등장/퇴장 애니메이션을 제어하기 위한 상태
   const [animate, setAnimate] = useState(false);
 
+  // 모달이 열리고 닫힐 때의 효과 처리
   useEffect(() => {
     if (isOpen) {
+      // 열릴 때: 애니메이션 시작, 배경 스크롤 잠금
       setAnimate(true);
       document.body.style.overflow = "hidden";
     } else {
+      // 닫힐 때: 0.3초(애니메이션 시간) 뒤에 사라짐, 스크롤 잠금 해제
       setTimeout(() => setAnimate(false), 300);
       document.body.style.overflow = "unset";
     }
+    // 컴포넌트가 사라질 때 안전하게 스크롤 잠금 해제
     return () => {
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
+  // 닫혀있고 애니메이션도 끝났으면 화면에서 제거 (렌더링 안 함)
   if (!isOpen && !animate) return null;
 
+  // 타입에 따라 알맞은 아이콘(SVG)을 반환하는 함수
   const getIcon = () => {
     switch (type) {
       case "success":
@@ -100,23 +107,27 @@ export default function Modal({
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-300 ${
         isOpen
-          ? "pointer-events-auto opacity-100"
-          : "pointer-events-none opacity-0"
+          ? "pointer-events-auto opacity-100" // 열릴 때: 클릭 가능, 불투명
+          : "pointer-events-none opacity-0" // 닫힐 때: 클릭 불가, 투명
       }`}
     >
+      {/* 어두운 배경 (Backdrop) - 클릭 시 닫힘 */}
       <div
         className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-all"
         onClick={onClose}
       />
 
+      {/* 모달 창 본체 */}
       <div
         className={`relative z-10 w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition-all duration-300 ease-out ${
           isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
         }`}
       >
         <div className="text-center">
+          {/* 아이콘 표시 */}
           {getIcon()}
 
+          {/* 제목 표시 (없으면 타입에 따라 자동 설정) */}
           <h3 className="mb-2 text-xl font-bold leading-6 text-gray-900">
             {title ||
               (type === "error"
@@ -126,6 +137,7 @@ export default function Modal({
                 : "알림")}
           </h3>
 
+          {/* 내용 텍스트 표시 */}
           <div className="mt-2">
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-500">
               {content}
@@ -133,8 +145,10 @@ export default function Modal({
           </div>
         </div>
 
+        {/* 하단 버튼 영역 */}
         <div className="mt-8 flex gap-3">
           {type === "confirm" ? (
+            // Confirm 타입일 경우: 취소 / 확인 버튼 2개
             <>
               <button
                 type="button"
@@ -155,6 +169,7 @@ export default function Modal({
               </button>
             </>
           ) : (
+            // 그 외 타입일 경우: 확인 버튼 1개
             <button
               type="button"
               className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
@@ -176,3 +191,37 @@ export default function Modal({
     </div>
   );
 }
+
+// 등장 신호: 부모 컴포넌트가 isOpen={true}라고 신호를 보냅니다.
+
+// 무대 준비 (useEffect):
+
+// 모달은 "나 이제 등장해!"라며 내부 상태(animate)를 켭니다.
+
+// 동시에 브라우저의 스크롤을 막아버립니다(overflow: hidden). 팝업이 떴는데 뒤에 있는 내용이 스크롤 되면 어색하니까요.
+
+// 애니메이션 시작:
+
+// 검은색 반투명 배경이 서서히 진해집니다(opacity 0 -> 100).
+
+// 하얀색 알림창이 살짝 아래에서 위로, 작았다가 원래 크기로 뿅 하고 나타납니다(scale 95 -> 100).
+
+// 내용 표시: 개발자가 지정한 타입(success, error 등)에 맞춰서 초록색 체크 아이콘이나 빨간색 X 아이콘을 보여주고 메시지를 띄웁니다.
+
+// 사용자 선택:
+
+// 취소 클릭: onClose 함수가 실행되어 모달을 닫으라는 신호를 보냅니다.
+
+// 확인 클릭: onConfirm 함수(예: 삭제 로직, 페이지 이동)를 먼저 실행하고, 그 뒤에 닫습니다.
+
+// 퇴장 (중요 디테일):
+
+// isOpen이 false가 되어도 모달은 즉시 사라지지 않습니다.
+
+// 약 0.3초 동안 서서히 투명해지는 애니메이션을 보여줍니다.
+
+// 0.3초가 지나면 그제야 화면에서 완전히 삭제(return null)되고, 막아뒀던 브라우저 스크롤을 다시 풉니다.
+
+// 2. 한 줄 한 줄 완벽 분석 (Line-by-Line Analysis)
+
+// 이제 코드를 위에서부터 아래로 꼼꼼하게 해석해 드리겠습니다.
