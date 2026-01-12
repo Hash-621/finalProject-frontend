@@ -159,7 +159,7 @@ export default function TourReviewDetail({
         console.error("상세 로딩 실패:", err);
         // 에러 모달을 띄우고, 확인을 누르면 목록 페이지로 보냅니다.
         openModal("게시글을 불러올 수 없습니다.", "error", "오류", () =>
-          router.push("/tour/review")
+          router.push("/community/review")
         );
       } finally {
         // 31. 성공하든 실패하든 로딩 상태를 false로 바꿔서 로딩바를 없앱니다.
