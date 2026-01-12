@@ -232,8 +232,8 @@ export default function HospitalDetail() {
       {/* 위쪽으로 살짝 겹치게(-mt-12) 해서 입체감을 줌 */}
 
       <section className="relative z-20 md:-mt-12 bg-white rounded-t-[48px] flex-1">
-        <div className="max-w-6xl mx-auto px-6 py-16 h-400">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 h-400">
+        <div className="max-w-6xl mx-auto px-6 py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
             {/* 좌측 메인 정보 (8칸 차지) */}
             <div className="lg:col-span-8 space-y-16">
               {/* 진료 철학/소개 */}

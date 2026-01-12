@@ -226,21 +226,27 @@ export default function CommunutyPostDetail({
     }
   };
 
-  // --- [댓글 렌더링 함수 (재귀 호출)] ---
-  // 댓글 목록을 받아서 HTML로 그려주는 함수입니다. 대댓글이 있으면 자기 자신을 다시 호출합니다.
+  // --- [댓글 렌더링 함수] ---
   const renderComments = (list: any[]) => {
     return list.map((comment) => {
-      // 본인이 쓴 댓글인지 확인 (삭제 버튼 표시용)
       const isAuthor =
         currentUser && String(comment.userId) === String(currentUser.userId);
-      // 대댓글인지 확인 (부모 ID 유무)
       const isReply = !!comment.parentId;
 
       return (
-        <div key={comment.id} className="w-full">
-          {/* 댓글 카드 컨테이너 */}
-          <div className={`flex ${isReply ? "mt-3" : "mt-6"}`}>
-            {/* 대댓글일 때만 왼쪽에 'ㄴ' 화살표 아이콘 표시 */}
+        // [수정 1] w-full -> w-fit min-w-full
+        // 설명: 자식 요소(댓글 카드)가 오른쪽으로 밀려나면, 이 컨테이너도 같이 커지도록 w-fit을 줍니다.
+        // min-w-full은 댓글이 짧아도 최소한 화면 너비는 차지하게 합니다.
+        <div key={comment.id} className="w-fit min-w-full">
+          {/* [수정 2] 너비 고정 로직 추가
+              - 모바일: w-[calc(100vw-6rem)] -> 화면 너비에서 좌우 패딩을 뺀 만큼만 너비를 가짐 (늘어나지 않음)
+              - 데스크탑(md): w-full -> 기존처럼 꽉 채움
+          */}
+          <div
+            className={`flex ${
+              isReply ? "mt-3" : "mt-6"
+            } w-[calc(100vw-7rem)] md:w-full`}
+          >
             {isReply && (
               <div className="flex flex-col items-end mr-3 pt-4 min-w-5">
                 <CornerDownRight
@@ -254,24 +260,23 @@ export default function CommunutyPostDetail({
               className={`flex-1 transition-all relative overflow-hidden group
                 ${
                   isReply
-                    ? "bg-slate-50 rounded-2xl p-4" // 대댓글 디자인 (회색 박스)
-                    : "bg-white border border-slate-100 rounded-2xl p-8 " // 일반 댓글 디자인 (흰색 박스)
+                    ? "bg-slate-50 rounded-2xl p-4"
+                    : "bg-white border border-slate-100 rounded-2xl p-8 "
                 }`}
             >
-              {/* 댓글 헤더 (작성자 정보, 버튼) */}
+              {/* ... (댓글 내용 - 기존 코드와 동일) ... */}
               <div className="flex justify-between items-start mb-3">
+                {/* ... (프로필, 이름 등) ... */}
                 <div className="flex items-center gap-3">
-                  {/* 프로필 이미지 (이니셜) */}
                   <div
                     className={`flex items-center justify-center font-bold text-sm shadow-md rounded-2xl ${
                       isReply
-                        ? "w-8 h-8 bg-white text-slate-600 border border-slate-200" // 대댓글은 작게
-                        : `w-11 h-11 text-white ${styles.profileBg} ${styles.profileShadow}` // 일반은 크게
+                        ? "w-8 h-8 bg-white text-slate-600 border border-slate-200"
+                        : `w-11 h-11 text-white ${styles.profileBg} ${styles.profileShadow}`
                     }`}
                   >
                     {(comment.userNickname || "?")[0]}
                   </div>
-
                   <div>
                     <div className="flex items-center gap-2">
                       <span
@@ -283,7 +288,6 @@ export default function CommunutyPostDetail({
                       >
                         {comment.userNickname}
                       </span>
-                      {/* 내가 쓴 댓글이면 '나' 뱃지 표시 */}
                       {isAuthor && (
                         <span
                           className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${styles.myBadge}`}
@@ -298,9 +302,7 @@ export default function CommunutyPostDetail({
                   </div>
                 </div>
 
-                {/* 우측 버튼들 (답글, 삭제) */}
                 <div className="flex items-center gap-1 opacity-90">
-                  {/* 삭제된 댓글이 아니면 답글 버튼 표시 */}
                   {!comment.isDelete && (
                     <button
                       onClick={() =>
@@ -313,7 +315,6 @@ export default function CommunutyPostDetail({
                       답글
                     </button>
                   )}
-                  {/* 작성자 본인이고 삭제되지 않았으면 삭제 버튼 표시 */}
                   {isAuthor && !comment.isDelete && (
                     <button
                       onClick={() => handleDeleteComment(comment.id)}
@@ -325,11 +326,10 @@ export default function CommunutyPostDetail({
                 </div>
               </div>
 
-              {/* 댓글 내용 텍스트 */}
               <p
                 className={`whitespace-pre-wrap leading-relaxed ${
                   comment.isDelete
-                    ? "text-slate-400 italic text-sm" // 삭제된 경우 스타일
+                    ? "text-slate-400 italic text-sm"
                     : `font-medium ${
                         isReply
                           ? "text-slate-600 text-[14px] pl-1"
@@ -340,8 +340,6 @@ export default function CommunutyPostDetail({
                 {comment.isDelete ? "삭제된 댓글입니다." : comment.content}
               </p>
 
-              {/* [조건부 렌더링] 답글 입력창 */}
-              {/* activeReplyId가 현재 댓글 ID와 같으면 입력창을 보여줍니다. */}
               {activeReplyId === comment.id && (
                 <div className="mt-5 pt-4 border-t border-slate-200/60 animate-in fade-in zoom-in-95 duration-200">
                   <div className="flex items-center gap-2 mb-2 text-xs font-bold text-slate-400 ml-1">
@@ -374,9 +372,9 @@ export default function CommunutyPostDetail({
             </div>
           </div>
 
-          {/* [재귀 호출] 자식 댓글(대댓글)이 있으면 자기 자신(renderComments)을 다시 호출 */}
-          {/* 이렇게 하면 대댓글의 대댓글도 계속해서 들여쓰기 되어 그려집니다. */}
           {comment.children?.length > 0 && (
+            // [수정 3] 들여쓰기 부분 (margin-left)
+            // 깊이가 깊어지면 자식 div(w-fit)가 점점 오른쪽으로 밀려나면서 전체 너비를 키움
             <div className="pl-6 md:pl-12 my-2">
               {renderComments(comment.children)}
             </div>
@@ -421,7 +419,7 @@ export default function CommunutyPostDetail({
       <div className="max-w-4xl mx-auto px-6 mt-10">
         {/* 1. 게시글 본문 섹션 */}
         <article className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden mb-10">
-          <div className="p-8 md:p-12">
+          <div className="p-8 md:p-12 md:scroll-ml-2">
             {/* 상단 뱃지 및 삭제 버튼 */}
             <div className="flex items-center justify-between mb-6">
               <span
@@ -494,8 +492,9 @@ export default function CommunutyPostDetail({
               </span>
             </h3>
 
-            {/* 댓글 작성란 (최상단) */}
+            {/* 댓글 작성란 (고정) */}
             <div className="relative mb-12">
+              {/* ... (textarea 코드는 그대로 유지) ... */}
               <textarea
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
@@ -504,7 +503,7 @@ export default function CommunutyPostDetail({
                     ? "소중한 의견을 남겨주세요..."
                     : "로그인이 필요합니다."
                 }
-                disabled={!currentUser} // 로그인 안 했으면 비활성화
+                disabled={!currentUser}
                 className={`w-full p-6 bg-slate-50 border-none rounded-3xl ${styles.focusRing} focus:ring-2 h-32 resize-none transition-all text-slate-700 placeholder:text-slate-400 font-medium disabled:bg-slate-100 disabled:cursor-not-allowed`}
               />
               <button
@@ -520,19 +519,24 @@ export default function CommunutyPostDetail({
               </button>
             </div>
 
-            {/* 댓글 목록 출력 */}
-            <div className="space-y-1">
-              {comments.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className="text-slate-400 font-medium">
-                    아직 댓글이 없습니다.
-                  </p>
-                </div>
-              ) : (
-                // 위에서 정의한 renderComments 함수를 호출해 댓글 트리를 그림
-                renderComments(comments)
-              )}
+            {/* ▼▼▼ [수정된 부분] 댓글 목록 컨테이너 ▼▼▼ */}
+
+            {/* overflow-x-auto: 대댓글이 깊어져서 화면을 넘어가면 스크롤 발생 */}
+            <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+              {/* min-w-[500px] 제거하고 w-full로 변경 */}
+              <div className="w-full space-y-1">
+                {comments.length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-slate-400 font-medium">
+                      아직 댓글이 없습니다.
+                    </p>
+                  </div>
+                ) : (
+                  renderComments(comments)
+                )}
+              </div>
             </div>
+            {/* ▲▲▲ [수정 끝] ▲▲▲ */}
           </div>
         </section>
       </div>
