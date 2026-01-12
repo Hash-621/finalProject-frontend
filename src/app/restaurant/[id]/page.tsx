@@ -22,7 +22,8 @@ import {
   PhoneOff, // 전화 금지 아이콘
   ArrowRight, // 오른쪽 화살표
   MessageCircle, // 말풍선 (리뷰)
-  PlusCircle, // 더보기 (+) 아이콘
+  PlusCircle,
+  ArrowLeft, // 더보기 (+) 아이콘
 } from "lucide-react";
 
 import makerImg from "../../../../public/images/mapMaker.png"; // 커스텀 마커 이미지
@@ -285,7 +286,6 @@ export default function RestaurantDetail() {
         src={`//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_JS_KEY}&libraries=services&autoload=false`}
         onLoad={() => {}}
       />
-
       {/* === [Section 1] 히어로 섹션 (배경 이미지 & 타이틀) === */}
       <div className="relative h-[400px] md:h-[550px] w-full">
         {/* 배경 이미지 설정 */}
@@ -309,18 +309,18 @@ export default function RestaurantDetail() {
             onClick={() => router.back()}
             className="group flex items-center gap-2 px-5 py-2.5 bg-white/10 backdrop-blur-xl rounded-2xl text-white border border-white/20 hover:bg-white hover:text-black transition-all"
           >
-            <ChevronLeft
+            <ArrowLeft
               size={20}
-              className="transition-transform group-hover:-translate-x-1"
+              className="group-hover:-translate-x-1 transition-transform"
             />
-            <span className="font-bold text-sm">목록으로</span>
+            목록보기
           </button>
         </div>
 
         {/* 하단 타이틀 정보 영역 */}
         <div className="absolute bottom-12 left-0 right-0 z-10">
-          <div className="max-w-7xl mx-auto px-6 md:px-12">
-            <div className="flex items-center gap-3 mb-4">
+          <div className="max-w-7xl mx-auto px-4 md:px-12">
+            <div className="flex items-start sm:items-center gap-3 mb-4">
               {/* 카테고리 뱃지 */}
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-500 text-white text-[11px] font-black rounded-lg uppercase tracking-widest">
                 {restaurant.restCategory ?? "카테고리"}
@@ -336,9 +336,9 @@ export default function RestaurantDetail() {
             </div>
 
             {/* 가게 이름 */}
-            <h1 className="text-4xl md:text-7xl font-black text-white mb-6 tracking-tight">
+            <h2 className="text-3xl md:text-7xl font-black text-white mb-6 tracking-tight">
               {restaurant.name}
-            </h1>
+            </h2>
             {/* 가게 주소 */}
             <div className="flex items-center gap-2 text-white/80 font-semibold text-lg">
               <MapPin size={22} className="text-orange-400 shrink-0" />
@@ -347,20 +347,19 @@ export default function RestaurantDetail() {
           </div>
         </div>
       </div>
-
       {/* === [Section 2] 메인 컨텐츠 (상세 정보) === */}
-      <div className="max-w-7xl mx-auto px-6 md:px-12 -mt-10 relative z-20">
+      <div className="max-w-7xl mx-auto px-4 md:px-12 -mt-10 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* 왼쪽 컬럼 (8/12) */}
-          <div className="lg:col-span-8 space-y-10">
+          <div className="space-y-5 lg:col-span-8 md:space-y-10">
             {/* (1) 시그니처 메뉴 카드 */}
-            <section className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-              <div className="flex items-center gap-3 mb-10">
+            <div className="bg-white p-5 sm:p-10 rounded-[2.5rem]  shadow-xl shadow-slate-200/50 border border-slate-100">
+              <div className="flex items-start sm:items-center gap-3 mb-10">
                 <div className="p-3 bg-orange-100 rounded-2xl text-orange-600">
-                  <Utensils size={28} />
+                  <Utensils className="w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
                     대표 시그니처
                   </h2>
                   <p className="text-slate-400 text-sm font-medium">
@@ -368,15 +367,15 @@ export default function RestaurantDetail() {
                   </p>
                 </div>
               </div>
-              <div className="relative p-8 md:p-10 bg-slate-50 rounded-[2.5rem] border border-slate-100 overflow-hidden group">
+              <div className="relative bg-slate-50 p-5 sm:p-10 rounded-[2.5rem] border border-slate-100 overflow-hidden group">
                 <div className="relative z-10">
                   <span className="text-orange-500 font-black text-xs uppercase tracking-widest mb-3 block">
                     Signature Menu
                   </span>
-                  <p className="text-4xl md:text-5xl font-black text-slate-900 mb-6 leading-tight">
+                  <p className="text-2xl md:text-5xl font-black text-slate-900 mb-6 leading-tight">
                     {restaurant.bestMenu ?? "정보가 없습니다."}
                   </p>
-                  <p className="text-slate-500 text-lg leading-relaxed max-w-2xl font-medium">
+                  <p className="text-slate-500 sm:text-lg leading-relaxed max-w-2xl font-medium">
                     {restaurant.name}의 장인정신이 담긴 최고의 맛을
                     경험해보세요.
                   </p>
@@ -386,12 +385,12 @@ export default function RestaurantDetail() {
                   MENU
                 </div>
               </div>
-            </section>
+            </div>
 
             {/* (2) 기본 정보 카드 (카테고리 & 연락처) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 카테고리 정보 */}
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5">
+              <div className="bg-white p-5 sm:p-10 rounded-[2.5rem]  border border-slate-100 shadow-sm flex items-center gap-5">
                 <div className="w-14 h-14 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shrink-0">
                   <Info size={24} />
                 </div>
@@ -405,7 +404,7 @@ export default function RestaurantDetail() {
                 </div>
               </div>
               {/* 연락처 정보 */}
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5">
+              <div className="bg-white p-5 sm:p-10 rounded-[2.5rem]  border border-slate-100 shadow-sm flex items-center gap-5">
                 <div
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
                     isPhoneAvailable
@@ -431,13 +430,13 @@ export default function RestaurantDetail() {
             </div>
 
             {/* (3) 블로그 리뷰 섹션 */}
-            <section className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-              <div className="flex items-center gap-3 mb-10">
+            <div className="bg-white p-5 sm:p-10 rounded-[2.5rem] shadow-xl border border-slate-100 flex flex-col h-auto overflow-hidden relative">
+              <div className="flex items-start sm:items-center gap-3 mb-10">
                 <div className="p-3 bg-green-100 rounded-2xl text-green-600">
                   <Info size={28} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+                  <h2 className="text-lg sm:text-2xl font-bold text-slate-900 flex flex-col sm:flex-row sm:items-center sm:gap-2">
                     생생 블로그 리뷰
                     {/* [New] 블로그 총 개수 표시 */}
                     <span className="text-lg font-medium text-slate-400">
@@ -468,7 +467,7 @@ export default function RestaurantDetail() {
               ) : (
                 // 리뷰가 있을 때
                 <>
-                  <div className="grid gap-6">
+                  <div className="grid gap-6 overflow-hidden">
                     {/* [New] visibleBlogs 개수만큼 잘라서 보여줌 */}
                     {blogs.slice(0, visibleBlogs).map((blog, idx) => (
                       <a
@@ -476,7 +475,7 @@ export default function RestaurantDetail() {
                         href={blog.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group flex flex-col md:flex-row gap-6 p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-lg hover:border-green-200 transition-all duration-300"
+                        className=" group flex flex-col md:flex-row gap-2 sm:gap-6 sm:p-6 sm:bg-slate-50 sm:rounded-3xl sm:border sm:border-slate-100 hover:bg-white hover:shadow-lg hover:border-green-200 transition-all duration-300"
                       >
                         <div className="flex-1 flex flex-col">
                           {/* 블로그 제목 (HTML 태그가 포함되어 있어서 dangerouslySetInnerHTML 사용) */}
@@ -492,7 +491,7 @@ export default function RestaurantDetail() {
                             }}
                           />
                           {/* 하단 정보 (작성자, 날짜, 링크) */}
-                          <div className="mt-auto flex items-center justify-between text-xs text-slate-400 font-medium pt-2">
+                          <div className="hidden mt-auto sm:flex items-center justify-between text-xs text-slate-400 font-medium pt-2">
                             <div className="flex items-center gap-2">
                               <span className="text-slate-500 font-bold">
                                 by {blog.bloggername}
@@ -509,7 +508,7 @@ export default function RestaurantDetail() {
 
                         {/* 블로그 썸네일 이미지 (있을 경우만) */}
                         {blog.thumbnail && (
-                          <div className="w-full md:w-32 h-48 md:h-32 shrink-0 rounded-2xl overflow-hidden bg-slate-200 relative order-first md:order-last">
+                          <div className="w-full md:w-32 h-48 md:h-32 rounded-2xl overflow-hidden bg-slate-200 relative order-first md:order-last">
                             <img
                               src={blog.thumbnail}
                               alt="blog thumbnail"
@@ -539,12 +538,12 @@ export default function RestaurantDetail() {
                   )}
                 </>
               )}
-            </section>
+            </div>
           </div>
 
           {/* 오른쪽 컬럼 (사이드바) (4/12) */}
           <aside className="lg:col-span-4 space-y-6">
-            <div className="bg-white p-8 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-25">
+            <div className="bg-white p-5 sm:p-10 rounded-[2.5rem]  shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-25">
               {/* 버튼 그룹 (찜하기 / 전화걸기) */}
               <div className="flex flex-col gap-3 mb-8">
                 {/* 찜하기 버튼 */}
@@ -606,11 +605,11 @@ export default function RestaurantDetail() {
                 {/* 카카오맵이 그려질 컨테이너 */}
                 <div
                   id="map"
-                  className="w-full h-[250px] rounded-4xl bg-slate-100 border border-slate-100 overflow-hidden shadow-inner"
+                  className="w-full h-[250px] rounded-[2.5rem]  bg-slate-100 border border-slate-100 overflow-hidden shadow-inner"
                 />
 
                 {/* 영업시간 정보 */}
-                <div className="p-6 bg-slate-900 rounded-4xl text-white">
+                <div className="p-6 bg-slate-900 rounded-[2.5rem] text-white">
                   <div className="flex items-center gap-2 text-orange-400 mb-3">
                     <Clock size={18} />
                     <span className="text-xs font-black uppercase tracking-widest">
@@ -628,29 +627,13 @@ export default function RestaurantDetail() {
                     restaurant.name ?? ""
                   )},36.3504,127.3845`}
                   target="_blank"
-                  className="w-full py-5 bg-[#FFEB00] text-[#3C1E1E] rounded-3xl font-black text-sm flex items-center justify-center gap-2 hover:brightness-95 transition-all shadow-md"
+                  className="w-full py-5 bg-[#FFEB00] text-[#3C1E1E] rounded-[2.5rem] font-black text-sm flex items-center justify-center gap-2 hover:brightness-95 transition-all shadow-md"
                 >
                   <Navigation size={18} /> 카카오맵 길찾기 시작
                 </a>
               </div>
             </div>
           </aside>
-        </div>
-      </div>
-
-      {/* === [Section 3] 하단 푸터 영역 === */}
-      <div className="mt-20 border-t border-slate-100 pt-16">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <button
-            onClick={() => router.push("/restaurant")}
-            className="group inline-flex items-center gap-3 text-slate-300 hover:text-orange-500 transition-colors"
-          >
-            <span className="w-12 h-px bg-slate-200 group-hover:bg-orange-200"></span>
-            <span className="text-xs font-black uppercase tracking-[0.3em]">
-              Explore More Restaurants
-            </span>
-            <span className="w-12 h-px bg-slate-200 group-hover:bg-orange-200"></span>
-          </button>
         </div>
       </div>
     </div>

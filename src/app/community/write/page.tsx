@@ -440,7 +440,7 @@ function WriteContent() {
             <button
               onClick={saveTemporary}
               disabled={isSubmitting} // 전송 중엔 비활성화
-              className="flex items-center gap-2 px-6 py-3 bg-white text-slate-400 border border-slate-100 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+              className="flex items-center gap-2 p-3 sm:px-6 sm:py-3 bg-white text-slate-400 border border-slate-100 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm disabled:opacity-50"
             >
               <Save size={18} />
               <span className="hidden sm:inline">임시저장</span>
@@ -449,7 +449,7 @@ function WriteContent() {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 hover:bg-green-600 transition-all flex items-center gap-2 group active:scale-95 disabled:bg-slate-400 disabled:scale-100 disabled:cursor-not-allowed"
+              className="p-3 sm:px-8 sm:py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 hover:bg-green-600 transition-all flex items-center gap-2 group active:scale-95 disabled:bg-slate-400 disabled:scale-100 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 // 로딩 중 UI
@@ -460,7 +460,7 @@ function WriteContent() {
               ) : (
                 // 평소 UI
                 <>
-                  <span>발행하기</span>
+                  <span className="hidden sm:block">발행하기</span>
                   <Send
                     size={18}
                     className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
@@ -512,7 +512,7 @@ function WriteContent() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isSubmitting}
-              className="w-full text-4xl md:text-5xl font-bold outline-none placeholder:text-slate-100 text-slate-900 disabled:opacity-50"
+              className="w-full text-2xl sm:text-3xl font-bold outline-none placeholder:text-slate-100 text-slate-900 disabled:opacity-50"
             />
           </div>
 
@@ -562,8 +562,8 @@ function WriteContent() {
           left: 3rem !important;
           color: #e2e8f0 !important;
           font-style: normal !important;
-          font-weight: 800 !important;
-          font-size: 1.5rem;
+          font-weight: 700 !important;
+          font-size: 1.3rem;
         }
         /* 모바일 반응형 스타일 */
         @media (max-width: 640px) {

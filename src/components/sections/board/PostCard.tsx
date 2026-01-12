@@ -93,8 +93,13 @@ export const PostCard = ({
             <div className="flex items-center gap-2 md:gap-3 text-[10px] md:text-[12px] text-slate-400 font-medium">
               {/* 작성자 정보 */}
               <span className="flex items-center gap-1 truncate max-w-20 md:max-w-none">
-                <User className="w-3 h-3 md:w-3.5 md:h-3.5" strokeWidth={2.5} />{" "}
-                {post.userNickname}
+                <User
+                  className="shrink-0 w-3 h-3 md:w-3.5 md:h-3.5"
+                  strokeWidth={2.5}
+                />{" "}
+                <span className="block truncate max-w-[5em] sm:max-w-none">
+                  {post.userNickname}
+                </span>
               </span>
 
               {/* 작은 점 (구분선) */}

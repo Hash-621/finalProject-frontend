@@ -50,7 +50,7 @@ export default function DefaultLayout({
         autoClose={5000} // 5초 뒤에 자동으로 사라짐
         hideProgressBar={true} // 시간이 줄어드는 진행 막대는 숨김
         theme="light" // 밝은 테마 사용
-        style={{ zIndex: 9999 }} // 다른 요소들보다 무조건 위에 뜨도록 설정 (맨 앞)
+        style={{ zIndex: 50 }} // 다른 요소들보다 무조건 위에 뜨도록 설정 (맨 앞)
       />
 
       {/* 14. 챗봇 버튼을 화면에 렌더링합니다. (보통 우측 하단 고정) */}

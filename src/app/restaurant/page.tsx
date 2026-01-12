@@ -806,7 +806,7 @@ export default function RestaurantListPage() {
             </div>
 
             {/* 기능 버튼 (영업중 필터, 지도뷰 토글) */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:justify-end">
               <button
                 onClick={() => setShowOpenOnly(!showOpenOnly)}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all border shrink-0 ${

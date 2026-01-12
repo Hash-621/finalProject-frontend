@@ -73,14 +73,15 @@ const markdownComponents: any = {
   // 1. 링크(a 태그)를 만났을 때: 단순 파란 글씨 대신 '버튼'처럼 꾸밉니다.
   a: ({ node, ...props }: any) => (
     <Link
-      href={props.href || "#"} // 링크 주소 연결
-      // 스타일: 초록색 배경, 둥근 모서리, 지도 핀 아이콘 포함
-      className="inline-flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-bold transition-colors mx-1 no-underline transform hover:scale-105"
-      // 외부 링크면 새 창(_blank)으로, 내부면 현재 창(_self)으로 엽니다.
+      href={props.href || "#"}
+      // 1. max-w-full 또는 max-w-[150px] 처럼 제한을 둠
+      className="inline-flex max-w-full items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-bold transition-colors mx-1 no-underline transform hover:scale-105"
       target={props.href?.startsWith("http") ? "_blank" : "_self"}
     >
-      <MapPin size={10} /> {/* 지도 핀 아이콘 추가 */}
-      {props.children} {/* 링크 텍스트 (예: "성심당") */}
+      <MapPin size={10} className="shrink-0" />
+
+      {/* 2. truncate 추가 (넘치면 ... 처리) */}
+      <span className="truncate">{props.children}</span>
     </Link>
   ),
   // 2. 리스트(ul, ol, li) 스타일링
@@ -246,10 +247,10 @@ export default function ChatBot() {
             animate={{ opacity: 1, y: 0, scale: 1 }} // 제자리로 뿅
             exit={{ opacity: 0, y: 20, scale: 0.9 }} // 사라질 땐 다시 아래로
             // 스타일: 우측 하단 고정, 모바일 꽉 채움 / PC는 적당한 크기
-            className="fixed bottom-24 right-6 z-50 w-[calc(100vw-2rem)] sm:w-[380px] h-[600px] bg-white border border-gray-100 rounded-[2rem] flex flex-col overflow-hidden shadow-2xl font-pretendard"
+            className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[380px] h-[400px] sm:h-[600px] bg-white border border-gray-100 rounded-4xl flex flex-col overflow-hidden shadow-2xl font-pretendard"
           >
             {/* (1) 헤더 섹션: 초록색 그라데이션 배경 */}
-            <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white shrink-0">
+            <div className="bg-green-600 bg-rounded-[2rem]-to-r from-green-600 to-emerald-600 p-5 text-white shrink-0">
               <div className="flex items-center gap-3">
                 {/* 봇 아이콘 + 반짝이 */}
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
@@ -360,13 +361,13 @@ export default function ChatBot() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="궁금한 코스를 물어보세요..."
-                className="flex-1 bg-gray-50 text-gray-900 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:bg-white transition-all border border-transparent focus:border-green-200"
+                className="flex-1 bg-gray-50 text-gray-900 rounded-xl p-2 sm:px-4 sm:py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:bg-white transition-all border border-transparent focus:border-green-200"
               />
               <button
                 type="submit"
                 // 입력값이 없거나 로딩 중이면 비활성화
                 disabled={isLoading || !input.trim()}
-                className="bg-green-600 text-white p-3 rounded-xl hover:bg-green-700 disabled:bg-gray-200 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 flex items-center justify-center"
+                className="bg-green-600 text-white p-2 sm:p-3 rounded-xl hover:bg-green-700 disabled:bg-gray-200 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 flex items-center justify-center"
               >
                 <SendHorizontal className="w-5 h-5" />
               </button>

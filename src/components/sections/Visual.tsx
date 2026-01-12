@@ -151,7 +151,7 @@ export default function Visual() {
                       <Link href={item.href}>
                         <motion.div
                           whileHover="hover" // 마우스 올렸을 때 애니메이션 실행
-                          className="inline-flex items-center gap-2 text-white font-bold bg-green-600 hover:bg-green-500 px-6 py-3 rounded-full transition-colors duration-300 shadow-lg shadow-green-900/40 cursor-pointer"
+                          className="inline-flex items-center gap-2 text-white font-bold bg-green-600 hover:bg-green-500 text-sm sm:text-lg px-4 sm:px-6 py-3 rounded-full transition-colors duration-300 shadow-lg shadow-green-900/40 cursor-pointer"
                         >
                           자세히 보기
                           {/* 화살표 아이콘 애니메이션: 호버 시 오른쪽으로 튕김 */}
@@ -174,7 +174,7 @@ export default function Visual() {
                       <Link href="/community/free">
                         <motion.div
                           whileHover="hover"
-                          className="inline-flex items-center gap-2 text-white font-bold bg-white/10 hover:bg-white/20 px-6 py-3 rounded-full transition-all duration-300 border border-white/20 backdrop-blur-md cursor-pointer"
+                          className="inline-flex items-center gap-2 text-white font-bold bg-white/10 hover:bg-white/20 text-sm sm:text-lg px-4 sm:px-6 py-3 rounded-full transition-all duration-300 border border-white/20 backdrop-blur-md cursor-pointer"
                         >
                           커뮤니티
                           <motion.div

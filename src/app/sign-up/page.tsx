@@ -260,7 +260,7 @@ export default function SignUpPage() {
           <div className="relative z-10">
             <Link
               href="/"
-              className="flex items-center transition hover:opacity-80 mb-20"
+              className="flex items-center transition hover:opacity-80 m-0 sm:mb-20"
             >
               <Image
                 src="/images/f_logo.svg"
@@ -270,13 +270,13 @@ export default function SignUpPage() {
                 className="object-fill"
               />
             </Link>
-            <h2 className="text-5xl font-black text-white leading-[1.1] tracking-tighter mb-10">
+            <h2 className="hidden sm:block text-5xl font-black text-white leading-[1.1] tracking-tighter mb-10">
               반가워요! <br />
               <span className="text-green-400 font-serif italic font-light">
                 새로운 여정의 시작
               </span>
             </h2>
-            <div className="space-y-10">
+            <div className="space-y-10 hidden sm:block">
               {/* 단계 표시용 아이템 */}
               <Step
                 icon={<User size={24} />}
@@ -325,7 +325,7 @@ export default function SignUpPage() {
                   type="button"
                   onClick={handleCheckId}
                   disabled={isIdChecked === true}
-                  className={`h-14 px-6 rounded-[1.4rem] font-bold text-sm whitespace-nowrap transition-all ${
+                  className={`h-12 sm:h-14 px-6 rounded-[1.4rem] font-bold text-sm whitespace-nowrap transition-all ${
                     isIdChecked === true
                       ? "bg-green-100 text-green-600 cursor-default"
                       : "bg-slate-900 text-white hover:bg-slate-800"
@@ -386,7 +386,7 @@ export default function SignUpPage() {
                   disabled={
                     emailStatus === "verified" || emailStatus === "sending"
                   }
-                  className={`h-14 px-6 rounded-[1.4rem] font-bold text-sm whitespace-nowrap transition-all ${
+                  className={`h-12 sm:h-14 px-6 rounded-[1.4rem] font-bold text-sm whitespace-nowrap transition-all ${
                     emailStatus === "verified"
                       ? "bg-green-100 text-green-600 border border-green-200"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
@@ -434,7 +434,7 @@ export default function SignUpPage() {
                       <button
                         type="button"
                         onClick={handleVerifyCode}
-                        className="h-14 px-6 rounded-[1.4rem] bg-green-500 text-white font-bold text-sm whitespace-nowrap hover:bg-green-600 transition-all shadow-lg shadow-green-200"
+                        className="h-12 sm:h-14 px-6 rounded-[1.4rem] bg-green-500 text-white font-bold text-sm whitespace-nowrap hover:bg-green-600 transition-all shadow-lg shadow-green-200"
                       >
                         확인
                       </button>
@@ -459,7 +459,7 @@ export default function SignUpPage() {
                 <label className="text-[11px] font-black text-slate-400 ml-4 uppercase tracking-[0.15em]">
                   성별
                 </label>
-                <div className="flex gap-2 h-[62px]">
+                <div className="flex gap-2 h-12 sm:h-14">
                   {["M", "F"].map((gender) => (
                     <button
                       key={gender}

@@ -96,6 +96,8 @@ div[style*="border: 1px solid #7681a8"] {
   .Toastify__toast-container {
     bottom: 88px;
     right: 24px;
+    margin-left: -25px;
+    margin-bottom: 10px;
   }
 
   .Toastify__toast-container .Toastify__toast {

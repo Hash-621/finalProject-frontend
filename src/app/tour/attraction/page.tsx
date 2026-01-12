@@ -20,6 +20,7 @@ import {
   Heart,
   RefreshCw,
   Camera,
+  ArrowLeft,
 } from "lucide-react";
 import Pagination from "@/components/common/Pagination"; // 페이지네이션 컴포넌트
 
@@ -417,9 +418,10 @@ function TourPageContent() {
             <div className="sticky top-0 z-20 flex justify-between items-center p-6 bg-white border-b border-slate-50">
               <button
                 onClick={() => setSelectedTour(null)}
-                className="flex items-center text-slate-500 hover:text-green-600 font-bold transition-all"
+                className="inline-flex items-center gap-2 text-slate-400 hover:text-green-600 transition-colors font-bold group"
               >
-                <ChevronLeft className="w-6 h-6 mr-1" /> 목록보기
+                <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />{" "}
+                <div className="hidden sm:block">목록보기</div>
               </button>
               <span className="font-bold text-slate-900 text-lg truncate px-4">
                 {selectedTour.name}
@@ -464,7 +466,7 @@ function TourPageContent() {
                       <span className="w-2 h-8 bg-green-500 rounded-full"></span>{" "}
                       상세 소개
                     </h4>
-                    <p className="text-slate-600 leading-loose whitespace-pre-wrap text-lg font-medium">
+                    <p className="text-slate-600 leading-loose whitespace-pre-wrap font-medium">
                       {cleanDescription(selectedTour.description)}
                     </p>
                   </div>

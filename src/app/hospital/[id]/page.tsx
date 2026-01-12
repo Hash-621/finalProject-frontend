@@ -24,7 +24,8 @@ import {
   Calendar, // 달력 아이콘
   ShieldCheck, // 인증 마크 아이콘
   Building2, // 건물 아이콘
-  Heart, // [추가] 하트(즐겨찾기) 아이콘
+  Heart,
+  ArrowLeft, // [추가] 하트(즐겨찾기) 아이콘
 } from "lucide-react";
 
 import Link from "next/link"; // 페이지 이동용 링크 컴포넌트
@@ -168,7 +169,7 @@ export default function HospitalDetail() {
     <div className="flex flex-col min-h-screen bg-white">
       {/* 1. 상단 비주얼 섹션 (배경 이미지 + 병원 이름) */}
 
-      <section className="relative h-[40vh] md:h-[50vh] w-full overflow-hidden bg-slate-900">
+      <section className="relative h-[50vh] md:h-[50vh] w-full overflow-hidden bg-slate-900">
         {/* 배경 이미지 (고정 효과 fixed) */}
         <div
           className="absolute inset-0 opacity-40 bg-center bg-cover"
@@ -187,11 +188,13 @@ export default function HospitalDetail() {
         <div className="absolute top-6 left-6 z-30">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-black transition-all group"
+            className="group flex items-center gap-2 px-5 py-2.5 bg-white/10 backdrop-blur-xl rounded-2xl text-white border border-white/20 hover:bg-white hover:text-black transition-all"
           >
-            <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-
-            <span className="text-sm font-bold">뒤로가기</span>
+            <ArrowLeft
+              size={20}
+              className="group-hover:-translate-x-1 transition-transform"
+            />
+            목록보기
           </button>
         </div>
 
@@ -203,9 +206,9 @@ export default function HospitalDetail() {
           </div>
 
           {/* 병원 이름 */}
-          <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tighter">
+          <h2 className="text-3xl md:text-6xl font-black mb-6 tracking-tighter">
             {hospital.name}
-          </h1>
+          </h2>
 
           {/* 주소 및 인증 마크 */}
           <div className="flex flex-wrap items-center gap-6 text-slate-300 font-bold">
@@ -231,7 +234,7 @@ export default function HospitalDetail() {
       {/* 2. 상세 컨텐츠 섹션 (흰색 박스) */}
       {/* 위쪽으로 살짝 겹치게(-mt-12) 해서 입체감을 줌 */}
 
-      <section className="relative z-20 md:-mt-12 bg-white rounded-t-[48px] flex-1">
+      <div className="relative z-20 md:-mt-12 bg-white rounded-t-[48px] flex-1">
         <div className="max-w-6xl mx-auto px-6 py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
             {/* 좌측 메인 정보 (8칸 차지) */}
@@ -412,19 +415,6 @@ export default function HospitalDetail() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* 3. 푸터 버튼 (목록으로 돌아가기) */}
-
-      <div className="bg-white py-12 border-t border-slate-50 mt-auto">
-        <div className="max-w-6xl mx-auto px-6 flex justify-center">
-          <button
-            onClick={() => router.push("/hospital")}
-            className="text-slate-300 hover:text-green-600 font-black text-sm uppercase tracking-[0.2em] transition-colors"
-          >
-            Back to Hospital List
-          </button>
         </div>
       </div>
     </div>

@@ -274,7 +274,7 @@ export default function Page() {
       {/* 1. 헤더 섹션 (제목, 검색창, 필터 버튼들) */}
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 sm:mb-16">
             <div className="space-y-5">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight">
                 {/* 깜빡이는 녹색 점 애니메이션 */}
@@ -425,7 +425,7 @@ export default function Page() {
                         <span className="line-clamp-1">{h.address}</span>
                       </div>
                     </div>
-                    <div className="pt-6 border-t border-dashed border-slate-100 flex items-center justify-between">
+                    <div className="pt-6 border-t border-dashed border-slate-100 flex flex-col gap-1 sm:gap-0 sm:flex-row sm:items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                         <span className="text-[11px] font-black text-slate-400 uppercase">
@@ -438,7 +438,7 @@ export default function Page() {
                           e.stopPropagation();
                           router.push(`/hospital/${h.id}`);
                         }}
-                        className="flex items-center gap-2 px-7 py-3.5 bg-slate-900 text-white rounded-2xl text-[13px] font-bold hover:bg-green-600 transition-all shadow-xl shadow-slate-200"
+                        className="flex items-center justify-center sm:justify-start gap-2 px-7 py-3.5 bg-slate-900 text-white rounded-2xl text-[13px] font-bold hover:bg-green-600 transition-all shadow-xl shadow-slate-200"
                       >
                         진료 정보 보기 <ArrowRight size={16} />
                       </button>

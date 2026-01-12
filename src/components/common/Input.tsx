@@ -16,7 +16,10 @@ export const Input = ({ label, icon, ...props }: InputProps) => (
     <div className="relative group">
       {/* 3. 아이콘 영역 (icon prop이 있을 때만 렌더링) */}
       {icon && (
-        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-green-500 transition-colors z-10">
+        <div
+          className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-green-500 transition-colors z-10 
+      group-focus-within:hidden sm:group-focus-within:block"
+        >
           {icon}
         </div>
       )}
@@ -26,8 +29,8 @@ export const Input = ({ label, icon, ...props }: InputProps) => (
         {...props} // 부모로부터 받은 나머지 속성들 (type, value 등) 적용
         className={`w-full ${
           // 아이콘 유무에 따라 왼쪽 패딩(여백) 조절
-          icon ? "pl-14" : "px-6"
-        } pr-6 py-5 bg-slate-50/50 border border-slate-100 rounded-[1.8rem] outline-none transition-all font-black text-slate-700 placeholder:text-slate-300 focus:bg-white focus:border-green-400 focus:ring-[6px] focus:ring-green-50/50 disabled:opacity-50`}
+          icon ? "pl-14 focus:pl-6 sm:focus:pl-14" : "px-6"
+        } pr-6 py-3 sm:py-5 bg-slate-50/50 border border-slate-100 rounded-[1.8rem] outline-none transition-all font-black text-slate-700 placeholder:text-slate-300 focus:bg-white focus:border-green-400 focus:ring-[6px] focus:ring-green-50/50 disabled:opacity-50`}
       />
     </div>
   </div>

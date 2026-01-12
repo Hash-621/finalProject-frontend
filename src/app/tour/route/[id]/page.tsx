@@ -28,7 +28,7 @@ export default async function TourRouteDetailPage({ params }: Props) {
 
   // --- [화면 렌더링] ---
   return (
-    <div className="w-full bg-white min-h-screen pb-40 text-slate-900">
+    <div className="w-full bg-white min-h-screen pb-8 sm:pb-40 text-slate-900">
       {/* 뒤로가기 버튼 */}
       <div className="max-w-7xl mx-auto px-6 pt-10">
         <Link
@@ -39,7 +39,7 @@ export default async function TourRouteDetailPage({ params }: Props) {
             size={20}
             className="group-hover:-translate-x-1 transition-transform"
           />
-          Back to List
+          목록보기
         </Link>
       </div>
 
@@ -51,10 +51,10 @@ export default async function TourRouteDetailPage({ params }: Props) {
             <span className="inline-block bg-green-600 text-white text-[10px] font-black px-3 py-1 rounded-sm mb-4 tracking-[0.2em] uppercase">
               Course 0{data.number}
             </span>
-            <h1 className="text-4xl md:text-6xl font-black leading-tight tracking-tighter mb-6">
+            <h2 className="text-4xl md:text-6xl font-black leading-tight tracking-tighter mb-6">
               {data.title}
-            </h1>
-            <p className="max-w-2xl text-slate-500 text-lg font-medium leading-relaxed break-keep">
+            </h2>
+            <p className="max-w-2xl text-slate-500 font-medium leading-relaxed break-keep">
               {data.text}
             </p>
           </div>
@@ -128,10 +128,10 @@ export default async function TourRouteDetailPage({ params }: Props) {
                       <div className="flex items-center gap-2 text-green-600 mb-3 font-black text-xs uppercase tracking-widest">
                         <MapPin size={14} /> {spot.location || "Daejeon, Korea"}
                       </div>
-                      <h3 className="text-3xl font-black mb-5 tracking-tight">
+                      <h3 className="text-2xl sm:text-3xl font-bold mb-5 tracking-tight">
                         {spot.name}
                       </h3>
-                      <p className="text-slate-500 leading-relaxed font-medium text-lg max-w-2xl break-keep">
+                      <p className="text-slate-500 leading-relaxed max-w-2xl break-keep">
                         {spot.text}
                       </p>
                     </div>
@@ -142,16 +142,6 @@ export default async function TourRouteDetailPage({ params }: Props) {
           </div>
         ))}
       </div>
-
-      {/* 하단 푸터 네비게이션 */}
-      <footer className="max-w-7xl mx-auto px-6 pt-16 border-t border-slate-100">
-        <Link
-          href="/tour/route"
-          className="inline-flex items-center gap-4 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black hover:bg-green-600 transition-all hover:gap-6 shadow-xl"
-        >
-          DISCOVER OTHER COURSES <ChevronRight size={20} />
-        </Link>
-      </footer>
     </div>
   );
 }
