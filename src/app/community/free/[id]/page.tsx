@@ -11,6 +11,8 @@ import { use } from "react";
 // 자유게시판, 공지사항, 투어리뷰 등 여러 게시판에서 디자인을 재사용하기 위해 만들어둔 컴포넌트입니다.
 import CommonPostDetail from "@/components/community/CommunityPostDetail";
 
+import { notFound } from "next/navigation";
+
 // --- [메인 페이지 컴포넌트 정의] ---
 export default function FreeBoardDetail({
   params, // 3. Next.js 라우터가 넘겨주는 URL 파라미터를 받습니다. (예: /free/123 에서 '123')

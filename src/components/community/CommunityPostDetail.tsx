@@ -20,6 +20,9 @@ import Cookies from "js-cookie"; // 쿠키 관리 (토큰 확인용)
 import { userService } from "@/api/services"; // 유저 정보 조회 서비스
 import useAdminCheck from "@/hooks/useAdminCheck"; // 관리자 권한 확인 훅
 
+// [추가됨] 공통 모달 컴포넌트 임포트
+import Modal from "@/components/common/Modal";
+
 // --- [테마 설정 객체] ---
 // theme prop('green' 또는 'slate')에 따라 적용할 Tailwind CSS 클래스들을 미리 정의해둡니다.
 // 이렇게 하면 디자인을 일일이 조건문으로 분기하지 않고 깔끔하게 관리할 수 있습니다.
@@ -93,20 +96,50 @@ export default function CommunutyPostDetail({
   const [currentUser, setCurrentUser] = useState<any>(null);
   const { isAdmin } = useAdminCheck(); // 관리자 권한 여부 확인 훅 사용
 
+  // [추가됨] 모달의 열림 여부, 제목, 내용 등을 관리하는 상태
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    content: "",
+    type: "success" as "success" | "error" | "warning" | "confirm",
+    onConfirm: undefined as (() => void) | undefined,
+  });
+
+  // [추가됨] 모달을 쉽게 열기 위한 헬퍼 함수
+  const openModal = (
+    content: string,
+    type: "success" | "error" | "warning" | "confirm" = "success",
+    title?: string,
+    onConfirm?: () => void
+  ) => {
+    setModalConfig({
+      isOpen: true,
+      content,
+      type,
+      title:
+        title ||
+        (type === "error" ? "오류" : type === "confirm" ? "확인" : "알림"),
+      onConfirm,
+    });
+  };
+
+  // [추가됨] 모달 닫기 함수
+  const closeModal = () => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
   // --- [1. 초기 데이터 로드 (useEffect)] ---
   // 컴포넌트가 처음 나타나거나 postId가 바뀌면 실행됩니다.
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // (1) 유저 정보 확인 로직
-        const token = Cookies.get("token"); // 쿠키에서 토큰 확인
+        // (1) 유저 정보 확인 로직 (기존 코드 유지)
+        const token = Cookies.get("token");
         if (token) {
           try {
-            // 토큰이 있으면 서버에 유저 정보 요청
             const userRes = await userService.getUserInfo().catch(() => null);
             if (userRes?.data) {
               const data = userRes.data;
-              // 서버 응답에서 ID와 닉네임을 추출하여 상태에 저장
               setCurrentUser({
                 userId: data.userId || data.id || data.loginId,
                 nickname: data.userNickname || data.nickname,
@@ -117,22 +150,36 @@ export default function CommunutyPostDetail({
           }
         }
 
-        // (2) 게시글 상세 데이터 요청
+        // (2) 게시글 상세 데이터 요청 (기존 코드 유지)
         const postRes = await api.get(apiEndpoints.fetchPost);
-        setPost(postRes.data); // 받아온 데이터 저장
+        setPost(postRes.data);
 
-        // (3) 댓글 목록 요청 (함수로 분리됨)
+        // (3) 댓글 목록 요청 (기존 코드 유지)
         await fetchComments();
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        alert("게시글을 불러올 수 없습니다.");
-        router.push(listPath); // 에러 발생 시 목록 페이지로 강제 이동
+
+        // 🔥 [수정됨] 404(없음) 혹은 500 에러 시 모달을 띄우고 목록으로 이동
+        if (
+          err.response &&
+          (err.response.status === 404 || err.response.status === 500)
+        ) {
+          openModal(
+            "게시글을 찾을 수 없거나 삭제되었습니다.",
+            "error",
+            "오류",
+            () => router.push(listPath) // 확인 버튼 누르면 목록으로 이동
+          );
+        } else {
+          // 그 외 다른 에러일 때
+          openModal("게시글을 불러올 수 없습니다.", "error");
+        }
       } finally {
-        setLoading(false); // 로딩 종료 (성공하든 실패하든)
+        setLoading(false); // 로딩 종료
       }
     };
 
-    if (postId) fetchData(); // postId가 있을 때만 실행
+    if (postId) fetchData();
   }, [postId, listPath]);
 
   // --- [댓글 목록 조회 및 구조화 함수] ---
@@ -172,16 +219,25 @@ export default function CommunutyPostDetail({
   // --- [게시글 삭제 핸들러] ---
   const handleDeletePost = async () => {
     if (!apiEndpoints.deletePost) return; // 삭제 API가 없으면 실행 안 함
-    if (!confirm("정말로 이 글을 삭제하시겠습니까?")) return; // 확인 창
 
-    try {
-      await api.delete(apiEndpoints.deletePost); // 삭제 요청 전송
-      alert("게시글이 삭제되었습니다.");
-      router.push(listPath); // 목록으로 이동
-    } catch (error) {
-      console.error(error);
-      alert("삭제 실패했습니다.");
-    }
+    // [수정됨] confirm 대신 openModal 사용
+    openModal(
+      "정말로 이 글을 삭제하시겠습니까?",
+      "confirm",
+      "삭제 확인",
+      async () => {
+        try {
+          await api.delete(apiEndpoints.deletePost!); // 삭제 요청 전송 (!는 위에서 체크했으므로 확신)
+          // 삭제 성공 시 성공 알림 후 목록 이동
+          openModal("게시글이 삭제되었습니다.", "success", "삭제 완료", () =>
+            router.push(listPath)
+          );
+        } catch (error) {
+          console.error(error);
+          openModal("삭제 실패했습니다.", "error");
+        }
+      }
+    );
   };
 
   // --- [댓글/대댓글 작성 핸들러] ---
@@ -189,9 +245,9 @@ export default function CommunutyPostDetail({
     // parentId 유무에 따라 대댓글 내용인지, 일반 댓글 내용인지 선택
     const content = parentId ? replyContent : commentContent;
 
-    // 유효성 검사
-    if (!content.trim()) return alert("내용을 입력해주세요.");
-    if (!currentUser) return alert("로그인이 필요합니다.");
+    // 유효성 검사 (alert -> openModal)
+    if (!content.trim()) return openModal("내용을 입력해주세요.", "warning");
+    if (!currentUser) return openModal("로그인이 필요합니다.", "warning");
 
     try {
       // 댓글 등록 API 요청
@@ -213,19 +269,21 @@ export default function CommunutyPostDetail({
       fetchComments(); // 댓글 목록 새로고침 (즉시 반영을 위해)
     } catch (error) {
       console.error(error);
-      alert("댓글 등록 중 오류가 발생했습니다.");
+      openModal("댓글 등록 중 오류가 발생했습니다.", "error");
     }
   };
 
   // --- [댓글 삭제 핸들러] ---
   const handleDeleteComment = async (commentId: number) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    try {
-      await api.post(apiEndpoints.deleteComment, { id: commentId });
-      fetchComments(); // 삭제 후 목록 새로고침
-    } catch (error) {
-      alert("댓글 삭제 실패");
-    }
+    // [수정됨] confirm 대신 openModal 사용
+    openModal("정말 삭제하시겠습니까?", "confirm", "댓글 삭제", async () => {
+      try {
+        await api.post(apiEndpoints.deleteComment, { id: commentId });
+        fetchComments(); // 삭제 후 목록 새로고침
+      } catch (error) {
+        openModal("댓글 삭제 실패", "error");
+      }
+    });
   };
 
   // --- [댓글 렌더링 함수] ---
@@ -396,12 +454,38 @@ export default function CommunutyPostDetail({
       </div>
     );
 
-  // (2) 데이터가 없을 때: 에러 메시지
-  if (!post) return <div>게시글을 찾을 수 없습니다.</div>;
+  // (2) [중요] 데이터가 없을 때:
+  // 기존에는 텍스트만 리턴했지만, 에러 모달을 보여주기 위해 Modal 컴포넌트를 포함합니다.
+  if (!post) {
+    return (
+      <>
+        <Modal
+          isOpen={modalConfig.isOpen}
+          onClose={closeModal}
+          title={modalConfig.title}
+          content={modalConfig.content}
+          type={modalConfig.type}
+          onConfirm={modalConfig.onConfirm}
+        />
+        {/* 빈 화면 (모달 뒤 배경 역할) */}
+        <div className="min-h-screen bg-[#F8FAFC]"></div>
+      </>
+    );
+  }
 
   // (3) 정상 렌더링
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24">
+      {/* 화면 전체 어디서든 쓸 수 있게 모달 컴포넌트를 최상위에 둡니다. */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        title={modalConfig.title}
+        content={modalConfig.content}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+      />
+
       {/* 상단바 (뒤로가기 버튼) */}
       <nav className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -546,53 +630,3 @@ export default function CommunutyPostDetail({
     </div>
   );
 }
-
-// 1. 페이지 진입 및 로딩 (Loading Phase)
-
-// 사용자가 URL을 클릭합니다.
-
-// 컴포넌트가 마운트되면서 loading = true 상태로 시작해 로딩 스피너를 보여줍니다.
-
-// 동시에 useEffect가 발동하여 3가지 데이터를 병렬로 요청합니다. (시간 절약을 위해)
-
-// 유저 정보 확인: "지금 접속한 사람이 누구야?" (currentUser 저장)
-
-// 글 상세 내용: "제목이랑 본문 줘." (post 저장)
-
-// 댓글 목록: "여기 달린 댓글 싹 다 가져와." (fetchComments 실행)
-
-// 2. 댓글 데이터 가공 (Data Processing)
-
-// 댓글 API는 보통 댓글들을 1차원 리스트([{id:1}, {id:2, parentId:1}, ...])로 줍니다.
-
-// fetchComments 함수가 이 리스트를 받아서 "2번은 1번의 자식이구나" 하고 판단하여 **트리 구조(가계도)**로 재조립합니다.
-
-// 이렇게 정리된 데이터가 comments 상태에 저장됩니다.
-
-// 3. 화면 렌더링 (Painting)
-
-// 모든 데이터 준비가 끝나면 loading = false가 됩니다.
-
-// 스피너가 사라지고, 게시글 본문과 댓글 목록이 예쁘게 렌더링됩니다.
-
-// 이때 post.content에 포함된 HTML 태그들(굵은 글씨, 이미지 등)은 dangerouslySetInnerHTML을 통해 실제 스타일이 적용되어 보입니다.
-
-// 4. 댓글 작성 및 인터랙션 (User Interaction)
-
-// 사용자가 "비 온대요."라고 댓글을 쓰고 **[등록하기]**를 누릅니다.
-
-// handleCommentSubmit이 서버로 전송하고, 성공하면 댓글 목록을 **새로고침(fetchComments)**해서 방금 쓴 댓글이 바로 보이게 합니다.
-
-// 사용자가 다른 사람 댓글에 [답글] 버튼을 누릅니다.
-
-// activeReplyId가 해당 댓글 ID로 바뀌면서, 그 댓글 바로 밑에 숨겨져 있던 대댓글 입력창이 스르륵 나타납니다.
-
-// 5. 권한 확인 및 기능 제한 (Permission Check)
-
-// 화면을 그릴 때, 게시글 작성자 ID와 내 ID(currentUser.userId)를 비교합니다.
-
-// 내가 쓴 글이면: 우측 상단에 빨간색 [삭제] 버튼을 보여줍니다.
-
-// 내가 쓴 댓글이면: 댓글 옆에 조그만 [휴지통] 아이콘을 보여줍니다.
-
-// 남의 글이나 댓글에는 이 버튼들이 아예 생성되지 않아 클릭할 수 없습니다.
