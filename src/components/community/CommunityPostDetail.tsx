@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Cookies from "js-cookie"; // 쿠키 관리 (토큰 확인용)
 import { userService } from "@/api/services"; // 유저 정보 조회 서비스
+import useAdminCheck from "@/hooks/useAdminCheck"; // 관리자 권한 확인 훅
 
 // --- [테마 설정 객체] ---
 // theme prop('green' 또는 'slate')에 따라 적용할 Tailwind CSS 클래스들을 미리 정의해둡니다.
@@ -90,6 +91,7 @@ export default function CommunutyPostDetail({
 
   // 로그인한 사용자 정보 상태
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const { isAdmin } = useAdminCheck(); // 관리자 권한 여부 확인 훅 사용
 
   // --- [1. 초기 데이터 로드 (useEffect)] ---
   // 컴포넌트가 처음 나타나거나 postId가 바뀌면 실행됩니다.
@@ -430,8 +432,9 @@ export default function CommunutyPostDetail({
 
               {/* 게시글 삭제 버튼: 삭제 API가 있고, 작성자 본인일 때만 표시 */}
               {apiEndpoints.deletePost &&
-                currentUser &&
-                String(post.userId) === String(currentUser.userId) && (
+                ((currentUser &&
+                  String(post.userId) === String(currentUser.userId)) ||
+                  isAdmin) && (
                   <button
                     onClick={handleDeletePost}
                     className="flex items-center gap-1 text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all text-sm font-bold"

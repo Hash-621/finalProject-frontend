@@ -35,10 +35,11 @@ export default function FreeBoardDetail({
       // 11. 이 컴포넌트가 서버와 통신할 때 사용할 API 주소들을 꾸러미로 묶어서 넘겨줍니다.
       // CommonPostDetail은 이 주소들만 알면, 어느 게시판이든 상관없이 동작할 수 있습니다.
       apiEndpoints={{
-        fetchPost: `/community/free/${id}`, // 12. 글 내용을 가져올 API 주소 (GET)
-        fetchComments: `/community/comments/${id}`, // 13. 댓글 목록을 가져올 API 주소 (GET)
-        postComment: "/community/comments", // 14. 새 댓글을 등록할 API 주소 (POST)
-        deleteComment: "/community/comments/delete", // 15. 댓글을 삭제할 API 주소 (DELETE/POST)
+        fetchPost: `/community/free/${id}`, // 12. 글 내용을 가져올 API 주소 (GET
+        deletePost: `/community/free/${id}`, // 13. 글 삭제할 API 주소 (DELETE)
+        fetchComments: `/community/comments/${id}`, // 14. 댓글 목록을 가져올 API 주소 (GET)
+        postComment: "/community/comments", // 15. 새 댓글을 등록할 API 주소 (POST)
+        deleteComment: "/community/comments/delete", // 16. 댓글을 삭제할 API 주소 (DELETE/POST)
       }}
     />
   );
