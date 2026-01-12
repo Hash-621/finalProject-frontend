@@ -29,6 +29,7 @@ import {
   MapPin,
   ThumbsUp,
   Camera,
+  ArrowLeft,
 } from "lucide-react";
 
 // 8. 모달 컴포넌트
@@ -283,7 +284,11 @@ export default function TourReviewDetail({
 
       return (
         <div key={comment.id} className="w-full">
-          <div className={`flex ${isReply ? "mt-3" : "mt-6"}`}>
+          <div
+            className={`flex ${
+              isReply ? "mt-3" : "mt-6"
+            } w-[calc(100vw-7rem)] md:w-full`}
+          >
             {isReply && (
               <div className="flex flex-col items-end mr-3 pt-4 min-w-5">
                 <CornerDownRight
@@ -298,13 +303,13 @@ export default function TourReviewDetail({
                   ${
                     isReply
                       ? `bg-slate-50 rounded-2xl p-5 border-slate-200`
-                      : "bg-white border border-slate-100 rounded-4xl p-8 "
+                      : "bg-white border border-slate-100 rounded-4xl p-5 sm:p-8 "
                   }`}
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`flex items-center justify-center font-bold text-sm shadow-md rounded-2xl ${
+                    className={`hidden sm:flex items-center justify-center font-bold text-sm shadow-md rounded-2xl ${
                       isReply
                         ? "w-8 h-8 bg-white text-slate-600 border border-slate-200"
                         : "w-11 h-11 text-white bg-linear-to-br from-emerald-400 to-teal-500 shadow-emerald-100"
@@ -318,8 +323,8 @@ export default function TourReviewDetail({
                       <span
                         className={`font-bold ${
                           isReply
-                            ? "text-slate-700 text-sm"
-                            : "text-slate-900 text-[16px]"
+                            ? "text-slate-700 text-sm "
+                            : "text-slate-900 text-[16px] block truncate max-w-[5em] sm:max-w-none"
                         }`}
                       >
                         {comment.userNickname}
@@ -336,7 +341,7 @@ export default function TourReviewDetail({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 opacity-90">
+                <div className="flex items-center sm:gap-1 opacity-90">
                   {!comment.isDelete && (
                     <button
                       onClick={() =>
@@ -448,7 +453,7 @@ export default function TourReviewDetail({
 
   // 3. 정상 데이터가 있을 때 화면
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-32">
+    <div className="min-h-screen bg-[#F8FAFC] pb-8 sm:pb-32">
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={closeModal}
@@ -469,11 +474,11 @@ export default function TourReviewDetail({
             onClick={() => router.push("/community/review")}
             className="group flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors"
           >
-            <ChevronLeft
+            <ArrowLeft
               size={20}
               className="group-hover:-translate-x-1 transition-transform"
             />
-            <span className="font-bold">여행기 목록</span>
+            <span className="font-bold">목록보기</span>
           </button>
         </div>
       </nav>
@@ -499,9 +504,9 @@ export default function TourReviewDetail({
               )}
             </div>
 
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight mb-8 break-keep">
+            <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight tracking-tight mb-8 break-keep">
               {post.title}
-            </h1>
+            </h2>
 
             <div className="flex flex-wrap items-center gap-6 pb-8 border-b border-slate-50">
               <div className="flex items-center gap-3">
@@ -559,7 +564,7 @@ export default function TourReviewDetail({
           <div className="bg-slate-50 py-10 flex flex-col items-center justify-center gap-4 border-t border-slate-100">
             <button
               onClick={handleLikeClick}
-              className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-bold transition-all group scale-100 active:scale-95 shadow-lg ${
+              className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all group scale-100 active:scale-95 shadow-lg ${
                 isLiked
                   ? "bg-linear-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-200 ring-4 ring-emerald-100"
                   : "bg-white text-slate-500 border border-slate-200 hover:border-emerald-300 hover:text-emerald-600"
@@ -571,7 +576,12 @@ export default function TourReviewDetail({
                   isLiked ? "fill-white" : ""
                 }`}
               />
-              <span className="text-sm">여행에 도움이 됐어요</span>
+              <span className="text-sm">
+                <span className="hidden sm:block text-sm">
+                  여행에 도움이 됐어요
+                </span>
+                <span className="block sm:hidden text-sm">좋아요</span>
+              </span>
               <span
                 className={`ml-2 px-2.5 py-0.5 rounded-full text-xs font-black ${
                   isLiked
@@ -585,7 +595,7 @@ export default function TourReviewDetail({
           </div>
         </div>
 
-        <section className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden mb-20">
+        <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
           <div className="p-8 md:p-12">
             <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
               댓글{" "}
@@ -594,7 +604,7 @@ export default function TourReviewDetail({
               </span>
             </h3>
 
-            <div className="relative mb-12">
+            <div className="relative mb-6 sm:mb-12">
               <textarea
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
@@ -609,31 +619,32 @@ export default function TourReviewDetail({
               <button
                 onClick={() => handleCommentSubmit(null)}
                 disabled={!currentUser}
-                className={`absolute bottom-6 right-4 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 text-sm hover:-translate-y-1 ${
+                className={`absolute bottom-6 right-4 text-white font-bold p-3 sm:px-6 sm:py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 text-sm hover:-translate-y-1 ${
                   currentUser
                     ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
                     : "bg-slate-300 cursor-not-allowed shadow-none"
                 }`}
               >
-                <Send size={16} /> 등록
+                <Send size={16} />{" "}
+                <span className="hidden sm:block">등록하기</span>
               </button>
             </div>
 
-            <div className="space-y-1">
-              {comments.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-100 rounded-4xl">
-                  <MessageSquare className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                  <p className="text-slate-400 font-bold">
-                    아직 작성된 댓글이 없습니다.
-                    <br />첫 번째 방문 흔적을 남겨보세요!
-                  </p>
-                </div>
-              ) : (
-                renderComments(comments)
-              )}
+            <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="w-full space-y-1">
+                {comments.length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-slate-400 font-medium">
+                      아직 댓글이 없습니다.
+                    </p>
+                  </div>
+                ) : (
+                  renderComments(comments)
+                )}
+              </div>
             </div>
           </div>
-        </section>
+        </div>
       </article>
     </div>
   );
