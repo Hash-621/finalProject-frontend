@@ -244,7 +244,7 @@ export default function TourReviewDetail({
           await api.delete(`/community/post/${id}`); // 백엔드에 삭제 요청
           // 성공하면 알림을 띄우고, 확인 누르면 목록으로 이동
           openModal("게시글이 삭제되었습니다.", "success", "삭제 완료", () =>
-            router.push("/tour/review")
+            router.push("/community/review")
           );
         } catch (error) {
           console.error(error);

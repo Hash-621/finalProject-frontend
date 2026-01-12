@@ -75,7 +75,7 @@ export default function TourReviewList() {
         // 2. 서버에 데이터를 요청합니다.
         // GET 요청을 보내며, 카테고리가 "TOUR_REVIEW"인 글만 달라고 파라미터를 같이 보냅니다.
         const response = await api.get("/community/posts", {
-          params: { category: "TOUR_REVIEW" },
+          params: { category: "REVIEW" },
         });
 
         // 3. 받아온 데이터를 안전하게 처리합니다.
