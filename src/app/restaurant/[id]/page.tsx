@@ -25,6 +25,8 @@ import {
   PlusCircle, // 더보기 (+) 아이콘
 } from "lucide-react";
 
+import makerImg from "../../../../public/images/mapMaker.png"; // 커스텀 마커 이미지
+
 // --- [Interface] 블로그 리뷰 데이터의 모양을 정의합니다 ---
 interface BlogItem {
   title: string;
@@ -193,8 +195,17 @@ export default function RestaurantDetail() {
         if (status === kakao.maps.services.Status.OK) {
           const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
 
+          var imageSrc = makerImg.src, // 마커이미지의 주소입니다
+            imageSize = new kakao.maps.Size(32, 34), // 마커이미지의 크기입니다
+            imageOption = { offset: new kakao.maps.Point(16, 34) }; // 마커이미지의 옵션입니다. 마커의 좌표와 일치시킬 이미지 안에서의 좌표를 설정합니다.
+          var markerImage = new kakao.maps.MarkerImage(
+            imageSrc,
+            imageSize,
+            imageOption
+          );
+
           // 지도에 마커(핀)를 표시합니다.
-          new kakao.maps.Marker({ map, position: coords });
+          new kakao.maps.Marker({ map, position: coords, image: markerImage });
 
           // 마커 위에 가게 이름을 띄워줍니다 (인포윈도우).
           const infowindow = new kakao.maps.InfoWindow({
