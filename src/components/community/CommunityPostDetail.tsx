@@ -294,14 +294,9 @@ export default function CommunutyPostDetail({
       const isReply = !!comment.parentId;
 
       return (
-        // [수정 1] w-full -> w-fit min-w-full
-        // 설명: 자식 요소(댓글 카드)가 오른쪽으로 밀려나면, 이 컨테이너도 같이 커지도록 w-fit을 줍니다.
-        // min-w-full은 댓글이 짧아도 최소한 화면 너비는 차지하게 합니다.
+        // [유지] 스타일이 적용된 컨테이너
         <div key={comment.id} className="w-fit min-w-full">
-          {/* [수정 2] 너비 고정 로직 추가
-              - 모바일: w-[calc(100vw-6rem)] -> 화면 너비에서 좌우 패딩을 뺀 만큼만 너비를 가짐 (늘어나지 않음)
-              - 데스크탑(md): w-full -> 기존처럼 꽉 채움
-          */}
+          {/* [유지] 너비 고정 로직 */}
           <div
             className={`flex ${
               isReply ? "mt-3" : "mt-6"
@@ -324,9 +319,7 @@ export default function CommunutyPostDetail({
                     : "bg-white border border-slate-100 rounded-2xl p-8 "
                 }`}
             >
-              {/* ... (댓글 내용 - 기존 코드와 동일) ... */}
               <div className="flex justify-between items-start mb-3">
-                {/* ... (프로필, 이름 등) ... */}
                 <div className="flex items-center gap-3">
                   <div
                     className={`flex items-center justify-center font-bold text-sm shadow-md rounded-2xl ${
@@ -433,8 +426,7 @@ export default function CommunutyPostDetail({
           </div>
 
           {comment.children?.length > 0 && (
-            // [수정 3] 들여쓰기 부분 (margin-left)
-            // 깊이가 깊어지면 자식 div(w-fit)가 점점 오른쪽으로 밀려나면서 전체 너비를 키움
+            // [유지] 들여쓰기 부분
             <div className="pl-6 md:pl-12 my-2">
               {renderComments(comment.children)}
             </div>
@@ -446,7 +438,7 @@ export default function CommunutyPostDetail({
 
   // --- [화면 렌더링 분기] ---
 
-  // (1) 로딩 중일 때: 화면 중앙 스피너
+  // (1) 로딩 중일 때: 화면 중앙 스피너 (스타일 유지)
   if (loading)
     return (
       <div className="min-h-screen flex justify-center items-center bg-[#F8FAFC]">
@@ -455,7 +447,7 @@ export default function CommunutyPostDetail({
     );
 
   // (2) [중요] 데이터가 없을 때:
-  // 기존에는 텍스트만 리턴했지만, 에러 모달을 보여주기 위해 Modal 컴포넌트를 포함합니다.
+  // 에러 모달을 보여주기 위해 Modal 컴포넌트를 포함합니다.
   if (!post) {
     return (
       <>
@@ -581,7 +573,6 @@ export default function CommunutyPostDetail({
 
             {/* 댓글 작성란 (고정) */}
             <div className="relative mb-12">
-              {/* ... (textarea 코드는 그대로 유지) ... */}
               <textarea
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
@@ -606,11 +597,8 @@ export default function CommunutyPostDetail({
               </button>
             </div>
 
-            {/* ▼▼▼ [수정된 부분] 댓글 목록 컨테이너 ▼▼▼ */}
-
-            {/* overflow-x-auto: 대댓글이 깊어져서 화면을 넘어가면 스크롤 발생 */}
+            {/* 댓글 목록 컨테이너 (스타일 유지) */}
             <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
-              {/* min-w-[500px] 제거하고 w-full로 변경 */}
               <div className="w-full space-y-1">
                 {comments.length === 0 ? (
                   <div className="text-center py-10">
@@ -623,10 +611,59 @@ export default function CommunutyPostDetail({
                 )}
               </div>
             </div>
-            {/* ▲▲▲ [수정 끝] ▲▲▲ */}
           </div>
         </section>
       </div>
     </div>
   );
 }
+
+// 1. 페이지 진입 및 로딩 (Loading Phase)
+
+// 사용자가 URL을 클릭합니다.
+
+// 컴포넌트가 마운트되면서 loading = true 상태로 시작해 로딩 스피너를 보여줍니다.
+
+// 동시에 useEffect가 발동하여 3가지 데이터를 병렬로 요청합니다. (시간 절약을 위해)
+
+// 유저 정보 확인: "지금 접속한 사람이 누구야?" (currentUser 저장)
+
+// 글 상세 내용: "제목이랑 본문 줘." (post 저장)
+
+// 댓글 목록: "여기 달린 댓글 싹 다 가져와." (fetchComments 실행)
+
+// 2. 댓글 데이터 가공 (Data Processing)
+
+// 댓글 API는 보통 댓글들을 1차원 리스트([{id:1}, {id:2, parentId:1}, ...])로 줍니다.
+
+// fetchComments 함수가 이 리스트를 받아서 "2번은 1번의 자식이구나" 하고 판단하여 **트리 구조(가계도)**로 재조립합니다.
+
+// 이렇게 정리된 데이터가 comments 상태에 저장됩니다.
+
+// 3. 화면 렌더링 (Painting)
+
+// 모든 데이터 준비가 끝나면 loading = false가 됩니다.
+
+// 스피너가 사라지고, 게시글 본문과 댓글 목록이 예쁘게 렌더링됩니다.
+
+// 이때 post.content에 포함된 HTML 태그들(굵은 글씨, 이미지 등)은 dangerouslySetInnerHTML을 통해 실제 스타일이 적용되어 보입니다.
+
+// 4. 댓글 작성 및 인터랙션 (User Interaction)
+
+// 사용자가 "비 온대요."라고 댓글을 쓰고 **[등록하기]**를 누릅니다.
+
+// handleCommentSubmit이 서버로 전송하고, 성공하면 댓글 목록을 **새로고침(fetchComments)**해서 방금 쓴 댓글이 바로 보이게 합니다.
+
+// 사용자가 다른 사람 댓글에 [답글] 버튼을 누릅니다.
+
+// activeReplyId가 해당 댓글 ID로 바뀌면서, 그 댓글 바로 밑에 숨겨져 있던 대댓글 입력창이 스르륵 나타납니다.
+
+// 5. 권한 확인 및 기능 제한 (Permission Check)
+
+// 화면을 그릴 때, 게시글 작성자 ID와 내 ID(currentUser.userId)를 비교합니다.
+
+// 내가 쓴 글이면: 우측 상단에 빨간색 [삭제] 버튼을 보여줍니다.
+
+// 내가 쓴 댓글이면: 댓글 옆에 조그만 [휴지통] 아이콘을 보여줍니다.
+
+// 남의 글이나 댓글에는 이 버튼들이 아예 생성되지 않아 클릭할 수 없습니다.
