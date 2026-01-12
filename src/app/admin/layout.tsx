@@ -18,11 +18,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   // 4. 브라우저 탭에 표시될 페이지 제목을 설정합니다.
   // 사용자가 이 레이아웃이 적용된 페이지(job 관련 페이지)에 접속하면, 탭 제목이 "다잇슈대전 | job"으로 바뀝니다.
-<<<<<<< HEAD
   title: "다잇슈대전",
-=======
-  title: "다잇슈대전 | admin",
->>>>>>> bc93268e1b724c6912241cb45d5815fce85ae524
 };
 
 // --- [레이아웃 컴포넌트 정의] ---
