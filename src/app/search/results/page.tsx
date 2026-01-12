@@ -504,7 +504,7 @@ function SearchResultsContent() {
                     type = "list";
                     renderItemFn = (item: NewsItem) => (
                       <div className="border border-gray-100 py-4 rounded-lg hover:border-green-500 hover:shadow-lg transition-all flex flex-col sm:flex-row justify-between sm:items-center">
-                        <div className="flex-1 pr-4 min-w-0">
+                        <div className="flex-1 pr-4 min-w-0 ml-3">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold">
                               NEWS
@@ -524,7 +524,7 @@ function SearchResultsContent() {
                             }}
                           />
                         </div>
-                        <span className="text-xs text-gray-400 mt-2 sm:mt-0 whitespace-nowrap">
+                        <span className="text-xs text-gray-400 mt-2 sm:mt-0 whitespace-nowrap ml-4">
                           {item.pubDate
                             ? new Date(item.pubDate).toLocaleDateString()
                             : ""}
