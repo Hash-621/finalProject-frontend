@@ -24,6 +24,7 @@ import {
   Loader2, // 로딩 스피너
 } from "lucide-react";
 
+import mapMarkerImg from "../../../public/images/mapMaker.png"; // 커스텀 마커 이미지
 // ==================================================================
 // [Main Component] 병원 지도 컴포넌트 시작
 // ==================================================================
@@ -234,8 +235,8 @@ export default function HospitalMap() {
                     position={{ lat: h.lat, lng: h.lng }}
                     onClick={() => setSelectedMarkerId(h.id)} // 마커 클릭 시 선택 상태 변경
                     image={{
-                      src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png", // 파란색 별 마커
-                      size: { width: 24, height: 35 },
+                      src: mapMarkerImg.src, // 파란색 별 마커
+                      size: { width: 32, height: 32 },
                     }}
                   >
                     {/* 선택된 마커 위에 뜨는 커스텀 오버레이 (말풍선) */}
