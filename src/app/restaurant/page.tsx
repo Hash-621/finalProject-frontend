@@ -37,6 +37,8 @@ import {
   Roadview,
 } from "react-kakao-maps-sdk";
 
+import makerImg from "../../../public/images/mapMaker.png";
+
 // --- [타입 정의] ---
 interface ExtendedRestaurantData extends RestaurantData {
   restOpenTime?: string;
@@ -290,11 +292,11 @@ const KakaoMapContainer = React.memo(
                       src:
                         activeId === item.id
                           ? "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png"
-                          : "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png",
+                          : makerImg.src,
                       size:
                         activeId === item.id
                           ? { width: 29, height: 42 }
-                          : { width: 24, height: 35 },
+                          : { width: 34, height: 35 },
                       options: {
                         offset:
                           activeId === item.id
