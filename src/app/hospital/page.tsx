@@ -25,6 +25,7 @@ import {
   X,
   Heart,
 } from "lucide-react";
+import makerImg from "../../../public/images/mapMaker.png";
 
 // --- [UI 컴포넌트: 병원 리스트 스켈레톤] ---
 // 데이터 로딩 중에 보여줄 뼈대 UI입니다. (깜빡이는 회색 박스)
@@ -480,8 +481,9 @@ export default function Page() {
                       position={{ lat: h.lat, lng: h.lng }}
                       onClick={() => setSelectedId(h.id)} // 마커 클릭 시 해당 병원 선택
                       image={{
-                        src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
-                        size: { width: 32, height: 44 },
+                        src: makerImg.src,
+                        size: { width: 32, height: 32 },
+                        options: { offset: { x: 16, y: 32 } },
                       }}
                     >
                       {/* 마커 클릭 시 나타나는 정보창 (커스텀 오버레이) */}
