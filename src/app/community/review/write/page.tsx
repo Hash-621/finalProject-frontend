@@ -67,7 +67,7 @@ function TourReviewContent() {
   const quillRef = useRef<ReactQuill | null>(null);
 
   // 게시글 카테고리 고정값 (여행 리뷰)
-  const category = "TOUR_REVIEW";
+  const category = "REVIEW";
 
   // --- [상태 관리 (State)] ---
   // 제목 저장
