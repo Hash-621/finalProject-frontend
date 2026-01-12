@@ -441,7 +441,7 @@ export default function RestaurantDetail() {
                     생생 블로그 리뷰
                     {/* [New] 블로그 총 개수 표시 */}
                     <span className="text-lg font-medium text-slate-400">
-                      (Total {blogs.length})
+                      (Total {blogs.length >= 100 ? "100+" : blogs.length})
                     </span>
                   </h2>
                   <p className="text-slate-400 text-sm font-medium">
