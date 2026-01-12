@@ -1,15 +1,18 @@
-// src/data/daejeonData.ts
+// src/data/daejeonData.ts -> 이 파일의 경로입니다.
 
+// 1. [Interface] 데이터의 '모양(규칙)'을 정의합니다.
+// "앞으로 '예산 데이터'라고 하면 무조건 연도(숫자), 예산액(숫자), 타입(글자)이 있어야 해!"라고 약속하는 것입니다.
 export interface BudgetData {
-  year: number;
-  budget: number; // 단위: 백만 원
-  type: "past" | "future";
+  year: number; // 연도 (예: 2024)
+  budget: number; // 예산 금액 (단위: 백만 원)
+  type: "past" | "future"; // 이게 과거 데이터인지("past"), 미래 예측인지("future") 구별하는 태그
 }
 
-// 과거 데이터 (2009~2026)
+// 2. [Data Array] 과거 예산 데이터를 정의합니다. (2009년 ~ 2026년)
+// 그래프의 앞부분(실선)을 그릴 때 사용될 실제 기록들입니다.
 const pastData = [
-  { year: 2009, budget: 2515393 },
-  { year: 2010, budget: 2685327 },
+  { year: 2009, budget: 2515393 }, // 2009년 예산 데이터 객체
+  { year: 2010, budget: 2685327 }, // 2010년...
   { year: 2011, budget: 2753848 },
   { year: 2012, budget: 2911992 },
   { year: 2013, budget: 3375500 },
@@ -18,54 +21,70 @@ const pastData = [
   { year: 2016, budget: 3854686 },
   { year: 2017, budget: 3710181 },
   { year: 2018, budget: 4312830 },
-  { year: 2019, budget: 4753894 },
+  { year: 2019, budget: 4753894 }, // 예산이 점점 늘어나는 추세네요.
   { year: 2020, budget: 5381371 },
   { year: 2021, budget: 5681833 },
   { year: 2022, budget: 6365186 },
   { year: 2023, budget: 6561725 },
   { year: 2024, budget: 6532974 },
   { year: 2025, budget: 6677096 },
-  { year: 2026, budget: 7058230 },
+  { year: 2026, budget: 7058230 }, // 여기까지가 확정되거나 계획된 '과거/현재' 데이터입니다.
 ];
 
-// 미래 데이터 (2027~2056 일부 발췌)
+// 3. [Data Array] 미래 예산 예측 데이터를 정의합니다. (2027년 ~ 2050년)
+// 그래프의 뒷부분(점선)을 그릴 때 사용될 예측치입니다.
 const futureData = [
-  { year: 2027, budget: 7321611 },
+  { year: 2027, budget: 7321611 }, // 매년 일정 비율로 늘어난다고 가정한 수치들입니다.
   { year: 2028, budget: 7612462 },
   { year: 2029, budget: 7903313 },
   { year: 2030, budget: 8194165 },
   { year: 2031, budget: 8485016 },
   { year: 2032, budget: 8775867 },
-  { year: 2035, budget: 9648421 },
+  { year: 2035, budget: 9648421 }, // 먼 미래는 1년 단위가 아니라 듬성듬성 데이터를 넣었네요.
   { year: 2040, budget: 11102678 },
   { year: 2050, budget: 14011192 },
-  // 그래프 가독성을 위해 미래 데이터는 주요 포인트만 남기거나 전체를 다 넣으셔도 됩니다.
+  // 주석: 그래프가 너무 빽빽해지지 않게 미래 데이터는 주요 시점만 남겨둔 것입니다.
 ];
 
+// 4. [Data Export] 차트에 사용할 최종 데이터를 만들어서 내보냅니다.
+// 위에서 만든 pastData와 futureData를 하나로 합치는 과정입니다.
 export const chartData: BudgetData[] = [
+  // ...pastData: 과거 데이터 배열의 껍질을 벗겨서 내용물을 쫘악 펼칩니다.
+  // .map(...): 펼쳐진 각 데이터 하나하나에 꼬리표(type: "past")를 붙여줍니다.
+  // 이걸 붙여야 나중에 차트에서 "과거는 파란색 실선으로 그려야지"라고 판단할 수 있습니다.
   ...pastData.map((d) => ({ ...d, type: "past" as const })),
+
+  // ...futureData: 미래 데이터도 똑같이 펼칩니다.
+  // .map(...): 각 데이터에 꼬리표(type: "future")를 붙여줍니다.
+  // 이건 차트에서 "미래는 회색 점선으로 그려야지"라고 판단하는 근거가 됩니다.
   ...futureData.map((d) => ({ ...d, type: "future" as const })),
 ];
 
+// 5. [Interface] 로드맵(계획 단계) 데이터의 규칙을 정의합니다.
+// "로드맵 카드 하나에는 제목, 기간, 설명, 키워드(배열), 세부이벤트(배열)가 꼭 있어야 해!"
 export interface PlanPhase {
-  title: string;
-  years: string;
-  desc: string;
-  keywords: string[];
-  events: { year: number; content: string; tag: string }[];
+  title: string; // 단계 제목 (예: 도약 준비)
+  years: string; // 기간 (예: 2025 ~ 2026)
+  desc: string; // 상세 설명
+  keywords: string[]; // 태그들 (예: ["행정통합", "국가산단"])
+  events: { year: number; content: string; tag: string }[]; // 그 시기에 일어날 구체적인 사건 리스트
 }
 
+// 6. [Data Export] 실제 대전시 발전 계획 데이터를 내보냅니다.
+// 총 3개의 단계(Phase)로 나누어져 있네요.
 export const planPhases: PlanPhase[] = [
+  // [1단계] 2025~2026년: 준비 단계
   {
-    title: "도약 준비: 씨앗을 뿌리다",
-    years: "2025 ~ 2026",
-    desc: "대전의 미래 먹거리를 위한 기초 공사와 행정적 기반을 마련하는 시기입니다.",
-    keywords: ["행정통합", "국가산단", "국제행사"],
+    title: "도약 준비: 씨앗을 뿌리다", // 멋진 제목
+    years: "2025 ~ 2026", // 기간
+    desc: "대전의 미래 먹거리를 위한 기초 공사와 행정적 기반을 마련하는 시기입니다.", // 설명
+    keywords: ["행정통합", "국가산단", "국제행사"], // 핵심 키워드 3개
+    // 이 기간에 일어날 주요 사건들
     events: [
       {
         year: 2025,
         content: "우주항공·바이오 전략산업 특구 지정",
-        tag: "기반조성",
+        tag: "기반조성", // 사건의 성격 (태그)
       },
       {
         year: 2025,
@@ -80,6 +99,8 @@ export const planPhases: PlanPhase[] = [
       { year: 2026, content: "나노·반도체 국가산단 예타 재신청", tag: "산업" },
     ],
   },
+
+  // [2단계] 2027~2028년: 체감 단계
   {
     title: "대전의 르네상스: 변화를 체감하다",
     years: "2027 ~ 2028",
@@ -94,7 +115,7 @@ export const planPhases: PlanPhase[] = [
       {
         year: 2027,
         content: "이종수도예관 및 첫 대전시청사(복원) 개관",
-        tag: "문화",
+        tag: "문화", // 문화 시설이 많이 생기네요.
       },
       {
         year: 2027,
@@ -109,6 +130,8 @@ export const planPhases: PlanPhase[] = [
       },
     ],
   },
+
+  // [3단계] 2029년 이후: 완성 단계
   {
     title: "초일류 도시 완성: 비전의 실현",
     years: "2029 ~ 2030+",
@@ -121,8 +144,28 @@ export const planPhases: PlanPhase[] = [
         tag: "교육",
       },
       { year: 2030, content: "대전산업단지 재생사업 완료 목표", tag: "재생" },
-      { year: 2030, content: "보물산 프로젝트(전망타워) 추진", tag: "관광" },
+      { year: 2030, content: "보물산 프로젝트(전망타워) 추진", tag: "관광" }, // 랜드마크 건설
       { year: 2031, content: "제2 문화예술복합단지 순차적 건립", tag: "예술" },
     ],
   },
 ];
+
+// 데이터 정의 (재료 손질):
+
+// 개발자는 그래프를 그리기 전에 "2009년엔 얼마였고, 2030년엔 얼마일 거야"라는 숫자들을 먼저 정리해야 합니다.
+
+// 또, "2025년엔 무슨 일이 있고, 2027년엔 뭐가 준공돼"라는 일정표도 필요합니다.
+
+// 이 파일이 바로 그 정리된 엑셀 파일 역할을 합니다.
+
+// 공급 (배달):
+
+// 나중에 만들 BudgetChart(예산 그래프) 컴포넌트는 이 파일에서 chartData를 가져와서 선을 그립니다.
+
+// Roadmap(계획표) 컴포넌트는 planPhases를 가져와서 예쁜 타임라인 카드를 만듭니다.
+
+// 특징:
+
+// 실제 백엔드(DB)가 아직 없을 때, 이렇게 파일에 데이터를 직접 적어두는 방식을 "하드코딩(Hard Coding)" 또는 **"Mock Data(모의 데이터)"**라고 합니다.
+
+// 이렇게 해두면 백엔드 없이도 화면을 먼저 예쁘게 만들 수 있습니다.
