@@ -36,6 +36,8 @@ import {
 // 8. 알림창(팝업)을 띄우기 위해 만든 커스텀 모달 컴포넌트입니다.
 import Modal from "@/components/common/Modal";
 
+import useAdminCheck from "@/hooks/useAdminCheck";
+
 // 9. 백엔드 서버 주소를 설정합니다. 환경변수가 없으면 로컬주소(8080)를 씁니다.
 // 이미지를 불러올 때 주소 앞에 붙여야 하기 때문입니다.
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -52,6 +54,7 @@ export default function TourReviewDetail({
   // URL에 있는 id값(글 번호)이 들어옵니다. Next.js 15부터는 비동기(Promise)로 옵니다.
   params: Promise<{ id: string }>;
 }) {
+  const isAdmin = useAdminCheck(); //관리자 권한 확인 훅
   // 12. 페이지 이동을 도와주는 router 도구를 준비합니다.
   const router = useRouter();
 
@@ -540,15 +543,16 @@ export default function TourReviewDetail({
               </span>
 
               {/* 내가 쓴 글일 때만 삭제 버튼 표시 */}
-              {currentUser &&
-                String(post.userId) === String(currentUser.userId) && (
-                  <button
-                    onClick={handleDeletePost}
-                    className="flex items-center gap-1 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all text-xs font-bold"
-                  >
-                    <Trash2 size={14} /> 삭제
-                  </button>
-                )}
+              {(isAdmin ||
+                (currentUser &&
+                  String(post.userId) === String(currentUser.userId))) && (
+                <button
+                  onClick={handleDeletePost}
+                  className="flex items-center gap-1 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all text-xs font-bold"
+                >
+                  <Trash2 size={14} /> 삭제
+                </button>
+              )}
             </div>
 
             {/* 글 제목 */}
