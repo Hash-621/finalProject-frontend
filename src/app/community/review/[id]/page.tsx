@@ -124,51 +124,62 @@ export default function TourReviewDetail({
   // ================= 데이터 로딩 (페이지 접속 시 실행) =================
 
   // 26. useEffect: 컴포넌트가 처음 화면에 나타날 때(마운트) 실행되는 로직입니다.
+  // [수정된 useEffect 부분]
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 27. [1단계] 사용자 정보 로드: 쿠키에 토큰이 있는지 확인합니다.
+        // 1. 사용자 정보 로드
         const token = Cookies.get("token");
+        let currentUserId = null; // 현재 로그인한 유저 ID 임시 저장
+
         if (token) {
           try {
-            // 토큰이 있으면 백엔드에 내 정보를 요청합니다.
             const userRes = await userService.getUserInfo();
             if (userRes?.data) {
               const data = userRes.data;
-              // 받아온 내 정보를 상태에 저장합니다. (ID와 닉네임)
+              currentUserId = data.userId || data.id || data.loginId;
               setCurrentUser({
-                userId: data.userId || data.id || data.loginId,
+                userId: currentUserId,
                 nickname: data.userNickname || data.nickname,
               });
             }
           } catch (e) {
-            // 토큰이 있지만 유효하지 않은 경우 콘솔에 에러를 찍습니다.
             console.error("Auth check failed", e);
           }
         }
 
-        // 28. [2단계] 게시글 로드: 백엔드 API를 통해 글 내용을 가져옵니다.
+        // 2. 게시글 상세 정보 로드
         const postRes = await api.get(`/community/post/${id}`);
-        setPost(postRes.data); // 가져온 글 내용을 상태에 저장
-        setLikeCount(postRes.data.likeCount || 0); // 좋아요 수도 저장
+        const postData = postRes.data;
 
-        // 29. [3단계] 댓글 로드: 아래에 정의한 댓글 불러오기 함수를 실행합니다.
+        setPost(postData);
+
+        // [중요 1] 서버가 준 likeCount가 없으면 0으로 설정
+        setLikeCount(postData.likeCount ?? 0);
+
+        // [중요 2] 내가 이 글을 좋아요 눌렀는지 확인 (백엔드에서 데이터를 줘야 함)
+        // 만약 백엔드 DTO에 isLiked 필드가 있다면:
+        if (postData.liked !== undefined) {
+          setIsLiked(postData.liked);
+        } else if (postData.isLiked !== undefined) {
+          setIsLiked(postData.isLiked);
+        } else {
+          setIsLiked(false);
+        }
+
+        // 3. 댓글 로드
         await fetchComments();
       } catch (err) {
-        // 30. 에러 발생 시 (글이 없거나 서버 오류 등)
         console.error("상세 로딩 실패:", err);
-        // 에러 모달을 띄우고, 확인을 누르면 목록 페이지로 보냅니다.
         openModal("게시글을 불러올 수 없습니다.", "error", "오류", () =>
           router.push("/community/review")
         );
       } finally {
-        // 31. 성공하든 실패하든 로딩 상태를 false로 바꿔서 로딩바를 없앱니다.
         setLoading(false);
       }
     };
 
-    fetchData(); // 위에서 만든 fetchData 함수를 실행합니다.
-    // 의존성 배열: id나 router가 바뀌면 이 useEffect가 다시 실행됩니다.
+    fetchData();
   }, [id, router]);
 
   // 32. 댓글을 불러와서 계층형(대댓글 구조)으로 정리하는 함수입니다.
