@@ -50,7 +50,8 @@ export default function Utils() {
           >
             {adSlides.map((slide) => (
               <SwiperSlide key={slide.id}>
-                <div
+                <Link
+                  href={slide.link}
                   className={`w-full h-full ${slide.bg} flex flex-col items-start justify-center p-8 text-white relative overflow-hidden`}
                 >
                   <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
@@ -66,7 +67,7 @@ export default function Utils() {
                   <p className="text-sm font-medium text-white/90 whitespace-pre-line leading-relaxed">
                     {slide.desc}
                   </p>
-                </div>
+                </Link>
               </SwiperSlide>
             ))}
           </Swiper>
