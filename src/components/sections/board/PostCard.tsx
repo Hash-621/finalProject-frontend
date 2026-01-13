@@ -97,7 +97,7 @@ export const PostCard = ({
                   className="shrink-0 w-3 h-3 md:w-3.5 md:h-3.5"
                   strokeWidth={2.5}
                 />{" "}
-                <span className="block truncate max-w-[5em] sm:max-w-none">
+                <span className="block truncate max-w-[5em] sm:max-w-none pr-0.5">
                   {post.userNickname}
                 </span>
               </span>
