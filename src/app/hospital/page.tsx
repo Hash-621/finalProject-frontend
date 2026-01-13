@@ -474,7 +474,11 @@ export default function Page() {
                 onCreate={setMap} // 맵 객체 생성 시 상태에 저장
               >
                 {/* 마커 클러스터러: 마커가 겹치면 숫자로 표시해줌 */}
-                <MarkerClusterer averageCenter={true} key={filterCategory}>
+                <MarkerClusterer
+                  averageCenter={true}
+                  minLevel={5}
+                  key={filterCategory}
+                >
                   {filteredHospitals.map((h) => (
                     <MapMarker
                       key={`marker-${h.id}`}

@@ -75,6 +75,12 @@ export default function RestaurantDetail() {
   // [New] 블로그 리스트 더보기 기능 상태 (처음에는 6개만 보여줌)
   const [visibleBlogs, setVisibleBlogs] = useState(6);
 
+  // 🔥 [추가됨] 변환된 좌표(위도, 경도)를 저장할 상태
+  // 길찾기 버튼에 정확한 도착지를 넣어주기 위해 사용합니다.
+  const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(
+    null
+  );
+
   // --- [Effect 1] 레이아웃 스타일 조정 ---
   // 컴포넌트가 마운트될 때(켜질 때) .wrap 클래스를 가진 요소의 스크롤 설정을 변경합니다.
   useEffect(() => {
@@ -196,6 +202,9 @@ export default function RestaurantDetail() {
         if (status === kakao.maps.services.Status.OK) {
           const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
 
+          // 🔥 [중요] 변환된 좌표를 State에 저장합니다. (길찾기 버튼에서 사용)
+          setCoords({ lat: result[0].y, lng: result[0].x });
+
           var imageSrc = makerImg.src, // 마커이미지의 주소입니다
             imageSize = new kakao.maps.Size(32, 34), // 마커이미지의 크기입니다
             imageOption = { offset: new kakao.maps.Point(16, 34) }; // 마커이미지의 옵션입니다. 마커의 좌표와 일치시킬 이미지 안에서의 좌표를 설정합니다.
@@ -206,7 +215,11 @@ export default function RestaurantDetail() {
           );
 
           // 지도에 마커(핀)를 표시합니다.
-          new kakao.maps.Marker({ map, position: coords, image: markerImage });
+          new kakao.maps.Marker({
+            map,
+            position: coords,
+            image: markerImage,
+          });
 
           // 마커 위에 가게 이름을 띄워줍니다 (인포윈도우).
           const infowindow = new kakao.maps.InfoWindow({
@@ -481,7 +494,9 @@ export default function RestaurantDetail() {
                           {/* 블로그 제목 (HTML 태그가 포함되어 있어서 dangerouslySetInnerHTML 사용) */}
                           <h3
                             className="text-lg font-bold text-slate-900 mb-2 line-clamp-2 group-hover:text-green-600 transition-colors"
-                            dangerouslySetInnerHTML={{ __html: blog.title }}
+                            dangerouslySetInnerHTML={{
+                              __html: blog.title,
+                            }}
                           />
                           {/* 블로그 요약 내용 */}
                           <p
@@ -621,15 +636,23 @@ export default function RestaurantDetail() {
                   </p>
                 </div>
 
-                {/* 카카오맵 길찾기 버튼 */}
+                {/* 🔥 [수정됨] 카카오맵 길찾기 버튼 */}
+                {/* coords가 있으면 link/to(정확한 좌표), 없으면 link/search(검색) */}
                 <a
-                  href={`https://map.kakao.com/link/to/${encodeURIComponent(
-                    restaurant.name ?? ""
-                  )},36.3504,127.3845`}
+                  href={
+                    coords
+                      ? `https://map.kakao.com/link/to/${encodeURIComponent(
+                          restaurant.name ?? ""
+                        )},${coords.lat},${coords.lng}`
+                      : `https://map.kakao.com/link/search/${encodeURIComponent(
+                          restaurant.address || restaurant.name || ""
+                        )}`
+                  }
                   target="_blank"
                   className="w-full py-5 bg-[#FFEB00] text-[#3C1E1E] rounded-[2.5rem] font-black text-sm flex items-center justify-center gap-2 hover:brightness-95 transition-all shadow-md"
                 >
-                  <Navigation size={18} /> 카카오맵 길찾기 시작
+                  <Navigation size={18} />{" "}
+                  {coords ? "카카오맵 길찾기" : "카카오맵 길찾기"}
                 </a>
               </div>
             </div>
@@ -657,7 +680,9 @@ export default function RestaurantDetail() {
 
 // 지도 생성 (Kakao Map):
 
-// 가게 주소(예: "서울시 강남구...")를 위도/경도 좌표로 변환해서, 오른쪽 아래에 카카오맵을 띄우고 핀(마커)을 꽂아줍니다.
+// 가게 주소(예: "서울시 강남구...")를 위도/경도 좌표로 변환(Geocoding)합니다.
+// 변환된 좌표를 이용해 오른쪽 아래에 카카오맵을 띄우고 핀(마커)을 꽂아줍니다.
+// 동시에 길찾기 버튼의 링크도 정확한 도착지 좌표로 업데이트합니다.
 
 // 상호작용:
 

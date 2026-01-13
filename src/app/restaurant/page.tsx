@@ -596,11 +596,13 @@ export default function RestaurantListPage() {
         const name = item.name || "";
         const menu = (item.menu || []).join(" ");
         const category = item.restCategory || "";
+        const address = item.address || "";
         return searchTerms.every(
           (term) =>
             name.includes(term) ||
             menu.includes(term) ||
-            category.includes(term)
+            category.includes(term) ||
+            address.includes(term)
         );
       });
     }

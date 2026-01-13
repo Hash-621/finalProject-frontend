@@ -15,7 +15,7 @@ import {
   Phone,
   X,
   ChevronLeft,
-  Map as MapIcon,
+  Navigation,
   Search,
   Heart,
   RefreshCw,
@@ -56,6 +56,12 @@ function TourPageContent() {
 
   const [currentPage, setCurrentPage] = useState(1); // 현재 페이지
   const itemsPerPage = 8; // 페이지당 아이템 수
+
+  // 🔥 [추가됨] 변환된 좌표(위도, 경도)를 저장할 상태
+  // 길찾기 버튼에 정확한 도착지를 넣어주기 위해 사용합니다.
+  const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(
+    null
+  );
 
   // --- [1. 데이터 로드 (useEffect)] ---
   useEffect(() => {
@@ -160,28 +166,32 @@ function TourPageContent() {
     }
   };
 
-  // --- [지도 초기화 함수] ---
-  // 모달 안에 지도를 그리는 로직
+  // --- [지도 초기화 및 좌표 변환 함수] ---
+  // 모달 안에 지도를 그리고, 좌표를 구해 coords 상태에 저장합니다.
   const initMap = (address: string, name: string) => {
     const { kakao } = window as any;
     if (!kakao || !kakao.maps) return;
 
     const container = document.getElementById("map"); // 지도를 넣을 div
     const options = {
-      center: new kakao.maps.LatLng(36.3504, 127.3845), // 초기 중심
+      center: new kakao.maps.LatLng(36.3504, 127.3845), // 초기 중심 (임시)
       level: 3,
     };
 
     const map = new kakao.maps.Map(container, options);
     const geocoder = new kakao.maps.services.Geocoder();
 
-    // 주소로 좌표 검색 후 마커 표시
+    // 주소로 좌표 검색
     geocoder.addressSearch(address, (result: any, status: any) => {
       if (status === kakao.maps.services.Status.OK) {
         const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+
+        // 🔥 [중요] 변환된 좌표를 State에 저장합니다. (길찾기 버튼에서 사용)
+        setCoords({ lat: result[0].y, lng: result[0].x });
+
         var imageSrc = makerImg.src, // 마커이미지의 주소입니다
           imageSize = new kakao.maps.Size(32, 34), // 마커이미지의 크기입니다
-          imageOption = { offset: new kakao.maps.Point(16, 34) }; // 마커이미지의 옵션입니다. 마커의 좌표와 일치시킬 이미지 안에서의 좌표를 설정합니다.
+          imageOption = { offset: new kakao.maps.Point(16, 34) }; // 마커이미지의 옵션입니다.
         var markerImage = new kakao.maps.MarkerImage(
           imageSrc,
           imageSize,
@@ -203,6 +213,9 @@ function TourPageContent() {
   // 모달이 열리면(selectedTour 존재) 지도 초기화 실행
   useEffect(() => {
     if (selectedTour) {
+      // 🔥 모달 열릴 때 이전 좌표 초기화 (깜빡임 방지)
+      setCoords(null);
+
       const timer = setTimeout(() => {
         initMap(selectedTour.address, selectedTour.name);
       }, 300); // 모달 애니메이션 끝난 뒤 실행
@@ -252,7 +265,7 @@ function TourPageContent() {
   // --- [화면 렌더링] ---
   return (
     <div className="w-full bg-[#fcfcfc] min-h-screen pb-24">
-      {/* 카카오맵 SDK 로드 */}
+      {/* 카카오맵 SDK 로드 (🔥 libraries=services 파라미터가 필수입니다) */}
       <Script
         src={`//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_JS_KEY}&libraries=services&autoload=false`}
         onLoad={() => {
@@ -493,15 +506,25 @@ function TourPageContent() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* 🔥 [수정됨] 카카오맵 길찾기 버튼 */}
+                    {/* coords가 있으면 link/to(정확한 좌표), 없으면 link/search(검색) */}
                     <a
-                      href={`https://map.kakao.com/link/search/${encodeURIComponent(
-                        selectedTour.address
-                      )}`}
+                      href={
+                        coords
+                          ? `https://map.kakao.com/link/to/${encodeURIComponent(
+                              selectedTour.name
+                            )},${coords.lat},${coords.lng}`
+                          : `https://map.kakao.com/link/search/${encodeURIComponent(
+                              selectedTour.address || selectedTour.name || ""
+                            )}`
+                      }
                       target="_blank"
                       className="flex items-center justify-center gap-2 py-5 bg-[#FFEB00] text-[#3C1E1E] rounded-2xl font-black shadow-lg hover:shadow-xl transition-all"
                     >
-                      <MapIcon size={20} /> 카카오맵 길찾기
+                      <Navigation size={20} />
+                      {coords ? "카카오맵 길찾기 " : "카카오맵 길찾기"}
                     </a>
+
                     <div className="flex flex-col justify-center items-center py-4 bg-slate-900 text-white rounded-2xl shadow-lg">
                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
                         Contact
@@ -530,6 +553,7 @@ export default function TourPage() {
     </Suspense>
   );
 }
+
 // 1. 페이지 진입 및 데이터 로드 (Entry)
 
 // useEffect가 실행되어 서버에서 모든 관광지 데이터를 불러옵니다.
@@ -556,6 +580,8 @@ export default function TourPage() {
 
 // 모달이 열리면서 내부의 useEffect가 initMap을 호출해 카카오지도를 그립니다.
 
+// 이 과정에서 주소를 좌표로 변환(Geocoding)하고, 그 값을 coords 상태에 저장합니다.
+
 // 왼쪽엔 큰 사진과 설명이, 오른쪽엔 지도와 주소, 전화번호가 보입니다.
 
-// 사용자는 [카카오맵 길찾기] 버튼을 눌러 바로 길 안내를 받을 수 있습니다.
+// 사용자는 [카카오맵 길찾기] 버튼을 눌러 바로 길 안내를 받을 수 있습니다. (정확한 좌표 기반)
