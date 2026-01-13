@@ -247,7 +247,7 @@ export default function ChatBot() {
             animate={{ opacity: 1, y: 0, scale: 1 }} // 제자리로 뿅
             exit={{ opacity: 0, y: 20, scale: 0.9 }} // 사라질 땐 다시 아래로
             // 스타일: 우측 하단 고정, 모바일 꽉 채움 / PC는 적당한 크기
-            className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[380px] h-[400px] sm:h-[600px] bg-white border border-gray-100 rounded-4xl flex flex-col overflow-hidden shadow-2xl font-pretendard"
+            className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[380px] h-[500px] sm:h-[600px] bg-white border border-gray-100 rounded-4xl flex flex-col overflow-hidden shadow-2xl font-pretendard"
           >
             {/* (1) 헤더 섹션: 초록색 그라데이션 배경 */}
             <div className="bg-green-600 bg-rounded-[2rem]-to-r from-green-600 to-emerald-600 p-5 text-white shrink-0">

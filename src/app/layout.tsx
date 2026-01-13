@@ -1,6 +1,6 @@
 // 1. [Import] Next.js에서 제공하는 'Metadata' 타입을 가져옵니다.
 // TypeScript에게 "이 변수는 웹사이트의 제목과 설명을 담는 데이터야!"라고 알려주는 역할을 합니다.
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 // 2. [Import] 전역 스타일 시트(CSS)를 불러옵니다.
 // 이 파일(globals.css)에 정의된 스타일은 사이트의 모든 페이지에 적용됩니다. (예: Tailwind 설정, 기본 배경색 등)
@@ -34,6 +34,14 @@ export const metadata: Metadata = {
   title: "다잇슈대전",
   // 검색엔진(구글, 네이버)이나 카톡 공유 미리보기에 뜰 설명글입니다.
   description: "대전 지역 커뮤니티 사이트",
+};
+
+// ++ 뷰포트 설정 (모바일화면시 화면이 고정되어 자동확대되지 않음)
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 // 6. [Root Layout] 이 프로젝트의 최상위 컴포넌트(함수)입니다.

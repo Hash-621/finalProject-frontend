@@ -8,7 +8,7 @@ import React, { useState } from "react"; // 상태 관리(useState)를 위해 �
 import { useRouter } from "next/navigation"; // 페이지를 이동시키는 리모컨(router)을 가져옵니다.
 import Link from "next/link"; // 페이지 간 이동을 위한 링크 태그입니다. (새로고침 없이 이동)
 // 예쁜 아이콘들을 lucide-react 라이브러리에서 가져옵니다.
-import { Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, CheckCircle2, ArrowLeft } from "lucide-react";
 // 우리가 미리 만들어둔 커스텀 입력창 컴포넌트입니다.
 import { Input } from "@/components/common/Input";
 // 로그인 로직이 들어있는 커스텀 훅입니다. (API 통신 등 복잡한 건 여기 숨겨져 있습니다.)
@@ -47,7 +47,17 @@ export default function Page() {
   // 6. [Render] 화면 그리기 시작
   return (
     // 전체 배경: 꽉 찬 화면(min-h-screen), 연한 회색 배경, 중앙 정렬
-    <div className="min-h-screen bg-[#fcfdfc] flex items-center justify-center p-4 md:p-8">
+    <div className="min-h-screen bg-[#fcfdfc] flex flex-col lg:items-center justify-center p-4 md:p-8">
+      <Link
+        href="/"
+        className="inline-flex lg:hidden items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-8 group"
+      >
+        <ArrowLeft
+          size={20}
+          className="group-hover:-translate-x-1 transition-transform"
+        />
+        <span className="text-sm font-black tracking-tight">HOME</span>
+      </Link>
       {/* 메인 카드 박스: 최대 너비 제한, 그리드 레이아웃(반반 쪼개기) 적용 */}
       <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-2 bg-white rounded-[3.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.06)] border border-slate-50 overflow-hidden min-h-[700px]">
         {/* === [Left Section] 왼쪽: 브랜드 소개 및 이미지 영역 === */}

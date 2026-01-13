@@ -119,7 +119,7 @@ export default function Modal({
 
       {/* 모달 창 본체 */}
       <div
-        className={`relative z-10 w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition-all duration-300 ease-out ${
+        className={`relative z-10 w-11/12 max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition-all duration-300 ease-out ${
           isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
         }`}
       >

@@ -11,6 +11,7 @@ import {
   Sparkles,
   ChevronLeft,
   CheckCircle2,
+  ArrowLeft,
 } from "lucide-react";
 import axios from "axios";
 // [추가] 모달 컴포넌트 임포트
@@ -300,13 +301,11 @@ export default function Page() {
           href="/sign-in"
           className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-8 group"
         >
-          <ChevronLeft
+          <ArrowLeft
             size={20}
             className="group-hover:-translate-x-1 transition-transform"
           />
-          <span className="text-sm font-black tracking-tight">
-            Back to Login
-          </span>
+          <span className="text-sm font-black tracking-tight">로그인</span>
         </Link>
         {/* 해석: 로그인 페이지로 돌아가는 "Back to Login" 링크를 만듭니다. */}
 

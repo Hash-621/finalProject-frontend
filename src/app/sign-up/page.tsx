@@ -19,6 +19,7 @@ import {
   X,
   Timer,
   IdCard,
+  ArrowLeft,
 } from "lucide-react";
 import { Input } from "@/components/common/Input"; // 공통 입력 컴포넌트
 import Image from "next/image"; // 이미지 최적화 컴포넌트
@@ -242,7 +243,17 @@ export default function SignUpPage() {
 
   // --- [화면 렌더링] ---
   return (
-    <div className="min-h-screen bg-[#fcfdfc] flex items-center justify-center p-4 md:p-12">
+    <div className="min-h-screen bg-[#fcfdfc] flex flex-col lg:items-center justify-center p-4 md:p-12">
+      <Link
+        href="/"
+        className="inline-flex lg:hidden items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors mb-8 group"
+      >
+        <ArrowLeft
+          size={20}
+          className="group-hover:-translate-x-1 transition-transform"
+        />
+        <span className="text-sm font-black tracking-tight">HOME</span>
+      </Link>
       {/* 1. 알림 팝업 모달 컴포넌트 */}
       <Modal
         isOpen={modalConfig.isOpen}
@@ -255,7 +266,7 @@ export default function SignUpPage() {
 
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 bg-white rounded-[3.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.06)] border border-slate-50 overflow-hidden min-h-[850px]">
         {/* 2. 왼쪽 브랜드 섹션 (PC용) */}
-        <div className="lg:col-span-5 flex flex-col justify-between p-12 md:p-16 bg-slate-900 relative overflow-hidden">
+        <div className="hidden lg:col-span-5 lg:flex flex-col justify-between p-12 md:p-16 bg-slate-900 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-80 h-80 bg-green-500 rounded-full blur-[120px] opacity-20 -mr-32 -mt-32" />
           <div className="relative z-10">
             <Link
@@ -270,13 +281,13 @@ export default function SignUpPage() {
                 className="object-fill"
               />
             </Link>
-            <h2 className="hidden sm:block text-5xl font-black text-white leading-[1.1] tracking-tighter mb-10">
+            <h2 className="text-5xl font-black text-white leading-[1.1] tracking-tighter mb-10">
               반가워요! <br />
               <span className="text-green-400 font-serif italic font-light">
                 새로운 여정의 시작
               </span>
             </h2>
-            <div className="space-y-10 hidden sm:block">
+            <div className="space-y-10 ">
               {/* 단계 표시용 아이템 */}
               <Step
                 icon={<User size={24} />}
