@@ -107,6 +107,28 @@ const markdownComponents: any = {
   hr: ({ node, ...props }: any) => (
     <hr className="my-3 border-gray-200 border-dashed" {...props} />
   ),
+  // [추가] 6. 테이블: 가로 스크롤을 위해 div로 감싸기
+  table: ({ node, ...props }: any) => (
+    <div className="w-full overflow-x-auto my-4 border border-gray-200 rounded-lg">
+      <table
+        className="w-full text-left text-sm text-gray-700 border-collapse min-w-[500px]"
+        {...props}
+      />
+    </div>
+  ),
+
+  // [추가] 7. 테이블 헤더(th) 스타일링
+  th: ({ node, ...props }: any) => (
+    <th
+      className="bg-gray-100 px-4 py-2 font-bold text-gray-800 border-b border-gray-200 whitespace-nowrap"
+      {...props}
+    />
+  ),
+
+  // [추가] 8. 테이블 데이터(td) 스타일링
+  td: ({ node, ...props }: any) => (
+    <td className="px-4 py-2 border-b border-gray-100" {...props} />
+  ),
 };
 
 // ==================================================================
