@@ -285,7 +285,7 @@ export default function MyPage() {
                         {/* 슬라이드 1: 맛집 추천 */}
                         <SwiperSlide>
                           <Link
-                            href="/community/recommend"
+                            href="/community/review"
                             className="block h-full"
                           >
                             <div className="bg-green-50 h-full p-6 md:p-8 flex flex-col justify-between">
@@ -294,13 +294,13 @@ export default function MyPage() {
                                   <MapPin size={12} /> Local Hotplace
                                 </p>
                                 <h4 className="text-lg md:text-xl font-black text-slate-800 leading-tight mb-2">
-                                  우리 동네 <br /> 숨은 맛집{" "}
+                                  우리 동네 <br /> 숨은 여행지{" "}
                                   <span className="text-green-600 italic">
                                     찾기!
                                   </span>
                                 </h4>
                                 <p className="text-[11px] text-slate-500">
-                                  이웃들이 검증한 진짜 맛집 후기.
+                                  이웃들이 검증한 진짜 여행지 후기.
                                 </p>
                               </div>
                               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-green-500 self-end">
