@@ -383,7 +383,7 @@ function TourReviewContent() {
         <div className="flex items-center justify-between mb-8 px-4">
           {/* 목록으로 돌아가기 버튼 */}
           <button
-            onClick={() => router.push("/comminity/review")}
+            onClick={() => router.push("/community/review")}
             className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-all font-bold group"
           >
             <ArrowLeft
