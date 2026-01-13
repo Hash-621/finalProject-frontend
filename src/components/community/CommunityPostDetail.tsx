@@ -85,6 +85,7 @@ export default function CommunutyPostDetail({
   // --- [상태 관리 (State)] ---
   const [post, setPost] = useState<any>(null); // 게시글 상세 데이터
   const [comments, setComments] = useState<any[]>([]); // 댓글 목록 (계층 구조로 변환된)
+  const [allComments, setAllComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true); // 데이터 로딩 중 여부
 
   // 댓글 입력 관련 상태
@@ -186,8 +187,9 @@ export default function CommunutyPostDetail({
   const fetchComments = async () => {
     try {
       const res = await api.get(apiEndpoints.fetchComments);
+
       const rawComments = res.data; // 서버에서 받은 댓글 데이터 (평평한 1차원 배열)
-      console.log("전체 댓글 데이터:", rawComments);
+      setAllComments(rawComments);
 
       // [핵심 로직] 1차원 배열을 부모-자식 트리 구조로 변환
       const commentMap = new Map(); // 빠른 조회를 위해 Map 사용
@@ -578,7 +580,7 @@ export default function CommunutyPostDetail({
               <span
                 className={`text-lg font-bold ${styles.commentCount} px-3 py-0.5 rounded-full`}
               >
-                {comments.length}
+                {allComments.length}
               </span>
             </h3>
 

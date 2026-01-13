@@ -55,6 +55,7 @@ export default function TourReviewDetail({
 
   const [post, setPost] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
+  const [allComments, setAllComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -165,6 +166,8 @@ export default function TourReviewDetail({
     try {
       const res = await api.get(`/community/comments/${id}`);
       const rawComments = res.data;
+
+      setAllComments(rawComments);
 
       const commentMap = new Map();
       const rootComments: any[] = [];
@@ -600,7 +603,7 @@ export default function TourReviewDetail({
             <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
               댓글{" "}
               <span className="text-lg font-bold bg-emerald-50 text-emerald-600 px-3 py-0.5 rounded-full border border-emerald-100">
-                {comments.length}
+                {allComments.length}
               </span>
             </h3>
 
