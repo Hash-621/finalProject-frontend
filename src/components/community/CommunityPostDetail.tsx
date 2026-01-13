@@ -16,7 +16,8 @@ import {
   MessageSquare,
   FileText, // 📄 파일 아이콘
   Download, // 📥 다운로드 아이콘
-  Paperclip, // 📎 [수정] 파일 첨부 아이콘 추가됨
+  Paperclip,
+  ArrowLeft, // 📎 [수정] 파일 첨부 아이콘 추가됨
 } from "lucide-react";
 import Cookies from "js-cookie";
 import { userService } from "@/api/services";
@@ -456,11 +457,11 @@ export default function CommunutyPostDetail({
             onClick={() => router.push(listPath)}
             className={`group flex items-center text-slate-500 ${styles.hoverText} transition-colors`}
           >
-            <ChevronLeft
+            <ArrowLeft
               size={20}
               className="group-hover:-translate-x-1 transition-transform"
             />
-            <span className="ml-1 font-bold">목록으로</span>
+            <span className="ml-1 font-bold">목록보기</span>
           </button>
         </div>
       </nav>
