@@ -11,7 +11,8 @@ import {
   Popover, // PC 메뉴용 드롭다운 컨테이너
   PopoverButton, // 드롭다운을 여는 버튼
   PopoverGroup, // 여러 팝오버를 묶는 그룹
-  PopoverPanel, // 드롭다운 내용 패널
+  PopoverPanel,
+  Transition, // 드롭다운 내용 패널
 } from "@headlessui/react"; // UI 라이브러리 (Headless UI)
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"; // 아이콘 (햄버거, X)
 import Link from "next/link"; // 페이지 이동 링크
@@ -22,9 +23,79 @@ import api from "@/api/axios"; // API 통신 모듈
 import Cookies from "js-cookie"; // 쿠키 관리 라이브러리
 import Image from "next/image"; // 이미지 최적화 컴포넌트
 import Modal from "@/components/common/Modal"; // 알림/확인 모달
+import { MenuItem, SubMenuItem } from "@/types/menu";
 
 // [설정] 서버 URL 상수 (환경 변수 우선 사용, 없으면 로컬)
 const serverURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+// pc메뉴 대메뉴에서 서브메뉴 있으면 hover시 서브메뉴 보이고, 해당 대메뉴 클릭시 서브메뉴1로 이동
+function NavItem({ page }: { page: MenuItem }) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  // 1. 하위 메뉴가 없는 경우: 일반 링크 반환
+  if (!page.children || page.children.length === 0) {
+    return (
+      <Link
+        href={page.href}
+        className="flex items-center text-lg font-medium px-5 text-gray-700 hover:text-green-600 transition-colors"
+      >
+        {page.name}
+      </Link>
+    );
+  }
+
+  // 2. 하위 메뉴가 있는 경우: Hover로 열리고, 클릭 시 첫 번째 링크로 이동
+  return (
+    <Popover
+      className="relative flex items-center h-full"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* 기존 PopoverButton 대신 Link 사용 
+        클릭 시 첫 번째 자식(page.children[0])의 주소로 이동
+      */}
+      <PopoverButton>
+        <Link
+          href={page.children[0]?.href || "#"}
+          className={`flex items-center text-lg px-5 font-medium transition-colors cursor-pointer ${
+            isHovered ? "text-green-600" : "text-gray-700"
+          }`}
+        >
+          {page.name}
+        </Link>
+      </PopoverButton>
+
+      {/* Dropdown Panel */}
+      <Transition
+        show={isHovered}
+        as={Fragment}
+        enter="transition ease-out duration-200"
+        enterFrom="opacity-0 translate-y-1"
+        enterTo="opacity-100 translate-y-0"
+        leave="transition ease-in duration-150"
+        leaveFrom="opacity-100 translate-y-0"
+        leaveTo="opacity-0 translate-y-1"
+      >
+        <PopoverPanel
+          static // static: Transition이 제어하므로 항상 렌더링 상태 유지
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-3 w-40 rounded-xl bg-white shadow-xl ring-1 ring-black/5 text-base z-50"
+        >
+          <div className="p-2">
+            {page.children.map((sub: any) => (
+              <Link
+                key={sub.name}
+                href={sub.href}
+                className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
+              >
+                {sub.name}
+              </Link>
+            ))}
+          </div>
+        </PopoverPanel>
+      </Transition>
+    </Popover>
+  );
+}
 
 // ==================================================================
 // [Main Component] 헤더 컴포넌트 시작
@@ -291,9 +362,13 @@ export default function Header() {
                   {/* 하위 메뉴가 있는 경우 */}
                   {page.children && page.children.length > 0 ? (
                     <>
-                      <p className="font-bold text-gray-900 mb-4">
+                      <Link
+                        href={page.children[0]?.href}
+                        onClick={() => setOpenMobileMenu(false)}
+                        className="font-bold text-gray-900 mb-4 block hover:text-green-600 transition-colors"
+                      >
                         {page.name}
-                      </p>
+                      </Link>
                       <ul className="space-y-4 ml-2">
                         {page.children.map((child) => (
                           <li key={child.name}>
@@ -313,7 +388,7 @@ export default function Header() {
                     <Link
                       href={page.href}
                       onClick={() => setOpenMobileMenu(false)}
-                      className="font-bold text-gray-900 block"
+                      className="font-bold text-gray-900 block hover:text-green-600"
                     >
                       {page.name}
                     </Link>
@@ -345,44 +420,10 @@ export default function Header() {
               </Link>
             </div>
 
-            {/* PC용 메뉴 (가운데 정렬) */}
             <PopoverGroup className="hidden lg:flex lg:ml-8 items-center justify-center flex-1">
               <div className="flex space-x-2">
                 {pages.map((page) => (
-                  <Popover key={page.name} className="relative">
-                    {/* 하위 메뉴가 없으면 그냥 링크 */}
-                    {!page.children ? (
-                      <Link
-                        href={page.href}
-                        className="flex items-center text-lg font-medium px-5 text-gray-700 hover:text-green-600 transition-colors"
-                      >
-                        {page.name}
-                      </Link>
-                    ) : (
-                      // 하위 메뉴가 있으면 드롭다운(Popover)으로 구성
-                      <>
-                        <PopoverButton className="flex cursor-pointer items-center text-lg px-5 font-medium text-gray-700 hover:text-green-600 focus:outline-none transition-colors">
-                          {page.name}
-                        </PopoverButton>
-                        <PopoverPanel
-                          transition
-                          className="absolute left-1/2 -translate-x-1/2 mt-3 w-40 rounded-xl bg-white shadow-xl ring-1 ring-black/5 text-base transition duration-200 data-closed:opacity-0 z-60"
-                        >
-                          <div className="p-2">
-                            {page.children.map((sub) => (
-                              <Link
-                                key={sub.name}
-                                href={sub.href}
-                                className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
-                              >
-                                {sub.name}
-                              </Link>
-                            ))}
-                          </div>
-                        </PopoverPanel>
-                      </>
-                    )}
-                  </Popover>
+                  <NavItem key={page.name} page={page} />
                 ))}
               </div>
             </PopoverGroup>

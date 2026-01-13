@@ -310,7 +310,7 @@ export default function CommunityBoardList({
                   className={`${styles.button} text-white px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-lg text-sm shrink-0`}
                 >
                   <PenTool size={16} />{" "}
-                  <span className="hidden xs:inline">글쓰기</span>
+                  <span className="hidden sm:inline">글쓰기</span>
                 </Link>
               )}
             </div>
@@ -367,7 +367,7 @@ export default function CommunityBoardList({
 
                           {/* 2. 썸네일 (옵션) - hideThumbnail이 false일 때만 보임 */}
                           {!hideThumbnail && (
-                            <div className="w-24 h-16 bg-gray-200 rounded mr-4 relative overflow-hidden flex-shrink-0 hidden sm:block">
+                            <div className="w-24 h-16 bg-gray-200 rounded mr-4 relative overflow-hidden shrink-0 hidden sm:block">
                               {/* 이미지 URL이 있으면 표시 (임시 코드) */}
                               {/* 실제로는 post.thumbnailUrl 등이 필요 */}
                               <div className="flex items-center justify-center w-full h-full text-xs text-gray-400">

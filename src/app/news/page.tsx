@@ -9,6 +9,7 @@ import api from "@/api/axios"; // API 통신 모듈
 import { NewsResponse, NewsItem } from "@/types/news"; // 데이터 타입 정의
 // 아이콘 라이브러리
 import { ArrowRight, Loader2, Search, X } from "lucide-react";
+import { formatDate } from "@/utils/formatDate";
 
 // --- [UI 컴포넌트: 뉴스 스켈레톤] ---
 // 뉴스 데이터 로딩 중에 보여줄 뼈대 UI입니다. 깜빡이는 회색 박스들로 구성됩니다.
@@ -55,7 +56,7 @@ function NewsPageContent() {
 
   // --- [상태 관리] ---
   const [allFetchedNews, setAllFetchedNews] = useState<NewsItem[]>([]); // 불러온 모든 뉴스 데이터
-  const [displayCount, setDisplayCount] = useState(4); // 화면에 보여줄 개수 (초기 4개)
+  const [displayCount, setDisplayCount] = useState(12); // 화면에 보여줄 개수 (초기 4개)
   const [page, setPage] = useState(1); // 현재 API 페이지 번호
 
   const [searchTerm, setSearchTerm] = useState(initialKeyword); // 검색창 입력값
@@ -113,7 +114,7 @@ function NewsPageContent() {
   // --- [초기 실행 및 검색어 변경 감지] ---
   useEffect(() => {
     setPage(1); // 1페이지부터 시작
-    setDisplayCount(4); // 4개만 먼저 보여줌
+    setDisplayCount(12); // 4개만 먼저 보여줌
     fetchNews(1, true); // 데이터 요청 (새 검색 모드)
   }, [activeSearch, fetchNews]);
 
@@ -247,7 +248,7 @@ function NewsPageContent() {
                     {/* 하단 정보 (날짜, 더보기 버튼) */}
                     <div className="mt-auto pt-5 flex items-center justify-between border-t border-slate-50">
                       <span className="text-[11px] text-slate-400 font-bold uppercase">
-                        {item.pubDate}
+                        {formatDate(item.pubDate)}
                       </span>
                       <a
                         href={item.link}
@@ -290,7 +291,7 @@ function NewsPageContent() {
             <div className="absolute top-10 left-10 text-6xl opacity-5 rotate-[-15deg] select-none pointer-events-none">
               📰
             </div>
-            <div className="absolute bottom-10 right-10 text-6xl opacity-5 rotate-[15deg] select-none pointer-events-none">
+            <div className="absolute bottom-10 right-10 text-6xl opacity-5 rotate-15 select-none pointer-events-none">
               🗞️
             </div>
 
@@ -299,7 +300,7 @@ function NewsPageContent() {
               <div className="text-[80px] drop-shadow-2xl filter hover:scale-110 transition-transform duration-300 rotate-[-5deg] z-10 relative">
                 🤔
               </div>
-              <div className="absolute -top-6 -right-6 text-[50px] drop-shadow-xl rotate-[15deg] animate-bounce z-20">
+              <div className="absolute -top-6 -right-6 text-[50px] drop-shadow-xl rotate-15 animate-bounce z-20">
                 🔎
               </div>
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black/10 blur-md rounded-full"></div>
