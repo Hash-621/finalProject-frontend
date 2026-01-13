@@ -24,8 +24,14 @@ import {
   Camera,
   X,
   Heart,
+  LayoutGrid,
+  ChevronRight,
 } from "lucide-react";
 import makerImg from "../../../public/images/mapMaker.png";
+
+// 🔥 [추가] AI 증상 상담소 컴포넌트 임포트
+// (경로가 맞는지 확인해주세요. src/components/features/AiHospitalSearch.tsx)
+import AiHospitalSearch from "@/components/features/AiHospitalSearch";
 
 // --- [UI 컴포넌트: 병원 리스트 스켈레톤] ---
 // 데이터 로딩 중에 보여줄 뼈대 UI입니다. (깜빡이는 회색 박스)
@@ -50,8 +56,6 @@ export default function Page() {
   const router = useRouter(); // 라우터 객체 생성
 
   // 1. 카카오맵 스크립트 로드
-  // 환경변수에서 API 키를 가져와 지도를 띄울 준비를 합니다.
-  // libraries: ["services", "clusterer"] -> 장소 검색 및 마커 클러스터링 기능 사용 설정
   const [mapLoading] = useKakaoLoader({
     appkey: process.env.NEXT_PUBLIC_KAKAO_JS_KEY || "",
     libraries: ["services", "clusterer"],
@@ -77,7 +81,6 @@ export default function Page() {
   const [roadviewPos, setRoadviewPos] = useState({ lat: 0, lng: 0 });
 
   // --- [스크롤 설정] ---
-  // 페이지 진입 시 전체 스크롤을 허용하고, 나갈 때 원래대로 되돌립니다.
   useEffect(() => {
     const wrapElement = document.querySelector(".wrap") as HTMLElement;
     if (wrapElement) wrapElement.style.overflow = "visible";
@@ -117,7 +120,6 @@ export default function Page() {
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // 3. 주소 -> 좌표 변환 (Geocoding)
-        // 카카오 주소 검색 객체 생성
         const geocoder = new window.kakao.maps.services.Geocoder();
 
         // 모든 병원 주소를 좌표로 변환하는 비동기 작업 배열 생성
@@ -154,14 +156,12 @@ export default function Page() {
   }, [mapLoading]); // mapLoading 상태가 변할 때(로드 완료 시) 실행
 
   // --- [카테고리 목록 생성] ---
-  // 병원 데이터에서 진료과목들만 뽑아서 중복 제거 후 배열 생성 (Memoization)
   const categories = useMemo(() => {
     const sets = new Set(hospitals.map((h) => h.treatCategory));
     return ["전체", ...Array.from(sets)];
   }, [hospitals]);
 
   // --- [필터링 및 검색 로직] ---
-  // 데이터, 카테고리, 검색어가 바뀔 때마다 실행되어 리스트를 갱신
   useEffect(() => {
     let result = hospitals;
 
@@ -220,6 +220,7 @@ export default function Page() {
   };
 
   // --- [병원 클릭 핸들러 (지도 이동)] ---
+  // 이 함수가 AiHospitalSearch 컴포넌트에 전달되어 실행됩니다.
   const handleHospitalClick = (h: any) => {
     setSelectedId(h.id);
 
@@ -344,6 +345,14 @@ export default function Page() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start relative">
           {/* 2. 좌측 리스트 섹션 (2/5 공간 차지) */}
           <div className="w-full lg:col-span-2 space-y-6 order-1">
+            <div className="p-4">
+              {/* 🔥🔥🔥 [추가] AI 증상 상담소 컴포넌트 삽입 위치 🔥🔥🔥 */}
+              <div className="mb-6">
+                <AiHospitalSearch onSelectHospital={handleHospitalClick} />
+              </div>
+              {/* 🔥🔥🔥 -------------------------------------- 🔥🔥🔥 */}
+            </div>
+
             {/* 리스트 헤더 (개수 표시) */}
             <div className="flex items-center justify-between px-2 mb-4">
               <div className="flex flex-col">
@@ -560,36 +569,3 @@ export default function Page() {
     </div>
   );
 }
-// 1. 페이지 진입 및 초기화 (Initialization)
-
-// 페이지가 열리면 mapLoading 때문에 잠시 하얀 화면에 로딩 바가 돕니다.
-
-// 카카오맵 SDK 로드가 완료되면 useEffect가 실행되어 데이터를 가져오기 시작합니다.
-
-// 동시에 스켈레톤 UI가 깜빡이며 사용자에게 "로딩 중"임을 알립니다.
-
-// 2. 데이터 수집 및 지오코딩 (Data Fetching & Geocoding)
-
-// 서버에서 병원 주소 목록과 내 즐겨찾기 목록을 가져옵니다.
-
-// 카카오 Geocoder를 사용해 텍스트 주소("대전 서구 둔산동...")를 위도/경도 좌표(lat, lng)로 변환합니다. (이 과정은 비동기로 병렬 처리됩니다.)
-
-// 변환된 데이터에 즐겨찾기 여부(isFavorite)를 합쳐서 상태(hospitals)에 저장합니다.
-
-// 3. 화면 렌더링 (Rendering)
-
-// 로딩이 끝나면 좌측에는 병원 리스트 카드들이, 우측에는 지도가 나타납니다.
-
-// 지도에는 병원 위치마다 마커가 찍히고, 너무 촘촘하면 클러스터(숫자 원)로 묶여서 보입니다.
-
-// 4. 상호작용 (Interaction)
-
-// 사용자가 필터에서 **[내과]**를 클릭합니다. 리스트와 지도의 마커가 내과 병원들로만 싹 바뀝니다.
-
-// 리스트에서 "튼튼내과" 카드를 클릭합니다.
-
-// handleHospitalClick이 실행되어 지도가 "튼튼내과" 위치로 부드럽게 이동(panTo)하고 확대됩니다.
-
-// 해당 병원의 마커 위에 정보창(Overlay)이 뜹니다.
-
-// 정보창에서 **[로드뷰 보기]**를 누르면 지도 위에 로드뷰 화면이 덮어씌워지며 실제 거리 풍경을 보여줍니다.
