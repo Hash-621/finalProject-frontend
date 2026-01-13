@@ -83,6 +83,7 @@ export default function CommunutyPostDetail({
   // --- [상태 관리 (State)] ---
   const [post, setPost] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
+  const [allComments, setAllComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ✨ [추가] 첨부 파일 목록 상태
@@ -185,6 +186,7 @@ export default function CommunutyPostDetail({
     try {
       const res = await api.get(apiEndpoints.fetchComments);
       const rawComments = res.data;
+      setAllComments(rawComments);
       const commentMap = new Map();
       const rootComments: any[] = [];
 
@@ -574,7 +576,7 @@ export default function CommunutyPostDetail({
               <span
                 className={`text-lg font-bold ${styles.commentCount} px-3 py-0.5 rounded-full`}
               >
-                {comments.length}
+                {allComments.length}
               </span>
             </h3>
 
