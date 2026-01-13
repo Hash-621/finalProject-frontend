@@ -1,9 +1,9 @@
 // 1. "use client": Next.js에게 이 파일이 서버가 아닌 '브라우저(클라이언트)'에서 실행됨을 알립니다.
-// (useState 같은 훅이나 onClick 같은 이벤트를 쓰려면 필수입니다.)
+// (useState, useEffect, sessionStorage 접근 등을 위해 필수입니다.)
 "use client";
 
 // --- [라이브러리 및 훅 임포트] ---
-import { useState, useRef, useEffect } from "react"; // React의 상태(값 저장), 참조(DOM 접근), 부수효과(타이머 등) 관리 훅
+import { useState, useRef, useEffect } from "react"; // React의 상태(값 저장), 참조(DOM 접근), 부수효과(타이머, 저장소 등) 관리 훅
 import api from "@/api/axios"; // 백엔드와 통신하기 위해 미리 설정해둔 axios 인스턴스 (API 요청용)
 // 화면을 예쁘게 꾸며줄 아이콘들을 가져옵니다.
 import {
@@ -13,6 +13,7 @@ import {
   Bot, // AI 로봇 얼굴 아이콘
   Sparkles, // 반짝이 아이콘 (헤더 장식)
   MapPin, // 지도 핀 아이콘 (장소 링크용)
+  Trash2, // [추가] 휴지통 아이콘 (대화 지우기)
 } from "lucide-react";
 // 부드러운 애니메이션을 위한 라이브러리입니다.
 import { motion, AnimatePresence } from "framer-motion";
@@ -116,7 +117,6 @@ const markdownComponents: any = {
       />
     </div>
   ),
-
   // [추가] 7. 테이블 헤더(th) 스타일링
   th: ({ node, ...props }: any) => (
     <th
@@ -124,7 +124,6 @@ const markdownComponents: any = {
       {...props}
     />
   ),
-
   // [추가] 8. 테이블 데이터(td) 스타일링
   td: ({ node, ...props }: any) => (
     <td className="px-4 py-2 border-b border-gray-100" {...props} />
@@ -138,14 +137,18 @@ export default function ChatBot() {
   // --- [State] 상태 관리 변수들 ---
   const [isOpen, setIsOpen] = useState(false); // 채팅창이 열렸는지 닫혔는지 (true/false)
 
-  // 대화 내용을 담는 배열입니다. 기본 인사말을 미리 넣어둡니다.
-  const [messages, setMessages] = useState([
-    {
-      role: "ai", // 화자: AI
-      text: "반가워요! 대전 여행 전문가 '다잇슈' 봇입니다. 🍯\n어떤 여행을 계획 중이신가요? 맛집, 명소, 데이트 코스 등 무엇이든 물어보세요!",
-      isTyping: false, // 이미 완료된 메시지니까 타이핑 효과 없음
-    },
-  ]);
+  // 기본 인사말 정의
+  const initialMessage = {
+    role: "ai", // 화자: AI
+    text: "반가워요! 대전 여행 전문가 '다잇슈' 봇입니다. 🍯\n어떤 여행을 계획 중이신가요? 맛집, 명소, 데이트 코스 등 무엇이든 물어보세요!",
+    isTyping: false, // 이미 완료된 메시지니까 타이핑 효과 없음
+  };
+
+  // 🔥 [핵심 1] 대화 내용을 담는 배열 (초기값은 빈 배열로 시작해서 덮어쓰기 방지)
+  const [messages, setMessages] = useState<any[]>([]);
+
+  // 🔥 [핵심 2] 데이터가 세션 스토리지에서 로드되었는지 확인하는 플래그
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const [input, setInput] = useState(""); // 사용자가 입력창에 치고 있는 글자
   const [isLoading, setIsLoading] = useState(false); // 서버 응답을 기다리는 중인지 (로딩 상태)
@@ -154,10 +157,9 @@ export default function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // --- [Config] 추천 질문 리스트 (Chips) ---
-  // 사용자가 타자 치기 귀찮을 때 클릭 한 번으로 질문하게 해주는 버튼들입니다.
   const suggestedPrompts = [
     {
-      label: "❤️ 데이트 코스 추천",
+      label: "❤️ 데이트 코스",
       query: "주말에 연인과 가기 좋은 대전 데이트 코스 짜줘",
     },
     {
@@ -174,8 +176,46 @@ export default function ChatBot() {
     },
   ];
 
+  // --- [Logic 1] 대화 내역 불러오기 (컴포넌트 마운트 시 1회 실행) ---
+  useEffect(() => {
+    // 세션 스토리지(페이지 끄면 사라짐)에서 데이터를 가져옵니다.
+    const savedData = sessionStorage.getItem("chat_history");
+
+    if (savedData) {
+      try {
+        // 저장된 데이터가 있으면 파싱해서 상태에 넣습니다.
+        setMessages(JSON.parse(savedData));
+      } catch (e) {
+        // 에러 나면 초기화
+        setMessages([initialMessage]);
+      }
+    } else {
+      // 저장된 게 없으면 기본 인사말 설정
+      setMessages([initialMessage]);
+    }
+
+    // 🔥 로딩 완료 신호! 이제부터 변경사항을 저장해도 됩니다.
+    setIsInitialized(true);
+  }, []);
+
+  // --- [Logic 2] 대화 내역 저장하기 (메시지 변경 시마다 실행) ---
+  useEffect(() => {
+    // 🔥 초기화가 완료된 상태(isInitialized)일 때만 저장합니다.
+    // (이게 없으면 빈 배열이 저장소를 덮어써서 데이터가 날아갑니다.)
+    if (isInitialized) {
+      sessionStorage.setItem("chat_history", JSON.stringify(messages));
+    }
+  }, [messages, isInitialized]);
+
+  // --- [Logic 3] 대화 내역 삭제 함수 ---
+  const clearHistory = () => {
+    if (confirm("대화 내역을 모두 지우시겠습니까?")) {
+      setMessages([initialMessage]); // 상태 초기화
+      sessionStorage.removeItem("chat_history"); // 저장소 삭제
+    }
+  };
+
   // --- [Function] 스크롤 내리기 함수 ---
-  // 채팅창의 스크롤을 가장 아래로 부드럽게 내립니다.
   const scrollToBottom = () =>
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -184,7 +224,7 @@ export default function ChatBot() {
 
   // --- [Function] 메시지 전송 핵심 로직 ---
   const sendMessage = async (text: string) => {
-    // 빈칸이거나 이미 로딩 중이면 함수를 멈춥니다. (중복 전송 방지)
+    // 빈칸이거나 이미 로딩 중이면 함수를 멈춥니다.
     if (!text.trim() || isLoading) return;
 
     // 1. [UI 업데이트] 사용자의 메시지를 화면에 먼저 띄웁니다.
@@ -193,7 +233,7 @@ export default function ChatBot() {
       { role: "user", text: text, isTyping: false }, // 내 메시지 추가
     ]);
     setInput(""); // 입력창 비우기
-    setIsLoading(true); // 로딩 시작 (점 3개 애니메이션 표시)
+    setIsLoading(true); // 로딩 시작
 
     try {
       // 2. [API 요청] 백엔드 서버에 질문을 보냅니다.
@@ -202,11 +242,10 @@ export default function ChatBot() {
       // 3. [응답 처리] 서버에서 답이 오면 AI 메시지로 추가합니다.
       setMessages((prev) => [
         ...prev,
-        // isTyping: true로 설정해서 타이핑 효과가 시작되게 합니다.
         { role: "ai", text: res.data.response, isTyping: true },
       ]);
     } catch (error) {
-      // 에러 발생 시 안내 메시지를 띄웁니다.
+      // 에러 발생 시 안내 메시지
       setMessages((prev) => [
         ...prev,
         {
@@ -220,15 +259,14 @@ export default function ChatBot() {
     }
   };
 
-  // 엔터키를 치거나 전송 버튼을 눌렀을 때 실행되는 함수 wrapper
+  // 엔터키 전송 처리
   const handleSend = (e: React.FormEvent) => {
-    e.preventDefault(); // 새로고침 방지
+    e.preventDefault();
     sendMessage(input);
   };
 
-  // TypingEffect 컴포넌트가 "나 타자 다 쳤어!"라고 알려주면 실행되는 함수
+  // 타이핑 효과가 끝났을 때 처리
   const handleTypingComplete = (index: number) => {
-    // 해당 메시지의 isTyping 상태를 false로 바꿔서 타이핑 효과를 끕니다.
     setMessages((prev) =>
       prev.map((msg, i) => (i === index ? { ...msg, isTyping: false } : msg))
     );
@@ -243,11 +281,10 @@ export default function ChatBot() {
         className={`cursor-pointer fixed bottom-6 right-6 z-50 bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center
         ${
           isOpen
-            ? "shadow-none rotate-90" // 열려있으면 그림자 없애고 회전 (X 모양 연출)
-            : "shadow-[0_8px_30px_rgb(22,163,74,0.4)]" // 닫혀있으면 초록색 그림자
+            ? "shadow-none rotate-90" // 열려있으면 회전
+            : "shadow-[0_8px_30px_rgb(22,163,74,0.4)]" // 닫혀있으면 그림자
         }`}
       >
-        {/* 열려있으면 X 아이콘, 닫혀있으면 말풍선 아이콘 */}
         {isOpen ? (
           <X className="w-7 h-7" />
         ) : (
@@ -255,26 +292,23 @@ export default function ChatBot() {
         )}
       </button>
 
-      {/* 2. 채팅창 본문 (AnimatePresence로 사라질 때 애니메이션 적용) */}
+      {/* 2. 채팅창 본문 (애니메이션 적용) */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            // 등장 애니메이션 설정
             initial={{
               opacity: 0,
-              y: 50, // 아래에서
-              scale: 0.9, // 약간 작게 시작
-              transformOrigin: "bottom right", // 기준점은 우측 하단
+              y: 50,
+              scale: 0.9,
+              transformOrigin: "bottom right",
             }}
-            animate={{ opacity: 1, y: 0, scale: 1 }} // 제자리로 뿅
-            exit={{ opacity: 0, y: 20, scale: 0.9 }} // 사라질 땐 다시 아래로
-            // 스타일: 우측 하단 고정, 모바일 꽉 채움 / PC는 적당한 크기
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[380px] h-[500px] sm:h-[600px] bg-white border border-gray-100 rounded-4xl flex flex-col overflow-hidden shadow-2xl font-pretendard"
           >
-            {/* (1) 헤더 섹션: 초록색 그라데이션 배경 */}
-            <div className="bg-green-600 bg-rounded-[2rem]-to-r from-green-600 to-emerald-600 p-5 text-white shrink-0">
+            {/* (1) 헤더 섹션: 초록색 그라데이션 + 반짝이 */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white shrink-0 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                {/* 봇 아이콘 + 반짝이 */}
                 <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
                   <Sparkles className="w-5 h-5 text-yellow-300 fill-yellow-300" />
                 </div>
@@ -288,6 +322,14 @@ export default function ChatBot() {
                   </div>
                 </div>
               </div>
+              {/* 대화 지우기 버튼 (휴지통) */}
+              <button
+                onClick={clearHistory}
+                className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                title="대화 내용 지우기"
+              >
+                <Trash2 className="w-4 h-4 text-white" />
+              </button>
             </div>
 
             {/* (2) 메시지 리스트 영역 */}
@@ -295,12 +337,11 @@ export default function ChatBot() {
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  // 내 메시지는 오른쪽(reverse), AI는 왼쪽(row) 배치
                   className={`flex items-end gap-2.5 ${
                     msg.role === "user" ? "flex-row-reverse" : "flex-row"
                   }`}
                 >
-                  {/* AI일 경우 왼쪽에 프로필 아이콘 표시 */}
+                  {/* AI 프로필 아이콘 */}
                   {msg.role === "ai" && (
                     <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center shrink-0 shadow-sm mb-1 overflow-hidden">
                       <Bot className="w-5 h-5 text-green-600" />
@@ -311,19 +352,16 @@ export default function ChatBot() {
                   <div
                     className={`max-w-[85%] p-3.5 px-4 rounded-2xl text-[13px] leading-relaxed shadow-sm relative ${
                       msg.role === "user"
-                        ? "bg-green-600 text-white rounded-br-none" // 내 거: 초록색
-                        : "bg-white text-gray-800 border border-gray-100 rounded-tl-none" // AI 거: 흰색
+                        ? "bg-green-600 text-white rounded-br-none"
+                        : "bg-white text-gray-800 border border-gray-100 rounded-tl-none"
                     }`}
                   >
-                    {/* 조건부 렌더링: 타이핑 중? vs 완료됨? vs 내 메시지? */}
                     {msg.role === "ai" && msg.isTyping ? (
-                      // 타이핑 효과 중일 때
                       <TypingEffect
                         text={msg.text}
                         onComplete={() => handleTypingComplete(idx)}
                       />
                     ) : msg.role === "ai" ? (
-                      // AI 답변 완료 시 (마크다운 렌더링)
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={markdownComponents}
@@ -331,14 +369,13 @@ export default function ChatBot() {
                         {msg.text}
                       </ReactMarkdown>
                     ) : (
-                      // 사용자 메시지 (그냥 텍스트)
                       msg.text
                     )}
                   </div>
                 </div>
               ))}
 
-              {/* (2.5) 로딩 인디케이터 (점 3개 튀는 애니메이션) */}
+              {/* 로딩 인디케이터 */}
               {isLoading && (
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm">
@@ -351,11 +388,11 @@ export default function ChatBot() {
                   </div>
                 </div>
               )}
-              {/* 자동 스크롤을 위한 투명한 앵커 */}
+              {/* 스크롤 앵커 */}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* (3) 추천 질문 칩 (가로 스크롤 가능) */}
+            {/* (3) 추천 질문 칩 */}
             <div className="bg-white border-t border-gray-50 px-4 py-3 shrink-0">
               <p className="text-[10px] text-gray-400 mb-2 font-bold ml-1">
                 💡 이런 질문은 어떠세요?
@@ -364,7 +401,7 @@ export default function ChatBot() {
                 {suggestedPrompts.map((item, idx) => (
                   <button
                     key={idx}
-                    onClick={() => sendMessage(item.query)} // 클릭하면 바로 전송
+                    onClick={() => sendMessage(item.query)}
                     className="whitespace-nowrap px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 rounded-full text-[11px] font-bold hover:bg-green-100 transition-colors active:scale-95"
                   >
                     {item.label}
@@ -387,7 +424,6 @@ export default function ChatBot() {
               />
               <button
                 type="submit"
-                // 입력값이 없거나 로딩 중이면 비활성화
                 disabled={isLoading || !input.trim()}
                 className="bg-green-600 text-white p-2 sm:p-3 rounded-xl hover:bg-green-700 disabled:bg-gray-200 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 flex items-center justify-center"
               >
