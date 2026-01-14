@@ -3,7 +3,7 @@
 "use client";
 
 // --- [라이브러리 및 컴포넌트 임포트] ---
-import React, { useEffect, useState, useCallback } from "react"; // 리액트 기본 훅
+import React, { useEffect, useState, useCallback, useMemo } from "react"; // 리액트 기본 훅 (useMemo 추가)
 import Link from "next/link"; // 페이지 이동 컴포넌트
 // 각종 아이콘 임포트
 import {
@@ -18,7 +18,8 @@ import {
   MapPin, // 지도 핀 아이콘
   UtensilsCrossed, // 포크/나이프(식당) 아이콘
   Newspaper, // 신문(뉴스) 아이콘
-  Sparkles, // 반짝임 아이콘
+  Sparkles,
+  Clock, // 반짝임 아이콘
 } from "lucide-react";
 // Swiper(슬라이더) 관련 임포트
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -43,6 +44,9 @@ export default function MyPage() {
   const [tempNickname, setTempNickname] = useState(""); // 닉네임 수정용 임시 상태
   const [tempEmail, setTempEmail] = useState(""); // 이메일 수정용 임시 상태
   const [isInfoLoading, setIsInfoLoading] = useState(true); // 정보 로딩 상태
+
+  // 🔥 [추가됨] 즐겨찾기 탭 전용 필터 상태 (ALL, RESTOURANTS, HOSPITALS, TOURS)
+  const [favoriteFilter, setFavoriteFilter] = useState("ALL");
 
   // 게시글/댓글/즐겨찾기 목록 데이터 가져오기 (커스텀 훅 사용)
   const { listData, isLoading: isListLoading, fetchPosts } = usePosts();
@@ -81,7 +85,23 @@ export default function MyPage() {
     } else {
       fetchPosts(activeTab, 1); // 그 외 탭(글, 댓글, 즐겨찾기)이면 해당 목록 데이터 갱신
     }
+
+    // 탭이 바뀔 때 필터 상태 초기화
+    if (activeTab === "favorites") {
+      setFavoriteFilter("ALL");
+    }
   }, [activeTab, fetchUserInfo, fetchPosts]);
+
+  // --- [🔥 필터링된 리스트 계산 (useMemo)] ---
+  // 즐겨찾기 탭일 때 필터 상태에 따라 보여줄 데이터를 거릅니다.
+  const filteredListData = useMemo(() => {
+    // 즐겨찾기 탭이 아니거나, 필터가 '전체'면 원본 그대로 반환
+    if (activeTab !== "favorites" || favoriteFilter === "ALL") {
+      return listData;
+    }
+    // 선택된 카테고리와 일치하는 아이템만 반환
+    return listData.filter((item: any) => item.category === favoriteFilter);
+  }, [activeTab, favoriteFilter, listData]);
 
   // --- [정보 수정 핸들러] ---
   const handleUpdateInfo = async () => {
@@ -231,15 +251,39 @@ export default function MyPage() {
             <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-green-50/30 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none" />
             <div className="relative h-full flex flex-col">
               {/* 콘텐츠 헤더 (제목) */}
-              <div className="flex justify-between items-center mb-8 md:mb-14">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-10 gap-4">
                 <h2 className="text-xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
                   <div className="w-1.5 h-6 md:h-10 bg-green-500 rounded-full" />
                   {activeTab === "info"
                     ? "Settings"
                     : activeTab === "favorites"
-                    ? "favorites"
+                    ? "Favorites"
                     : "History"}
                 </h2>
+
+                {/* 🔥 [추가됨] 즐겨찾기 탭일 때만 보이는 카테고리 필터 버튼 */}
+                {activeTab === "favorites" && (
+                  <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-right-4 duration-500">
+                    {[
+                      { id: "ALL", label: "전체" },
+                      { id: "RESTOURANTS", label: "맛집" }, // 오타 주의: 백엔드 데이터에 맞춤
+                      { id: "HOSPITALS", label: "병원" },
+                      { id: "TOURS", label: "관광지" },
+                    ].map((filter) => (
+                      <button
+                        key={filter.id}
+                        onClick={() => setFavoriteFilter(filter.id)}
+                        className={`px-3.5 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all border ${
+                          favoriteFilter === filter.id
+                            ? "bg-green-600 text-white border-green-600 shadow-md"
+                            : "bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600"
+                        }`}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* (A) 내 정보 관리 탭 */}
@@ -362,19 +406,22 @@ export default function MyPage() {
                   </div>
                 </div>
               ) : activeTab === "favorites" ? (
-                // (B) 즐겨찾기 목록 탭
+                // (B) 즐겨찾기 목록 탭 (필터링 적용됨)
                 <div className="flex-1 flex flex-col animate-in fade-in duration-500">
-                  {listData.length === 0 ? (
+                  {/* 🔥 filteredListData 사용 */}
+                  {filteredListData.length === 0 ? (
                     // 데이터 없음 표시
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-300 py-20 text-center">
                       <p className="font-black text-lg text-slate-400">
-                        즐겨찾기 내역이 없습니다.
+                        {favoriteFilter === "ALL"
+                          ? "즐겨찾기 내역이 없습니다."
+                          : "해당 카테고리의 즐겨찾기가 없습니다."}
                       </p>
                     </div>
                   ) : (
                     // 즐겨찾기 리스트
                     <div className="grid gap-4">
-                      {listData.map((item: any) => {
+                      {filteredListData.map((item: any) => {
                         const category = item.category;
                         const itemId = item.id;
                         const title = item.title;
@@ -455,6 +502,14 @@ export default function MyPage() {
                                       {activeTab === "posts"
                                         ? "POST"
                                         : "COMMENT"}
+                                    </span>
+                                    <Clock
+                                      size={15}
+                                      className="ml-1 text-slate-500"
+                                    />
+                                    <span className=" text-slate-500 text-[12px] md:text-[14px]">
+                                      {" "}
+                                      {item.createdAt}
                                     </span>
                                   </div>
                                   {/* 🔹 동적 글자수 제한 적용 */}
