@@ -61,13 +61,13 @@ const BAKERY_DATA: Record<string, BakeryData> = {
   },
   말차시루: {
     id: "sungsimdang",
-    name: "성심당 (본점)",
-    address: "대한민국 대전광역시 중구 대종로480번길 15",
+    name: "성심당 케익부띠끄",
+    address: "대한민국 대전광역시 중구 대종로 480",
     keyword: "🏰 대전의 상징",
     description:
       "대전의 자부심! 튀김소보로뿐만 아니라 케이크까지 섭렵한 전설적인 빵집.",
     images: [
-      "/images/imagesearch/성심당.jpg",
+      "/images/imagesearch/성심당.png",
       "/images/imagesearch/성심당2.jpg",
       "/images/imagesearch/성심당3.jpg",
     ],
