@@ -102,6 +102,7 @@ export default function SearchBar({
       // 3. 결과 처리
       // 서버가 { result: "사과" } 형태로 준다고 가정
       const aiResult = res.data.result || res.data;
+      const aiProbability = res.data.probability || res.data;
 
       if (aiResult) {
         setKeyword(aiResult); // 검색창에 결과 텍스트 표시
@@ -110,6 +111,7 @@ export default function SearchBar({
         const searchParams = new URLSearchParams({
           searchStatus: "all", // 이미지 검색은 보통 전체 검색으로 처리
           searchKeyword: aiResult,
+          probability: aiProbability,
         });
 
         // /search/imageresults 경로로 이동

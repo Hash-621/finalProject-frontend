@@ -29,6 +29,7 @@ interface BakeryData {
   keyword: string;
   description: string;
   images: string[];
+  probability?: string;
 }
 
 const BAKERY_DATA: Record<string, BakeryData> = {
@@ -82,6 +83,7 @@ function ImageSearchResultsContent() {
 
   // URL에서 분석된 키워드 가져오기
   const keyword = searchParams.get("searchKeyword") || "";
+  const probability = searchParams.get("probability") || "";
 
   // 키워드에 해당하는 데이터 찾기 (없으면 null)
   const resultData = BAKERY_DATA[keyword];
@@ -198,6 +200,7 @@ function ImageSearchResultsContent() {
       <div className="mb-16 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-sm font-bold mb-4 animate-bounce">
           <Sparkles size={16} /> AI 이미지 분석 완료
+          <span>　|　 정확도: {probability} </span>
         </div>
         <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight">
           사진 속 음식은 <br className="md:hidden" />
