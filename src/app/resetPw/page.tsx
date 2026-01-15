@@ -74,7 +74,7 @@ function ResetPwContent() {
 
       try {
         const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw`,
+          `/api/v1/user/resetPw`,
           {
             params: { token, email },
           }
@@ -114,7 +114,7 @@ function ResetPwContent() {
 
     try {
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/resetPw`,
+        `/api/v1/user/resetPw`,
         {
           email: email,
           token: token,

@@ -140,7 +140,7 @@ export default function Page() {
       // 서버에 인증번호 발송 요청
       axios
         .post(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/find-id/get-token?addr=${formData.email}`
+          `/api/v1/user/find-id/get-token?addr=${formData.email}`
         )
         .then((response) => {
           // 성공 시 별도 알림 없이 다음 단계(인증번호 입력 화면)로 진행
@@ -173,7 +173,7 @@ export default function Page() {
 
       // 서버에 비밀번호 재설정 링크 발송 요청
       axios
-        .post(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/getResetPw`, {
+        .post(`/api/v1/user/getResetPw`, {
           loginId: formData.loginId,
           name: formData.name,
           email: formData.email,

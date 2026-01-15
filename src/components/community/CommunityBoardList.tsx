@@ -143,7 +143,7 @@ export default function CommunityBoardList({
           // 유저 정보 조회 API 호출
           const res = await userService.getUserInfo();
 
-          const response = await fetch(`${serverURL}/api/v1/admin/isAdmin`, {
+          const response = await fetch(`/api/v1/admin/isAdmin`, {
             method: "post",
             headers: {
               "Content-Type": "application/json",

@@ -4,7 +4,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const fetchClient = async (path: string, options?: RequestInit) => {
   // 기본 주소 뒤에 path를 붙여서 전체 URL 완성
-  const url = `${BASE_URL}${path}`;
+  const url = `${path}`;
   const response = await fetch(url, {
     ...options,
     headers: {

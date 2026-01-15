@@ -4,7 +4,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const api = axios.create({
-  baseURL: `${process.env.NEXT_PUBLIC_API_URL}/api/v1`,
+  baseURL: `/api/v1`,
   withCredentials: true,
   // ❌ 아래 줄이 있다면 반드시 지우세요! application/json 이든 multipart/form-data 든 다 지워야 합니다.
   // headers: { "Content-Type": "multipart/form-data" },

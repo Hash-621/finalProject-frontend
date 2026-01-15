@@ -26,7 +26,7 @@ import Modal from "@/components/common/Modal"; // 알림/확인 모달
 import { MenuItem, SubMenuItem } from "@/types/menu";
 
 // [설정] 서버 URL 상수 (환경 변수 우선 사용, 없으면 로컬)
-const serverURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const serverURL = process.env.NEXT_PUBLIC_API_URL ;
 
 // pc메뉴 대메뉴에서 서브메뉴 있으면 hover시 서브메뉴 보이고, 해당 대메뉴 클릭시 서브메뉴1로 이동
 function NavItem({ page }: { page: MenuItem }) {
@@ -166,7 +166,7 @@ export default function Header() {
           // 2) [API] 관리자 권한 확인 (별도 API 호출)
           try {
             // fetch를 사용하여 관리자 확인 API 호출 (axios instance 대신 fetch 사용 예시)
-            const adminRes = await fetch(`${serverURL}/api/v1/admin/isAdmin`, {
+            const adminRes = await fetch(`/api/v1/admin/isAdmin`, {
               method: "post",
               headers: {
                 "Content-Type": "application/json",

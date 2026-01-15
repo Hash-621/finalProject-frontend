@@ -39,7 +39,7 @@ import Modal from "@/components/common/Modal";
 import useAdminCheck from "@/hooks/useAdminCheck";
 
 // 9. 백엔드 URL 설정
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 // 11. 메인 컴포넌트
 export default function TourReviewDetail({

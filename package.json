@@ -45,5 +45,6 @@
     "eslint-config-next": "16.0.8",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "proxy":"http://192.168.0.134:8080"
 }

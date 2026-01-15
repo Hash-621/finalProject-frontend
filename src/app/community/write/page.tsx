@@ -162,7 +162,7 @@ function WriteContent() {
         const fetchedId = res.data.userId || res.data.id || res.data.loginId;
         const fetchedNickname = res.data.userNickname || res.data.nickname;
 
-        const response = await fetch(`${serverURL}/api/v1/admin/isAdmin`, {
+        const response = await fetch(`/api/v1/admin/isAdmin`, {
           method: "post",
           headers: {
             "Content-Type": "application/json",

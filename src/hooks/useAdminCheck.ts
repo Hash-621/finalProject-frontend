@@ -57,7 +57,7 @@ export default function useAdminCheck() {
 
         // 13. [Step 3] ★ 핵심 로직: 서버에 "이 사람 진짜 관리자예요?"라고 물어보는 API 호출
         // fetch를 사용하여 직접 POST 요청을 보냅니다.
-        const response = await fetch(`${serverURL}/api/v1/admin/isAdmin`, {
+        const response = await fetch("/api/v1/admin/isAdmin", {
           method: "post", // 데이터를 보내서 확인받으므로 POST 방식 사용
           headers: {
             "Content-Type": "application/json", // "나 JSON 데이터 보낼게"라고 알림

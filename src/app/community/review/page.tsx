@@ -25,7 +25,7 @@ import Pagination from "@/components/common/Pagination";
 // 백엔드 서버 주소를 설정합니다.
 // 환경 변수(NEXT_PUBLIC_API_URL)가 있으면 그걸 쓰고, 없으면 로컬 주소(localhost:8080)를 씁니다.
 // 이미지 경로를 완성할 때 사용됩니다.
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // --- [데이터 타입 정의] ---
 // 서버에서 받아올 게시글 데이터가 어떻게 생겼는지 미리 정의해둡니다. (TypeScript)

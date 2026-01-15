@@ -51,7 +51,7 @@ export default function Home() {
     const logVisit = async () => {
       try {
         // 서버의 방문 기록 API('/api/v1/admin/visit')에 POST 요청을 보냅니다.
-        await fetch(`${serverURL}/api/v1/admin/visit`, {
+        await fetch(`/api/v1/admin/visit`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json", // JSON 형식으로 보냄을 명시
