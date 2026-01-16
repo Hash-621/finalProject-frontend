@@ -470,7 +470,7 @@ export default function CommunityBoardList({
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}
-            themeColor={theme === "green" ? "green" : "black"} // 테마 색상 연결
+            themeColor={theme === "green" ? "green" : "black"}
           />
         </div>
       </div>
