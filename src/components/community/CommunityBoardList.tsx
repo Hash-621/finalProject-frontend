@@ -12,6 +12,7 @@ import { SubPostData, CommonBoardListProps } from "@/types/board";
 // [추가] 쿠키와 유저 서비스 관련 기능을 가져옵니다. (로그인한 사람인지, 관리자인지 확인용)
 import Cookies from "js-cookie";
 import { userService } from "@/api/services";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 // 화면을 꾸며줄 다양한 아이콘들을 가져옵니다.
 import {
@@ -26,6 +27,8 @@ import {
   Loader2, // 로딩 스피너
   ThumbsUp, // 따봉 아이콘 (데이터 없을 때 사용)
 } from "lucide-react";
+
+import Pagination from "@/components/common/Pagination";
 
 const serverURL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -84,6 +87,9 @@ export default function CommunityBoardList({
   showPinnedTop = false,
   dateFormat,
 }: ExtendedBoardListProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   // 1. 전달받은 theme('green' 등)에 맞는 스타일 꾸러미를 꺼냅니다.
   const styles = THEMES[theme] || THEMES.slate; // theme이 없을 경우 대비
 
@@ -97,7 +103,7 @@ export default function CommunityBoardList({
   // 로딩 중인지 여부입니다. (처음엔 true)
   const [loading, setLoading] = useState(true);
   // 현재 보고 있는 페이지 번호입니다.
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = Number(searchParams.get("page")) || 1;
 
   // [추가] 로그인한 유저의 역할(권한)을 저장할 상태입니다. (예: "ROLE_ADMIN", "USER")
   const [userRole, setUserRole] = useState<string>("");
@@ -169,7 +175,7 @@ export default function CommunityBoardList({
     // 검색어가 비어있거나 공백뿐이면
     if (!searchKeyword.trim()) {
       setPosts(originalPosts); // 원본 데이터로 복구
-      setCurrentPage(1); // 1페이지로 이동
+      router.push(pathname); // 1페이지로 이동
       return;
     }
     // 원본 데이터(originalPosts)에서 제목이나 닉네임에 검색어가 포함된 것만 걸러냅니다.
@@ -179,7 +185,7 @@ export default function CommunityBoardList({
         post.userNickname.toLowerCase().includes(searchKeyword.toLowerCase())
     );
     setPosts(filtered); // 걸러진 데이터를 화면용 상태에 저장
-    setCurrentPage(1); // 검색 결과의 1페이지로 이동
+    router.push(`${pathname}?page=1`);
   };
 
   // 엔터키 눌렀을 때 검색 실행
@@ -207,20 +213,10 @@ export default function CommunityBoardList({
   );
 
   // 페이지 번호 배열 생성 함수
-  const getPageNumbers = () => {
-    const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (currentPage > 3) pages.push("...");
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      for (let i = start; i <= end; i++) pages.push(i);
-      if (currentPage < totalPages - 2) pages.push("...");
-      pages.push(totalPages);
-    }
-    return pages;
+  const handlePageChange = (pageNumber: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(pageNumber));
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   // --- [글쓰기 버튼 표시 여부 판단 함수] ---
@@ -470,55 +466,12 @@ export default function CommunityBoardList({
             )}
           </div>
 
-          {/* (3) 페이지네이션 버튼들 */}
-          {totalPages > 1 && (
-            <div className="p-6 md:p-10 border-t border-slate-50 flex justify-center bg-slate-50/30">
-              <div className="flex items-center gap-1 md:gap-2">
-                {/* 이전 페이지 버튼 */}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1} // 1페이지면 비활성화
-                  className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center disabled:opacity-20"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-
-                {/* 페이지 번호들 */}
-                <div className="flex items-center gap-1 md:gap-2 px-1">
-                  {getPageNumbers().map((num, i) =>
-                    num === "..." ? (
-                      <span key={i} className="px-1 text-slate-400 text-xs">
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={i}
-                        onClick={() => setCurrentPage(num as number)}
-                        className={`w-8 h-8 md:w-10 md:h-10 rounded-full font-bold text-xs md:text-sm transition-all ${
-                          currentPage === num
-                            ? `${styles.paginationActive} text-white` // 현재 페이지 강조
-                            : "bg-white text-slate-400 border border-slate-100"
-                        }`}
-                      >
-                        {num}
-                      </button>
-                    )
-                  )}
-                </div>
-
-                {/* 다음 페이지 버튼 */}
-                <button
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
-                  disabled={currentPage === totalPages} // 마지막 페이지면 비활성화
-                  className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center disabled:opacity-20"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            themeColor={theme === "green" ? "green" : "black"} // 테마 색상 연결
+          />
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@
 
 // --- [라이브러리 및 도구 임포트] ---
 import React, { useEffect, useState } from "react"; // 리액트의 핵심 기능(상태 관리, 수명 주기)을 가져옵니다.
-import { useRouter } from "next/navigation"; // 페이지 이동을 위한 훅(Hook)을 가져옵니다.
+import { useRouter, useSearchParams, usePathname } from "next/navigation"; // 페이지 이동을 위한 훅(Hook)을 가져옵니다.
 import api from "@/api/axios"; // 서버와 통신하기 위해 미리 설정해둔 axios 도구를 가져옵니다.
 // 화면을 꾸며줄 아이콘들을 가져옵니다.
 import {
@@ -45,6 +45,8 @@ interface Post {
 export default function TourReviewList() {
   // 페이지 이동을 담당하는 도구(router)를 준비합니다.
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   // ================= [1. 상태 관리 (변수 저장소)] =================
 
@@ -59,7 +61,7 @@ export default function TourReviewList() {
 
   // --- 페이지네이션 관련 상태 ---
   // 현재 보고 있는 페이지 번호 (기본값 1페이지)
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = Number(searchParams.get("page")) || 1;
 
   // 한 페이지에 몇 개의 글을 보여줄지 설정 (6개씩)
   const postsPerPage = 6;
@@ -166,8 +168,10 @@ export default function TourReviewList() {
 
   // 4. 페이지 변경 핸들러
   const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber); // 페이지 상태 변경
-    window.scrollTo({ top: 400, behavior: "smooth" }); // 화면을 살짝 위(리스트 시작 부분)로 부드럽게 올립니다.
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(pageNumber));
+    router.push(`${pathname}?${params.toString()}`); // 주소창 업데이트
+    window.scrollTo({ top: 400, behavior: "smooth" });
   };
 
   // ================= [5. 화면 렌더링 (JSX)] =================
@@ -221,7 +225,7 @@ export default function TourReviewList() {
               // 검색어를 입력하면 상태를 업데이트하고, 페이지를 1페이지로 초기화합니다.
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1);
+                router.push(pathname);
               }}
             />
           </div>
