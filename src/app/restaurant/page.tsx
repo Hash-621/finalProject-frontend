@@ -7,10 +7,12 @@ import React, {
   useRef, // 지도 객체 같은 DOM 요소나 변수 직접 참조
   useMemo, // 복잡한 계산 결과 저장 (성능 최적화)
   useCallback, // 함수 재생성 방지 (성능 최적화)
+  Suspense,
 } from "react";
 import Link from "next/link"; // 페이지 이동 링크
 import { restaurantService, userService } from "@/api/services"; // API 호출 함수들
 import { RestaurantData } from "@/types/restaurant"; // 타입 정의
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 // 아이콘들 불러오기
 import {
   MapPin,
@@ -403,24 +405,28 @@ KakaoMapContainer.displayName = "KakaoMapContainer"; // 디버깅용 이름
 // ==================================================================
 // [Component 3] 메인 페이지 컴포넌트
 // ==================================================================
-export default function RestaurantListPage() {
+function RestaurantPageContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   // --- [State] 데이터 및 UI 상태 ---
   const [restaurants, setRestaurants] = useState<ExtendedRestaurantData[]>([]); // 전체 맛집 데이터
 
   // 필터링 관련 상태
-  const [selectedCategory, setSelectedCategory] = useState("전체"); // 카테고리 필터
-  const [showOpenOnly, setShowOpenOnly] = useState(false); // 영업중 필터
-  const [keyword, setKeyword] = useState(""); // 검색어
-  const [loading, setLoading] = useState(true); // 로딩 상태
 
-  // 뷰 모드 및 지도 관련 상태
-  const [isMapView, setIsMapView] = useState(false); // 지도 뷰인지 여부
+  const [loading, setLoading] = useState(true); // 로딩 상태
   const [activeId, setActiveId] = useState<number | null>(null); // 선택된 맛집 ID
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); // 지도뷰에서 사이드바 열림 여부
-
-  // 페이지네이션
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8; // 한 페이지당 보여줄 개수
+
+  const currentCategory = searchParams.get("category") || "전체";
+  const currentKeyword = searchParams.get("keyword") || "";
+  const showOpenOnly = searchParams.get("open") === "true";
+  const isMapView = searchParams.get("view") === "map";
+  const currentPage = Number(searchParams.get("page")) || 1;
+
+  const [tempKeyword, setTempKeyword] = useState(currentKeyword);
 
   // 상위 컴포넌트에서도 지도 스크립트 로더 상태 확인
   const [mapScriptLoading] = useKakaoLoader({
@@ -584,12 +590,12 @@ export default function RestaurantListPage() {
     let result = restaurants;
 
     // 1. 카테고리 필터
-    if (selectedCategory !== "전체") {
-      result = result.filter((item) => item.restCategory === selectedCategory);
+    if (currentCategory !== "전체") {
+      result = result.filter((item) => item.restCategory === currentCategory);
     }
 
     // 2. 키워드 검색
-    const trimmedKeyword = keyword.trim();
+    const trimmedKeyword = currentKeyword.trim();
     if (trimmedKeyword !== "") {
       const searchTerms = trimmedKeyword.split(/\s+/);
       result = result.filter((item) => {
@@ -613,12 +619,7 @@ export default function RestaurantListPage() {
     }
 
     return result;
-  }, [restaurants, selectedCategory, keyword, showOpenOnly]);
-
-  // 필터가 바뀌면 1페이지로 리셋
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory, keyword, showOpenOnly]);
+  }, [restaurants, currentCategory, currentKeyword, showOpenOnly]);
 
   // --- [Effect] 주소 -> 좌표 변환 (Geocoding) ---
   useEffect(() => {
@@ -702,11 +703,33 @@ export default function RestaurantListPage() {
     []
   );
 
-  // 필터 변경
-  const handleFilter = useCallback(
-    (category: string) => setSelectedCategory(category),
-    []
-  );
+  // 🟢 URL 업데이트 도우미 함수
+  const updateParams = (newParams: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    });
+    if (!newParams.page) params.set("page", "1"); // 필터 바뀌면 1페이지로
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  // 🟢 새 핸들러들
+  const handleFilter = (category: string) => updateParams({ category });
+  const handleSearch = () => updateParams({ keyword: tempKeyword });
+  const clearKeyword = () => {
+    setTempKeyword("");
+    updateParams({ keyword: null });
+  };
+  const toggleOpenOnly = () =>
+    updateParams({ open: showOpenOnly ? null : "true" });
+  const toggleView = () => updateParams({ view: isMapView ? null : "map" });
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(page));
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   // 마커 클릭
   const handleMarkerClick = useCallback(
     (item: ExtendedRestaurantData) => setActiveId(item.id),
@@ -763,13 +786,13 @@ export default function RestaurantListPage() {
                 <input
                   type="text"
                   placeholder="맛집 이름, 메뉴 검색..."
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
+                  value={tempKeyword}
+                  onChange={(e) => setTempKeyword(e.target.value)}
                   className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-3xl text-sm font-bold shadow-sm focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all"
                 />
-                {keyword && (
+                {tempKeyword && (
                   <button
-                    onClick={() => setKeyword("")}
+                    onClick={clearKeyword}
                     className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
                   >
                     <X size={16} />
@@ -797,7 +820,7 @@ export default function RestaurantListPage() {
                   key={cat}
                   onClick={() => handleFilter(cat)}
                   className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
-                    selectedCategory === cat
+                    currentCategory === cat
                       ? "bg-green-600 text-white shadow-lg shadow-green-100"
                       : "bg-white border border-slate-200 text-slate-600 hover:border-slate-900"
                   }`}
@@ -810,7 +833,7 @@ export default function RestaurantListPage() {
             {/* 기능 버튼 (영업중 필터, 지도뷰 토글) */}
             <div className="flex flex-wrap items-center gap-3 w-full sm:justify-end">
               <button
-                onClick={() => setShowOpenOnly(!showOpenOnly)}
+                onClick={toggleOpenOnly}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all border shrink-0 ${
                   showOpenOnly
                     ? "bg-green-50 border-green-200 text-green-700 ring-2 ring-green-500/20"
@@ -831,7 +854,7 @@ export default function RestaurantListPage() {
               </button>
 
               <button
-                onClick={() => setIsMapView(!isMapView)}
+                onClick={toggleView}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all border shrink-0 ${
                   isMapView
                     ? "bg-slate-900 text-white border-slate-900"
@@ -897,13 +920,13 @@ export default function RestaurantListPage() {
                   <input
                     type="text"
                     placeholder="지도 내 검색 (가게명, 메뉴)"
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
+                    value={tempKeyword}
+                    onChange={(e) => setTempKeyword(e.target.value)}
                     className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
                   />
-                  {keyword && (
+                  {tempKeyword && (
                     <button
-                      onClick={() => setKeyword("")}
+                      onClick={clearKeyword}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-green-600"
                     >
                       <X size={14} />
@@ -1071,7 +1094,7 @@ export default function RestaurantListPage() {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                onPageChange={setCurrentPage}
+                onPageChange={handlePageChange}
                 themeColor="black"
               />
             </div>
@@ -1079,6 +1102,20 @@ export default function RestaurantListPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function RestaurantListPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-screen flex justify-center items-center">
+          <Loader2 className="animate-spin text-green-500" />
+        </div>
+      }
+    >
+      <RestaurantPageContent />
+    </Suspense>
   );
 }
 

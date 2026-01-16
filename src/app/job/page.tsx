@@ -3,7 +3,7 @@
 "use client";
 
 // --- [라이브러리 및 훅 임포트] ---
-import { useSearchParams } from "next/navigation"; // URL 쿼리 파라미터(?keyword=...)를 읽어오는 훅
+import { useSearchParams, useRouter, usePathname } from "next/navigation"; // URL 쿼리 파라미터(?keyword=...)를 읽어오는 훅
 import React, {
   useEffect, // 데이터 로딩 등 부수 효과 처리
   useState, // 상태 관리
@@ -59,25 +59,23 @@ const RECOMMEND_KEYWORDS = [
 function JobPageContent() {
   // URL에서 쿼리 파라미터를 읽어옵니다. (예: /job?keyword=삼성전자 -> initialKeyword = "삼성전자")
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const initialKeyword = searchParams.get("keyword") || "";
 
   // --- [상태 관리 (State)] ---
   const [jobs, setJobs] = useState<JobData[]>([]); // 채용 공고 데이터 목록
   const [loading, setLoading] = useState(true); // 로딩 상태 (초기값 true -> 바로 스켈레톤 보임)
-  const [currentPage, setCurrentPage] = useState(1); // 현재 페이지 번호
+
   const itemsPerPage = 9; // 한 페이지당 보여줄 아이템 수
 
-  // 임시 필터 상태 (검색 버튼 누르기 전까지 입력값 저장)
-  const [tempFilters, setTempFilters] = useState({
-    keyword: initialKeyword,
-    career: "",
-    education: "",
-  });
+  const currentKeyword = searchParams.get("keyword") || "";
+  const currentCareer = searchParams.get("career") || "";
+  const currentPage = Number(searchParams.get("page")) || 1;
 
-  // 활성 필터 상태 (실제 API 요청에 사용되는 값)
-  const [activeFilters, setActiveFilters] = useState({
-    keyword: initialKeyword,
-    career: "",
+  const [tempFilters, setTempFilters] = useState({
+    keyword: currentKeyword,
+    career: currentCareer,
     education: "",
   });
 
@@ -99,25 +97,24 @@ function JobPageContent() {
   // --- [데이터 로드 함수 (API 호출)] ---
   // activeFilters가 바뀔 때마다 실행되어 데이터를 새로 가져옵니다.
   const fetchJobs = useCallback(async () => {
-    setLoading(true); // 로딩 시작 (스켈레톤 표시)
+    setLoading(true);
     try {
-      // 필터 객체를 쿼리 스트링으로 변환 (예: keyword=java&career=신입)
-      const queryParams = new URLSearchParams(activeFilters);
-      // 서버 API 호출
+      // URL 값을 서버로 보냄
+      const queryParams = new URLSearchParams();
+      if (currentKeyword) queryParams.set("keyword", currentKeyword);
+      if (currentCareer) queryParams.set("career", currentCareer);
+
       const res = await api.get(`/job/crawl?${queryParams.toString()}`);
 
-      // [UX 개선] 로딩이 너무 빨리 끝나면 깜빡임처럼 보이므로, 최소 0.5초간 스켈레톤을 유지합니다.
       await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setJobs(res.data || []); // 받아온 데이터 저장
-      setCurrentPage(1); // 검색 결과가 바뀌면 1페이지로 리셋
+      setJobs(res.data || []);
     } catch (e) {
       console.error("공고 로드 실패:", e);
-      setJobs([]); // 에러 시 빈 목록
+      setJobs([]);
     } finally {
-      setLoading(false); // 로딩 종료 (스켈레톤 숨김)
+      setLoading(false);
     }
-  }, [activeFilters]);
+  }, [currentKeyword, currentCareer]);
 
   // 컴포넌트 마운트 시 또는 fetchJobs 변경 시 실행
   useEffect(() => {
@@ -127,7 +124,30 @@ function JobPageContent() {
   // --- [이벤트 핸들러] ---
 
   // 검색 버튼 클릭 시: 임시 필터를 활성 필터로 적용 -> API 호출 유발
-  const handleSearch = () => setActiveFilters(tempFilters);
+  // 🟢 변경: 검색 버튼용
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (tempFilters.keyword) params.set("keyword", tempFilters.keyword);
+    if (tempFilters.career) params.set("career", tempFilters.career);
+    params.set("page", "1"); // 검색하면 1페이지로 리셋
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  // 🟢 변경: 추천 키워드 클릭용
+  const handleKeywordClick = (keyword: string) => {
+    setTempFilters((prev) => ({ ...prev, keyword })); // 입력창 채우기
+    const params = new URLSearchParams(searchParams);
+    params.set("keyword", keyword);
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  // 🟢 추가: 페이지 이동용
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(page));
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   // 엔터키 입력 시 검색 실행
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -140,13 +160,6 @@ function JobPageContent() {
   ) => {
     const { name, value } = e.target;
     setTempFilters((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // 추천 키워드 클릭 핸들러
-  const handleKeywordClick = (keyword: string) => {
-    const newFilters = { ...tempFilters, keyword };
-    setTempFilters(newFilters); // 입력창 값 업데이트
-    setActiveFilters(newFilters); // 즉시 검색 실행
   };
 
   // --- [페이지네이션 계산 (메모이제이션)] ---
@@ -246,9 +259,8 @@ function JobPageContent() {
           {/* 필터 초기화(새로고침) 버튼 */}
           <button
             onClick={() => {
-              const reset = { keyword: "", career: "", education: "" };
-              setTempFilters(reset);
-              setActiveFilters(reset); // 필터 초기화 후 재검색
+              setTempFilters({ keyword: "", career: "", education: "" });
+              router.push(pathname);
             }}
             className="flex items-center gap-2 p-3 md:px-6 md:py-3 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-green-600 hover:border-green-200 transition-all shadow-sm text-sm font-bold group absolute right-0 bottom-0"
             title="필터 초기화 및 새로고침"
@@ -350,7 +362,7 @@ function JobPageContent() {
               </div>
 
               <p className="text-slate-800 font-bold text-xl mb-2">
-                '{activeFilters.keyword}' 검색 결과가 없습니다.
+                '{currentKeyword}' 검색 결과가 없습니다.
               </p>
               <p className="text-slate-400 text-sm mb-8">
                 단어의 철자가 정확한지 확인하시거나, 다른 키워드로 검색해보세요.
@@ -393,7 +405,7 @@ function JobPageContent() {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                onPageChange={(page) => setCurrentPage(page)}
+                onPageChange={handlePageChange}
                 themeColor="green"
               />
             </div>
