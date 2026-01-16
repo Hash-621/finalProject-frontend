@@ -560,6 +560,7 @@ export default function SignUpPage() {
       {isTermsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
+            {/* 모달 헤더 */}
             <div className="p-8 border-b flex items-center justify-between bg-slate-50/50">
               <h4 className="text-xl font-black text-slate-800">
                 서비스 이용약관
@@ -571,9 +572,193 @@ export default function SignUpPage() {
                 <X size={24} />
               </button>
             </div>
-            <div className="p-8 overflow-y-auto max-h-[400px] text-sm text-slate-500 leading-relaxed">
-              <p>약관 내용...</p>
+
+            {/* 약관 내용 영역 */}
+            <div className="p-8 overflow-y-auto max-h-[400px] text-sm text-slate-500 leading-relaxed custom-scrollbar">
+              <div className="space-y-6">
+                <h5 className="text-base font-bold text-slate-800 text-center pb-2 border-b border-slate-100">
+                  다잇슈대전 서비스 이용약관 (안)
+                </h5>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제1조 (목적)
+                  </h6>
+                  <p>
+                    이 약관은 다잇슈(이하 &quot;회사&quot;라 함)가 운영하는
+                    다잇슈대전(이하 &quot;서비스&quot;라 함)에서 제공하는 인터넷
+                    관련 서비스의 이용조건 및 절차, 회사와 회원의 권리, 의무 및
+                    책임사항을 규정함을 목적으로 합니다.
+                  </p>
+                </section>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제2조 (용어의 정의)
+                  </h6>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>
+                      &quot;서비스&quot;라 함은 구현되는 단말기(PC, 휴대형
+                      단말기 등 각종 유무선 장치를 포함)와 상관없이
+                      &quot;회원&quot;이 이용할 수 있는 다잇슈대전 관련 제반
+                      서비스를 의미합니다.
+                    </li>
+                    <li>
+                      &quot;회원&quot;이라 함은 &quot;서비스&quot;에 접속하여 이
+                      약관에 따라 &quot;회사&quot;와 이용계약을 체결하고
+                      &quot;회사&quot;가 제공하는 &quot;서비스&quot;를 이용하는
+                      고객을 말합니다.
+                    </li>
+                    <li>
+                      &quot;아이디(ID)&quot;라 함은 &quot;회원&quot;의 식별과
+                      &quot;서비스&quot; 이용을 위하여 &quot;회원&quot;이 정하고
+                      &quot;회사&quot;가 승인하는 문자와 숫자의 조합을
+                      의미합니다.
+                    </li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제3조 (약관의 게시와 개정)
+                  </h6>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>
+                      &quot;회사&quot;는 이 약관의 내용을 &quot;회원&quot;이
+                      쉽게 알 수 있도록 서비스 초기 화면에 게시합니다.
+                    </li>
+                    <li>
+                      &quot;회사&quot;는 「약관의 규제에 관한 법률」,
+                      「정보통신망 이용촉진 및 정보보호 등에 관한 법률」 등
+                      관련법을 위배하지 않는 범위에서 이 약관을 개정할 수
+                      있습니다.
+                    </li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제4조 (서비스의 제공 및 변경)
+                  </h6>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>
+                      &quot;회사&quot;는 다음과 같은 업무를 수행합니다.
+                      <ul className="list-disc pl-4 mt-1 space-y-1 text-slate-400">
+                        <li>대전 지역 기반 정보 제공 (맛집, 축제, 병원 등)</li>
+                        <li>지역 내 구인구직 정보 제공</li>
+                        <li>
+                          커뮤니티 서비스 및 기타 &quot;회사&quot;가 정하는 업무
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      &quot;회사&quot;는 기술적 사양의 변경 등의 사유로 장차
+                      체결되는 계약에 의해 제공할 재화 또는 용역의 내용을 변경할
+                      수 있습니다.
+                    </li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제5조 (서비스의 중단)
+                  </h6>
+                  <p>
+                    &quot;회사&quot;는 컴퓨터 등 정보통신설비의 보수점검, 교체
+                    및 고장, 통신두절 등의 사유가 발생한 경우에는
+                    &quot;서비스&quot;의 제공을 일시적으로 중단할 수 있습니다.
+                  </p>
+                </section>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제6조 (회원가입)
+                  </h6>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>
+                      이용자는 &quot;회사&quot;가 정한 가입 양식에 따라
+                      회원정보를 기입한 후 이 약관에 동의한다는 의사표시를
+                      함으로서 회원가입을 신청합니다.
+                    </li>
+                    <li>
+                      &quot;회사&quot;는 제1항과 같이 회원으로 가입할 것을
+                      신청한 이용자 중 다음 각 호에 해당하지 않는 한 회원으로
+                      등록합니다.
+                      <ul className="list-disc pl-4 mt-1 space-y-1 text-slate-400">
+                        <li>
+                          가입신청자가 이 약관에 의하여 이전에 회원자격을 상실한
+                          적이 있는 경우
+                        </li>
+                        <li>등록 내용에 허위, 기재누락, 오기가 있는 경우</li>
+                      </ul>
+                    </li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제7조 (회원의 의무)
+                  </h6>
+                  <p className="mb-1">
+                    &quot;회원&quot;는 다음 행위를 하여서는 안 됩니다.
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>신청 또는 변경 시 허위 내용의 등록</li>
+                    <li>타인의 정보 도용</li>
+                    <li>&quot;회사&quot;가 게시한 정보의 변경</li>
+                    <li>
+                      &quot;회사&quot; 및 기타 제3자의 저작권 등 지적재산권에
+                      대한 침해
+                    </li>
+                    <li>
+                      &quot;회사&quot; 및 기타 제3자의 명예를 손상시키거나
+                      업무를 방해하는 행위
+                    </li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제8조 (저작권의 귀속 및 이용제한)
+                  </h6>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>
+                      &quot;회사&quot;가 작성한 저작물에 대한 저작권 및 기타
+                      지적재산권은 &quot;회사&quot;에 귀속합니다.
+                    </li>
+                    <li>
+                      &quot;회원&quot;이 &quot;서비스&quot; 내에 게시한 게시물의
+                      저작권은 해당 게시물의 저작자에게 귀속됩니다.
+                    </li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h6 className="font-bold text-slate-700 mb-1">
+                    제9조 (면책조항)
+                  </h6>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>
+                      &quot;회사&quot;는 천재지변 또는 이에 준하는 불가항력으로
+                      인하여 &quot;서비스&quot;를 제공할 수 없는 경우에는
+                      &quot;서비스&quot; 제공에 관한 책임이 면제됩니다.
+                    </li>
+                    <li>
+                      &quot;회사&quot;는 &quot;회원&quot;의 귀책사유로 인한
+                      &quot;서비스&quot; 이용의 장애에 대하여는 책임을 지지
+                      않습니다.
+                    </li>
+                  </ol>
+                </section>
+
+                <section className="pt-4 border-t border-slate-100">
+                  <h6 className="font-bold text-slate-700 mb-1">부칙</h6>
+                  <p>이 약관은 2026년 1월 16일부터 시행합니다.</p>
+                </section>
+              </div>
             </div>
+
+            {/* 모달 하단 버튼 */}
             <div className="p-8 bg-slate-50 flex gap-4">
               <button
                 onClick={() => {

@@ -6,9 +6,9 @@ export default function Page() {
       <section className="mb-8">
         <h2 className="text-xl font-bold mb-4">제 1 조 (목적)</h2>
         <p className="text-slate-600 leading-relaxed">
-          본 약관은 대전 꿀잼 투어(이하 "회사")가 제공하는 제반 서비스의 이용과
-          관련하여 회사와 회원 및 이용자의 권리, 의무 및 책임사항을 규정함을
-          목적으로 합니다.
+          본 약관은 다잇슈(이하 "회사")가 제공하는 제반 서비스의 이용과 관련하여
+          회사와 회원 및 이용자의 권리, 의무 및 책임사항을 규정함을 목적으로
+          합니다.
         </p>
       </section>
 
