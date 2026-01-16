@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react"; // 리액트 훅
 import Link from "next/link"; // (현재는 잘 안 쓰임)
 import Script from "next/script"; // 외부 스크립트(카카오맵 SDK) 로드
-import { useSearchParams } from "next/navigation"; // URL 쿼리 파라미터 읽기
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { tourService, userService } from "@/api/services"; // API 서비스
 import { Tour } from "@/types/tour"; // 데이터 타입
 // 아이콘 라이브러리
@@ -41,6 +41,8 @@ const TourSkeleton = () => (
 
 // --- [메인 콘텐츠 컴포넌트] ---
 function TourPageContent() {
+  const router = useRouter(); // URL 이동 훅
+  const pathname = usePathname(); // 현재 경로 훅
   const searchParams = useSearchParams();
   const initialKeyword = searchParams.get("keyword") || ""; // URL에서 초기 검색어 가져오기
 
@@ -54,7 +56,8 @@ function TourPageContent() {
   const [keyword, setKeyword] = useState(initialKeyword); // 검색어
   const [selectedCategory, setSelectedCategory] = useState("전체"); // 지역 필터 (구 단위)
 
-  const [currentPage, setCurrentPage] = useState(1); // 현재 페이지
+  const initialPage = Number(searchParams.get("page")) || 1;
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const itemsPerPage = 8; // 페이지당 아이템 수
 
   // 🔥 [추가됨] 변환된 좌표(위도, 경도)를 저장할 상태
@@ -62,6 +65,22 @@ function TourPageContent() {
   const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(
     null
   );
+
+  // --- [페이지 변경 핸들러] ---
+  // 이 함수가 실행되면 URL이 바뀌고, 아래 useEffect가 감지해서 상태를 바꿉니다.
+  const handlePageChange = (page: number) => {
+    const currentParams = new URLSearchParams(
+      Array.from(searchParams.entries())
+    );
+    currentParams.set("page", page.toString());
+    router.push(`${pathname}?${currentParams.toString()}`, { scroll: false });
+  };
+
+  // 브라우저 뒤로가기나 handlePageChange로 URL이 바뀌면 실행됩니다.
+  useEffect(() => {
+    const page = Number(searchParams.get("page")) || 1;
+    setCurrentPage(page);
+  }, [searchParams]);
 
   // --- [1. 데이터 로드 (useEffect)] ---
   useEffect(() => {
@@ -133,13 +152,28 @@ function TourPageContent() {
     }
 
     setFilteredTours(result);
-    setCurrentPage(1); // 필터 바뀌면 1페이지로 리셋
   }, [tours, selectedCategory, keyword]);
 
-  // 필터 초기화 버튼 핸들러
+  // 1. 검색어 입력 핸들러
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setKeyword(e.target.value);
+    // 검색 중에는 URL까지 바꾸면 너무 느려질 수 있으므로, State만 1로 맞춥니다.
+    setCurrentPage(1);
+  };
+
+  // 2. 카테고리 변경 핸들러 (수정됨 🔥)
+  const handleCategoryFilter = (category: string) => {
+    setSelectedCategory(category);
+    // 카테고리를 바꾸면 무조건 1페이지로 가야 하므로 URL을 업데이트합니다.
+    handlePageChange(1);
+  };
+
+  // 3. 초기화 버튼 핸들러 (수정됨 🔥)
   const handleReset = () => {
     setKeyword("");
     setSelectedCategory("전체");
+    // 초기화 시 1페이지로 이동
+    handlePageChange(1);
   };
 
   // 즐겨찾기 토글 핸들러
@@ -248,11 +282,6 @@ function TourPageContent() {
       .trim();
   };
 
-  // 카테고리 필터 핸들러
-  const handleFilter = (category: string) => {
-    setSelectedCategory(category);
-  };
-
   // 페이지네이션 계산
   const totalPages = Math.ceil(filteredTours.length / itemsPerPage);
   const currentItems = filteredTours.slice(
@@ -298,13 +327,13 @@ function TourPageContent() {
                 type="text"
                 placeholder="관광지 이름이나 주소 검색..."
                 value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                onChange={handleSearchChange}
                 className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-3xl text-sm font-bold shadow-sm focus:outline-none focus:ring-4 focus:ring-green-500/10 focus:border-green-500 transition-all"
               />
               {/* 검색어 삭제 및 초기화 버튼 */}
               {keyword ? (
                 <button
-                  onClick={() => setKeyword("")}
+                  onClick={handleReset}
                   className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
                 >
                   <X size={16} />
@@ -326,7 +355,7 @@ function TourPageContent() {
             {categories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => handleFilter(cat)}
+                onClick={() => handleCategoryFilter(cat)}
                 className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
                   selectedCategory === cat
                     ? "bg-green-600 text-white shadow-lg"
@@ -411,7 +440,7 @@ function TourPageContent() {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={(page) => setCurrentPage(page)}
+            onPageChange={handlePageChange}
             themeColor="green"
           />
         )}
