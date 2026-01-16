@@ -753,7 +753,7 @@ export default function SignUpPage() {
 
                 <section className="pt-4 border-t border-slate-100">
                   <h6 className="font-bold text-slate-700 mb-1">부칙</h6>
-                  <p>이 약관은 2026년 1월 16일부터 시행합니다.</p>
+                  <p>이 약관은 2025년 12월 30일부터 시행합니다.</p>
                 </section>
               </div>
             </div>
