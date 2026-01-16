@@ -42,9 +42,9 @@ export default function Page() {
 
       <h2 className="text-xl font-bold mb-4">개인정보 보호책임자</h2>
       <p className="text-slate-600">
-        성명: 홍길동 (Daejeon Tour Team)
+        성명: 홍길동 (Daitshu)
         <br />
-        이메일: support@daejeontour.com
+        이메일: support@daitshu.com
       </p>
 
       <p className="text-sm text-slate-400 mt-20 font-bold underline">
