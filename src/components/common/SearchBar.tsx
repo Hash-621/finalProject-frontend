@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import axios from "axios"; // [추가] AI 서버 통신용
 
+const aiIp = process.env.NEXT_PUBLIC_AI_IP || "192.168.0.134";
+
 interface SearchBarProps {
   // 스타일 커스터마이징을 위한 클래스명들 (선택 사항)
   className?: string;
@@ -24,7 +26,6 @@ interface SearchBarProps {
   initialValue?: string;
   initialStatus?: string;
 }
-
 export default function SearchBar({
   className = "",
   inputClassName = "",
@@ -92,7 +93,7 @@ export default function SearchBar({
 
       // 2. AI 서버로 POST 요청 (192.168.0.97:5000)
       const res = await axios.post(
-        "http://192.168.0.97:5000/predict",
+        `http://${aiIp}:5000/predict`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -203,7 +204,7 @@ export default function SearchBar({
 
 // [추가됨] 이미지 검색:
 // 사용자가 돋보기 옆의 '사진 아이콘'을 누릅니다.
-// 파일 선택창이 열리고 사진을 고르면, 자동으로 지정된 AI 서버(192.168.0.97)로 사진을 보냅니다.
+// 파일 선택창이 열리고 사진을 고르면, 자동으로 지정된 AI 서버(192.168.0.134)로 사진을 보냅니다.
 // AI가 사진을 분석해서 "사과"라고 알려주면, 알림창이 뜨고 **`/search/imageresults`** 페이지로 이동합니다.
 
 // 돋보기 클릭 (일반 검색):

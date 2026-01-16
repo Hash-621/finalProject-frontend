@@ -70,7 +70,7 @@ function KakaoCallbackContent() {
         Cookies.set("token", token, { expires: 1, path: "/" });
 
         // 로그인이 완료되었으니 메인 페이지("/")로 이동시킵니다.
-        router.push("/");
+         router.push("/");
       })
       .catch((err) => {
         // [실패 시] 백엔드가 에러를 뱉었거나 통신이 실패했을 때 실행됩니다.

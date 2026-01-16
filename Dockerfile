@@ -14,6 +14,11 @@ RUN npm run build
 FROM node:18-alpine AS runner
 WORKDIR /app
 
+# 1. docker-compose에서 보낸 args 받기
+ARG NEXT_PUBLIC_AI_API_URL
+
+# 2. 환경변수로 등록 (빌드 도중 사용 가능하게)
+ENV NEXT_PUBLIC_AI_API_URL=$NEXT_PUBLIC_AI_API_URL
 
 # 보안을 위해 nextjs 유저 생성 및 사용 (선택사항이나 권장됨)
 RUN addgroup --system --gid 1001 nodejs
