@@ -456,6 +456,7 @@ export default function TourReviewDetail({
 
   // 3. 정상 데이터가 있을 때 화면
   return (
+    
     <div className="min-h-screen bg-[#F8FAFC] pb-8 sm:pb-32">
       <Modal
         isOpen={modalConfig.isOpen}

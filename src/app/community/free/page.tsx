@@ -7,27 +7,29 @@
 // 2. 공통으로 사용되는 '게시판 목록 컴포넌트'를 불러옵니다.
 // 이 컴포넌트 안에는 목록 조회, 페이지네이션, 검색 기능 등이 이미 다 구현되어 있습니다.
 import CommonBoardList from "@/components/community/CommunityBoardList";
-
+import React, { Suspense } from 'react';
 // 3. 페이지의 메인 함수입니다. 파일명(page.tsx)에 따라 '/community/free' 경로로 접속하면 이 함수가 실행됩니다.
 export default function FreeBoardList() {
   // 4. 화면에 그릴 내용을 반환합니다.
   return (
     // 5. 불러온 CommonBoardList 컴포넌트를 실행합니다.
     // 여기서부터는 이 컴포넌트에게 "자유게시판처럼 보이게 해줘"라고 설정값(Props)을 넘겨주는 과정입니다.
-    <CommonBoardList
-      theme="green" // 6. 테마 색상을 '초록색'으로 설정합니다. (버튼 색, 강조 색 등)
-      title="자유게시판" // 7. 페이지 상단에 큼지막하게 표시될 제목입니다.
-      description="대전 시민들의 솔직하고 담백한 이야기" // 8. 제목 밑에 들어갈 작은 설명 문구입니다.
-      // 9. 상단 배너에 깔릴 배경 이미지 주소입니다. (Unsplash 이미지 사용 중)
-      headerImage="https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=1920"
-      // 10. [핵심] 데이터를 가져올 API 주소입니다.
-      // CommonBoardList는 이 주소를 받아서 내부적으로 'axios.get("/community/free")'를 실행하게 됩니다.
-      apiEndpoint="/community/free"
-      // 11. '글쓰기' 버튼을 눌렀을 때 이동할 경로입니다.
-      writeLink="/community/write"
-      // 12. 만약 게시글이 하나도 없을 때, 화면 덩그러니 비워두지 않고 보여줄 안내 문구입니다.
-      emptyMessage="첫 번째 이야기의 주인공이 되어보세요!"
-    />
+    <Suspense fallback={<div>로딩 중...</div>}>
+      <CommonBoardList
+        theme="green" // 6. 테마 색상을 '초록색'으로 설정합니다. (버튼 색, 강조 색 등)
+        title="자유게시판" // 7. 페이지 상단에 큼지막하게 표시될 제목입니다.
+        description="대전 시민들의 솔직하고 담백한 이야기" // 8. 제목 밑에 들어갈 작은 설명 문구입니다.
+        // 9. 상단 배너에 깔릴 배경 이미지 주소입니다. (Unsplash 이미지 사용 중)
+        headerImage="https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=1920"
+        // 10. [핵심] 데이터를 가져올 API 주소입니다.
+        // CommonBoardList는 이 주소를 받아서 내부적으로 'axios.get("/community/free")'를 실행하게 됩니다.
+        apiEndpoint="/community/free"
+        // 11. '글쓰기' 버튼을 눌렀을 때 이동할 경로입니다.
+        writeLink="/community/write"
+        // 12. 만약 게시글이 하나도 없을 때, 화면 덩그러니 비워두지 않고 보여줄 안내 문구입니다.
+        emptyMessage="첫 번째 이야기의 주인공이 되어보세요!"
+      />
+    </Suspense>
   );
 }
 
