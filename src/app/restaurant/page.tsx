@@ -763,7 +763,7 @@ function RestaurantPageContent() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                VERIFIED SPECIALISTS
+                DAEJEON NOW
               </div>
               <h2 className="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
                 <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
