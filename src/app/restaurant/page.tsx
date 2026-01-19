@@ -138,7 +138,7 @@ const RestaurantListItem = React.memo(
         </button>
       </div>
     );
-  }
+  },
 );
 RestaurantListItem.displayName = "RestaurantListItem"; // 디버깅용 이름 설정
 
@@ -247,7 +247,7 @@ const KakaoMapContainer = React.memo(
     // 현재 선택된 아이템 찾기 (오버레이 표시용)
     const activeItem = useMemo(
       () => data.find((d) => d.id === activeId),
-      [data, activeId]
+      [data, activeId],
     );
 
     // API 키가 없으면 에러 표시
@@ -337,7 +337,7 @@ const KakaoMapContainer = React.memo(
                     zIndex={activeId === item.id ? 9999 : 1} // 선택된 마커를 맨 위로
                     clickable={true}
                   />
-                )
+                ),
             )}
           </MarkerClusterer>
 
@@ -398,7 +398,7 @@ const KakaoMapContainer = React.memo(
         </KakaoMap>
       </div>
     );
-  }
+  },
 );
 KakaoMapContainer.displayName = "KakaoMapContainer"; // 디버깅용 이름
 
@@ -446,7 +446,7 @@ function RestaurantPageContent() {
   // 영업시간 문자열을 파싱해서 현재 상태(OPEN/CLOSED/BREAK) 반환
   const getBusinessStatus = useCallback(
     (
-      timeString: string | undefined
+      timeString: string | undefined,
     ): { status: "OPEN" | "BREAK" | "CLOSED"; todayStr: string } => {
       if (!timeString) return { status: "CLOSED", todayStr: "정보 없음" };
 
@@ -507,7 +507,7 @@ function RestaurantPageContent() {
 
       // 시간 추출 (예: 10:00 ~ 22:00)
       const timeMatch = targetRule.match(
-        /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2})/
+        /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2})/,
       );
       if (!timeMatch) return { status: "CLOSED", todayStr: targetRule };
 
@@ -518,14 +518,17 @@ function RestaurantPageContent() {
 
       // 브레이크 타임 체크
       const breakMatch = timeString.match(
-        /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2}).*(브레이크|break)/i
+        /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2}).*(브레이크|break)/i,
       );
       if (breakMatch) {
         const [__, bStart, bEnd] = breakMatch;
         const bStartMin = parseTime(bStart);
         const bEndMin = parseTime(bEnd);
         if (currentMinutes >= bStartMin && currentMinutes < bEndMin) {
-          return { status: "BREAK", todayStr: `${openStr} ~ ${closeStr}` };
+          return {
+            status: "BREAK",
+            todayStr: `${openStr} ~ ${closeStr}`,
+          };
         }
       }
 
@@ -535,7 +538,7 @@ function RestaurantPageContent() {
       }
       return { status: "CLOSED", todayStr: `${openStr} ~ ${closeStr}` };
     },
-    [parseTime]
+    [parseTime],
   );
 
   // --- [Effect] 데이터 가져오기 ---
@@ -565,7 +568,7 @@ function RestaurantPageContent() {
         // 데이터 합치기 (맛집 정보 + 영업 상태 + 찜 여부)
         const mergedList = allRestaurants.map((item) => {
           const { status, todayStr } = getBusinessStatus(
-            item.restOpenTime || item.openTime
+            item.restOpenTime || item.openTime,
           );
           return {
             ...item,
@@ -608,7 +611,7 @@ function RestaurantPageContent() {
             name.includes(term) ||
             menu.includes(term) ||
             category.includes(term) ||
-            address.includes(term)
+            address.includes(term),
         );
       });
     }
@@ -627,7 +630,7 @@ function RestaurantPageContent() {
 
     // 좌표가 없는 아이템만 골라냄
     const itemsToGeocode = filteredList.filter(
-      (item) => !item.lat && item.address
+      (item) => !item.lat && item.address,
     );
     if (itemsToGeocode.length === 0) return;
 
@@ -674,7 +677,7 @@ function RestaurantPageContent() {
             return coords
               ? { ...item, lat: coords.lat, lng: coords.lng }
               : item;
-          })
+          }),
         );
       }
     };
@@ -693,14 +696,14 @@ function RestaurantPageContent() {
         await restaurantService.toggleFavorite(id);
         setRestaurants((prev) =>
           prev.map((item) =>
-            item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
-          )
+            item.id === id ? { ...item, isFavorite: !item.isFavorite } : item,
+          ),
         );
       } catch (error) {
         alert("로그인이 필요합니다.");
       }
     },
-    []
+    [],
   );
 
   // 🟢 URL 업데이트 도우미 함수
@@ -733,7 +736,7 @@ function RestaurantPageContent() {
   // 마커 클릭
   const handleMarkerClick = useCallback(
     (item: ExtendedRestaurantData) => setActiveId(item.id),
-    []
+    [],
   );
   // 지도 빈 곳 클릭 (선택 해제)
   const handleMapClick = useCallback(() => setActiveId(null), []);
@@ -742,7 +745,7 @@ function RestaurantPageContent() {
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
   const currentItems = filteredList.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   // -----------------------------------------------------------
@@ -753,32 +756,29 @@ function RestaurantPageContent() {
       {/* 1. Header (제목 및 검색/필터 영역) */}
       <div className="bg-white border-b border-slate-100 pt-20 pb-10">
         <div className="max-w-7xl mx-auto px-6">
-          {/* 배지 */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 mb-3 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight w-fit">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            DAEJEON NOW
-          </div>
-
-          {/* 제목 및 검색창 */}
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-            <div>
-              <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.1] mb-2">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 sm:mb-16">
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black tracking-tight">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                VERIFIED SPECIALISTS
+              </div>
+              <h2 className="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
                 <span className="text-transparent bg-clip-text bg-linear-to-r from-green-600 to-green-400">
                   대전의 맛
                 </span>
                 을 찾아서
-              </h1>
-              <p className="text-slate-500 font-medium">
+              </h2>
+              <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-2xl">
                 현지인이 추천하는 진짜 맛집 리스트를 카테고리별로 확인하세요.
               </p>
             </div>
 
-            {/* 그리드 뷰일 때만 상단 검색창 표시 */}
+            {/* 검색창 (지도 뷰 아닐 때만 노출) */}
             {!isMapView && (
-              <div className="relative w-full lg:w-96 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="relative w-full lg:w-96 mb-15">
                 <Search
                   className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
                   size={20}
@@ -878,36 +878,18 @@ function RestaurantPageContent() {
         </div>
       </div>
 
-      {/* 2. Content (목록 or 지도) */}
-      <div className="max-w-7xl mx-auto px-6 mt-8">
-        {loading ? (
-          // 로딩 스켈레톤
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {Array(8)
-              .fill(0)
-              .map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm animate-pulse h-[380px] flex flex-col"
-                >
-                  <div className="h-48 bg-slate-200 w-full" />
-                  <div className="p-6 flex-1 space-y-3">
-                    <div className="h-7 bg-slate-200 rounded w-3/4" />
-                    <div className="h-4 bg-slate-200 rounded w-1/2" />
-                    <div className="h-4 bg-slate-200 rounded w-full mt-6" />
-                  </div>
-                </div>
-              ))}
-          </div>
-        ) : isMapView ? (
-          // [View Mode] 지도 뷰
-          <div className="flex h-[750px] w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200 relative">
+      <div className="w-full lg:max-w-7xl mx-auto px-4 lg:px-5 mt-10">
+        {/* 🔥 [조건부 렌더링] 지도 뷰 vs 리스트 뷰 */}
+        {isMapView ? (
+          // === [지도로 보기 모드] ===
+          // 🔥 [수정됨] 반응형 배치: 모바일은 세로(리스트 위, 지도 아래), PC는 가로(리스트 좌, 지도 우)
+          <div className="flex flex-col lg:flex-row h-[85vh] lg:h-[750px] w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200 relative">
             {/* Sidebar (검색 및 리스트) */}
             <div
-              className={`flex flex-col bg-white border-r border-slate-100 transition-all duration-300 ease-in-out relative z-10 ${
+              className={`flex flex-col bg-white border-b lg:border-b-0 lg:border-r border-slate-100 transition-all duration-300 ease-in-out relative z-10 ${
                 isSidebarOpen
-                  ? "w-[400px] min-w-[320px]"
-                  : "w-0 min-w-0 overflow-hidden"
+                  ? "h-[45%] lg:h-full w-full lg:w-[400px] lg:min-w-[320px]" // 열렸을 때: 모바일 높이 45%, PC 너비 400px
+                  : "h-0 lg:h-full w-full lg:w-0 lg:min-w-0 overflow-hidden" // 닫혔을 때: 숨김
               }`}
             >
               {/* 사이드바 내부 검색창 */}
@@ -942,11 +924,22 @@ function RestaurantPageContent() {
                   <span className="text-green-600">{filteredList.length}</span>
                   개
                 </span>
+                {/* 모바일 닫기 버튼 (아래로 접기) */}
                 <button
                   onClick={() => setIsSidebarOpen(false)}
                   className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 lg:hidden"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronRight
+                    size={16}
+                    className="rotate-90" // 아이콘 회전 (아래 방향)
+                  />
+                </button>
+                {/* PC 닫기 버튼 (왼쪽으로 접기) */}
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hidden lg:block"
+                >
+                  <ChevronRight size={16} className="rotate-180" />
                 </button>
               </div>
 
@@ -973,13 +966,14 @@ function RestaurantPageContent() {
 
             {/* Map Area */}
             <div className="flex-1 relative h-full bg-slate-100 overflow-hidden">
-              {/* 사이드바 열기 버튼 */}
+              {/* 사이드바 열기 버튼 (닫혀있을 때만 보임) */}
               {!isSidebarOpen && (
                 <button
                   onClick={() => setIsSidebarOpen(true)}
                   className="absolute top-4 left-4 z-20 bg-white p-2.5 rounded-lg shadow-md border border-slate-200 text-slate-600 hover:text-green-600 transition-transform hover:scale-105"
                 >
-                  <ChevronRight size={20} />
+                  {/* 반응형 아이콘 방향 (모바일: 위로, PC: 오른쪽으로) */}
+                  <ChevronRight size={20} className="-rotate-90 lg:rotate-0" />
                 </button>
               )}
 
@@ -1105,6 +1099,7 @@ function RestaurantPageContent() {
   );
 }
 
+// --- [최상위 페이지 컴포넌트] ---
 export default function RestaurantListPage() {
   return (
     <Suspense
@@ -1118,23 +1113,3 @@ export default function RestaurantListPage() {
     </Suspense>
   );
 }
-
-// 데이터 준비 (로딩): 페이지에 들어오면 서버에서 전체 맛집 데이터와 나의 찜 목록을 가져옵니다. 이때 화면은 스켈레톤 UI(회색 박스들이 반짝이는 것)를 보여주어 지루함을 덜어줍니다.
-
-// 데이터 가공: 가져온 데이터에 "지금 영업 중인가?"(Open/Closed), "내가 찜했나?"(IsFavorite), "위도/경도 좌표는 어디인가?" 등의 정보를 추가합니다.
-
-// 화면 표시 (기본: 그리드 뷰): 카드 형태의 맛집 목록이 쫘르륵 뜹니다.
-
-// 검색 & 필터: 상단 검색창에 "치킨"을 치거나, "한식" 버튼을 누르면 즉시 목록이 바뀝니다.
-
-// 영업 중 필터: "영업 중만 보기"를 체크하면 문 닫은 가게는 싹 사라집니다.
-
-// 지도 보기 전환: "지도로 보기" 버튼을 누르면 화면이 바뀝니다.
-
-// 왼쪽: 검색 결과를 보여주는 리스트 사이드바가 생깁니다.
-
-// 오른쪽: 카카오맵이 뜨고 맛집 위치에 마커들이 찍힙니다.
-
-// 상호작용: 리스트에서 가게를 클릭하면 지도가 그곳으로 이동하고, 지도 마커를 클릭하면 가게 정보가 말풍선(오버레이)으로 뜹니다.
-
-// 로드뷰: 눈 모양 아이콘을 누르면 거리뷰(로드뷰) 모드로 전환되어 주변을 둘러볼 수 있습니다.
