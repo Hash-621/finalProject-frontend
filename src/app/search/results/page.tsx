@@ -83,7 +83,7 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
       "items-center",
       "justify-center",
       "text-gray-400",
-      "text-sm"
+      "text-sm",
     );
     e.currentTarget.parentElement.innerText = "이미지 없음";
   }
@@ -131,8 +131,8 @@ const SearchSection = ({
       // 나머지는 공통 상세 페이지 (/search/results/[category])
       router.push(
         `/search/results/${categoryKey}?searchKeyword=${encodeURIComponent(
-          searchKeyword
-        )}`
+          searchKeyword,
+        )}`,
       );
     }
   };
@@ -320,7 +320,7 @@ function SearchResultsContent() {
               열심히 검색하고 있어요... ⏳
             </div>
           ) : Object.values(results).every(
-              (arr) => !arr || arr.length === 0
+              (arr) => !arr || arr.length === 0,
             ) ? (
             // 결과 없음 표시
             <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
@@ -355,7 +355,7 @@ function SearchResultsContent() {
                     renderItemFn = (item: RestaurantData) => {
                       const imgSrc = getSafeImageSrc(
                         RESTAURANT_IMAGE_BASE,
-                        item.imagePath
+                        item.imagePath,
                       );
                       return (
                         <div
@@ -407,8 +407,8 @@ function SearchResultsContent() {
                           onClick={() =>
                             router.push(
                               `/tour/attraction?keyword=${encodeURIComponent(
-                                item.name
-                              )}`
+                                item.name,
+                              )}`,
                             )
                           }
                           className="cursor-pointer border border-gray-100 rounded-2xl overflow-hidden hover:border-green-500 hover:shadow-lg transition-all duration-300 bg-white h-full flex flex-col group"
@@ -473,8 +473,8 @@ function SearchResultsContent() {
                         onClick={() =>
                           router.push(
                             `/job?keyword=${encodeURIComponent(
-                              item.companyName
-                            )}`
+                              item.companyName,
+                            )}`,
                           )
                         }
                         className="cursor-pointer border border-gray-100 rounded-2xl p-5 hover:border-green-500 hover:shadow-lg transition-all h-full flex flex-col justify-between"
@@ -490,10 +490,10 @@ function SearchResultsContent() {
                         </div>
                         <div className="flex flex-wrap gap-2 text-xs text-gray-500">
                           <span className="bg-gray-100 px-2 py-1 rounded">
-                            {item.location || "지역 정보 없음"}
+                            {item.description || "대전 전체"}
                           </span>
                           <span className="bg-gray-100 px-2 py-1 rounded">
-                            {item.career}
+                            {item.careerLevel}
                           </span>
                         </div>
                       </div>
@@ -553,7 +553,7 @@ function SearchResultsContent() {
                           </p>
                         </div>
                         <p className="text-xs text-gray-400 mt-3 text-right">
-                          by {item.userId}
+                          by {item.userNickname}
                         </p>
                       </div>
                     );
@@ -582,7 +582,7 @@ function SearchResultsContent() {
                           </div>
                           <div className="flex items-center gap-3 ml-4 text-xs text-gray-400 whitespace-nowrap">
                             {section.id !== "jobPosts" && (
-                              <span>{item.userId}</span>
+                              <span>{item.userNickname}</span>
                             )}
                             <span>
                               {item.createdAt

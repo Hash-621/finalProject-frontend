@@ -7,6 +7,8 @@ export interface JobData {
   education: string;
   deadline: string;
   location?: string;
+  description?: string;
+  careerLevel?: string;
 }
 
 // 2. 지원하기 폼 데이터 (Apply Form)

@@ -41,4 +41,5 @@ export interface PostItem {
   userId?: string;
   viewCount?: number;
   updatedAt?: string;
+  userNickname?: string;
 }
