@@ -14,25 +14,11 @@ import React, {
   useCallback, // 함수를 메모이제이션하여 불필요한 재생성을 방지하는 훅 (핸들러 최적화용)
   Suspense, // 비동기 컴포넌트 로딩 중 대체 UI(로딩 스피너)를 보여주기 위한 React 내장 컴포넌트
 } from "react";
-<<<<<<< HEAD
 import Link from "next/link"; // 페이지 이동을 위한 Next.js 링크 컴포넌트 (SPA 방식 이동)
 import { restaurantService, userService } from "@/api/services"; // 백엔드 통신을 위한 API 서비스 함수들
 import { RestaurantData } from "@/types/restaurant"; // 맛집 데이터의 타입 정의 (TypeScript 인터페이스)
 import { useRouter, useSearchParams, usePathname } from "next/navigation"; // URL 경로 및 쿼리 파라미터를 제어하는 훅들
 // UI에 사용될 아이콘들을 lucide-react 라이브러리에서 가져옵니다.
-=======
-
-import Link from "next/link"; // 페이지 이동 링크
-
-import { restaurantService, userService } from "@/api/services"; // API 호출 함수들
-
-import { RestaurantData } from "@/types/restaurant"; // 타입 정의
-
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-
-// 아이콘들 불러오기
-
->>>>>>> origin/main
 import {
   MapPin, // 지도 핀 아이콘
   Heart, // 하트(찜하기) 아이콘
