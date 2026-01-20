@@ -203,6 +203,14 @@ export default function Page() {
                   onClick={socialLogin.kakao}
                   className="w-full bg-[#FEE500] text-[#191919] font-black py-4 rounded-3xl flex items-center justify-center gap-2"
                 >
+                  <span className="flex items-center">
+                    <Image
+                      src="/images/kakao.png"
+                      alt="카카오 로고"
+                      width={20}
+                      height={20}
+                    />
+                  </span>
                   <span className="text-xs">카카오</span>
                 </button>
               </div>
