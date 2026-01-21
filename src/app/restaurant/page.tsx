@@ -459,8 +459,9 @@ function RestaurantPageContent() {
 
       const now = new Date();
       const dayIndex = now.getDay(); // 0(일) ~ 6(토)
-      const currentMinutes = now.getHours() * 60 + now.getMinutes(); // 현재 시각을 분 단위로 변환
-      const daysKor = [
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const daysKor = ["일", "월", "화", "수", "목", "금", "토"];
+      const daysFull = [
         "일요일",
         "월요일",
         "화요일",
@@ -469,20 +470,46 @@ function RestaurantPageContent() {
         "금요일",
         "토요일",
       ];
-      const todayLabel = daysKor[dayIndex];
+      const todayShort = daysKor[dayIndex];
+      const todayFull = daysFull[dayIndex];
       const isWeekend = dayIndex === 0 || dayIndex === 6;
 
-      const rules = timeString.split("|").map((s) => s.trim()); // "|"로 구분된 여러 규칙 분리
+      // 구분자를 '|' 로 나누고, 앞뒤 공백 제거
+      const rules = timeString.split("|").map((s) => s.trim());
       let targetRule = "";
 
-      // 1. 요일이 정확히 일치하는 규칙 찾기
+      // 🔥 1. 요일 매칭 로직 개선 (범위 '월~금' 및 단일 요일 모두 체크)
       for (const rule of rules) {
-        if (rule.includes(todayLabel)) {
+        // A. 정확한 요일 이름이 포함된 경우 (예: "월요일", "월")
+        if (rule.includes(todayShort)) {
           targetRule = rule;
           break;
         }
+
+        // B. 요일 범위 체크 (예: "월~금", "Mon-Fri")
+        // 정규식으로 "요일~요일" 패턴 찾기
+        const rangeMatch = rule.match(
+          /([일월화수목금토])\s*[~-]\s*([일월화수목금토])/,
+        );
+        if (rangeMatch) {
+          const [_, startDay, endDay] = rangeMatch;
+          const startIdx = daysKor.indexOf(startDay);
+          const endIdx = daysKor.indexOf(endDay);
+
+          // 범위 내에 오늘이 있는지 확인 (예: 월(1) ~ 금(5) 사이에 화(2)가 있는지)
+          if (
+            (startIdx <= endIdx &&
+              dayIndex >= startIdx &&
+              dayIndex <= endIdx) ||
+            (startIdx > endIdx && (dayIndex >= startIdx || dayIndex <= endIdx)) // 일~화 같은 경우
+          ) {
+            targetRule = rule;
+            break;
+          }
+        }
       }
-      // 2. 평일/주말 규칙 찾기
+
+      // 2. 평일/주말/매일 규칙 찾기 (targetRule이 없을 때만)
       if (!targetRule) {
         for (const rule of rules) {
           if (isWeekend && (rule.includes("주말") || rule.includes("공휴일"))) {
@@ -493,54 +520,61 @@ function RestaurantPageContent() {
             targetRule = rule;
             break;
           }
-        }
-      }
-      // 3. 매일 또는 기타 기본 규칙 찾기
-      if (!targetRule) {
-        for (const rule of rules) {
           if (
             rule.includes("매일") ||
-            !rule.match(/(월|화|수|목|금|토|일)요일|평일|주말/)
+            !rule.match(/[일월화수목금토]요일|[일월화수목금토]/) // 요일 언급이 없는 경우 기본값으로 간주
           ) {
             targetRule = rule;
-            break;
+            // break하지 않고 더 구체적인게 있는지 볼 수도 있지만, 보통 마지막에 둠
           }
         }
       }
 
-      // 휴무일 처리
-      if (!targetRule || targetRule.includes("휴무"))
+      // 휴무일 체크
+      if (!targetRule || targetRule.includes("휴무")) {
         return { status: "CLOSED", todayStr: "금일 휴무" };
+      }
 
-      // 시간 파싱 (예: "10:00 ~ 22:00")
+      // 🔥 3. 시간 파싱 로직 개선 (~, - 둘 다 허용)
       const timeMatch = targetRule.match(
-        /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2})/,
+        /(\d{1,2}:\d{2})\s*[~\-]\s*(\d{1,2}:\d{2})/,
       );
       if (!timeMatch) return { status: "CLOSED", todayStr: targetRule };
 
       const [_, openStr, closeStr] = timeMatch;
       const openMin = parseTime(openStr);
       let closeMin = parseTime(closeStr);
-      if (closeMin < openMin) closeMin += 24 * 60; // 새벽까지 영업하는 경우 (예: 25시) 처리
 
-      // 브레이크 타임 확인
+      // 종료 시간이 시작 시간보다 작으면 다음날 새벽으로 간주 (예: 18:00 ~ 02:00)
+      if (closeMin < openMin) closeMin += 24 * 60;
+
+      // 🔥 4. 새벽 야간 영업 처리 (현재 시각이 0~새벽 시간대인 경우)
+      // 예: 영업시간 17:00 ~ 02:00(26:00), 현재 시각 01:00(60)
+      // 현재 시각(60)이 오픈 시간(1020)보다 작고, (종료시간 - 24시간)보다 작으면
+      // 현재 시각을 '어제의 연장선'으로 보아 24시간을 더해줌 (01:00 -> 25:00)
+      let adjustedCurrent = currentMinutes;
+      if (currentMinutes < openMin && closeMin >= 24 * 60) {
+        // 단, 현재 시각이 '전날 마감 시간' 이내여야 함
+        if (currentMinutes < closeMin - 24 * 60) {
+          adjustedCurrent += 24 * 60;
+        }
+      }
+
+      // 브레이크 타임 체크
       const breakMatch = timeString.match(
-        /(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2}).*(브레이크|break)/i,
+        /(\d{1,2}:\d{2})\s*[~\-]\s*(\d{1,2}:\d{2}).*(브레이크|break)/i,
       );
       if (breakMatch) {
         const [__, bStart, bEnd] = breakMatch;
         const bStartMin = parseTime(bStart);
         const bEndMin = parseTime(bEnd);
-        if (currentMinutes >= bStartMin && currentMinutes < bEndMin) {
-          return {
-            status: "BREAK",
-            todayStr: `${openStr} ~ ${closeStr}`,
-          };
+        if (adjustedCurrent >= bStartMin && adjustedCurrent < bEndMin) {
+          return { status: "BREAK", todayStr: `${openStr} ~ ${closeStr}` };
         }
       }
 
-      // 현재 시간이 영업 시간 내인지 확인
-      if (currentMinutes >= openMin && currentMinutes < closeMin) {
+      // 최종 상태 판단
+      if (adjustedCurrent >= openMin && adjustedCurrent < closeMin) {
         return { status: "OPEN", todayStr: `${openStr} ~ ${closeStr}` };
       }
       return { status: "CLOSED", todayStr: `${openStr} ~ ${closeStr}` };
@@ -725,7 +759,8 @@ function RestaurantPageContent() {
   const updateParams = (newParams: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams);
     Object.entries(newParams).forEach(([key, value]) => {
-      if (value === null) params.delete(key); // 값이 null이면 파라미터 제거
+      if (value === null)
+        params.delete(key); // 값이 null이면 파라미터 제거
       else params.set(key, value); // 아니면 설정
     });
     if (!newParams.page) params.set("page", "1"); // 필터 변경 시 페이지 1로 초기화
@@ -960,9 +995,7 @@ function RestaurantPageContent() {
               <div className="px-4 py-2 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
                 <span className="text-sm font-bold text-slate-600">
                   검색 결과{" "}
-                  <span className="text-green-600">
-                    {filteredList.length}
-                  </span>
+                  <span className="text-green-600">{filteredList.length}</span>
                   개
                 </span>
                 {/* 모바일용 닫기 버튼 */}
@@ -1015,10 +1048,7 @@ function RestaurantPageContent() {
                   onClick={() => setIsSidebarOpen(true)}
                   className="absolute top-4 left-4 z-20 bg-white p-2.5 rounded-lg shadow-md border border-slate-200 text-slate-600 hover:text-green-600 transition-transform hover:scale-105"
                 >
-                  <ChevronRight
-                    size={20}
-                    className="-rotate-90 lg:rotate-0"
-                  />
+                  <ChevronRight size={20} className="-rotate-90 lg:rotate-0" />
                 </button>
               )}
 
