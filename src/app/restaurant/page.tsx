@@ -460,98 +460,39 @@ function RestaurantPageContent() {
       const now = new Date();
       const dayIndex = now.getDay(); // 0(일) ~ 6(토)
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const daysKor = ["일", "월", "화", "수", "목", "금", "토"];
-      const daysFull = [
-        "일요일",
-        "월요일",
-        "화요일",
-        "수요일",
-        "목요일",
-        "금요일",
-        "토요일",
-      ];
-      const todayShort = daysKor[dayIndex];
-      const todayFull = daysFull[dayIndex];
-      const isWeekend = dayIndex === 0 || dayIndex === 6;
+      const daysKor = ["일", "월", "화", "수", "목", "금", "토"]; // 짧은 요일
+      const todayShort = daysKor[dayIndex]; // 오늘 요일 (예: "월")
 
-      // 구분자를 '|' 로 나누고, 앞뒤 공백 제거
-      const rules = timeString.split("|").map((s) => s.trim());
-      let targetRule = "";
-
-      // 🔥 1. 요일 매칭 로직 개선 (범위 '월~금' 및 단일 요일 모두 체크)
-      for (const rule of rules) {
-        // A. 정확한 요일 이름이 포함된 경우 (예: "월요일", "월")
-        if (rule.includes(todayShort)) {
-          targetRule = rule;
-          break;
-        }
-
-        // B. 요일 범위 체크 (예: "월~금", "Mon-Fri")
-        // 정규식으로 "요일~요일" 패턴 찾기
-        const rangeMatch = rule.match(
-          /([일월화수목금토])\s*[~-]\s*([일월화수목금토])/,
-        );
-        if (rangeMatch) {
-          const [_, startDay, endDay] = rangeMatch;
-          const startIdx = daysKor.indexOf(startDay);
-          const endIdx = daysKor.indexOf(endDay);
-
-          // 범위 내에 오늘이 있는지 확인 (예: 월(1) ~ 금(5) 사이에 화(2)가 있는지)
-          if (
-            (startIdx <= endIdx &&
-              dayIndex >= startIdx &&
-              dayIndex <= endIdx) ||
-            (startIdx > endIdx && (dayIndex >= startIdx || dayIndex <= endIdx)) // 일~화 같은 경우
-          ) {
-            targetRule = rule;
-            break;
-          }
-        }
-      }
-
-      // 2. 평일/주말/매일 규칙 찾기 (targetRule이 없을 때만)
-      if (!targetRule) {
-        for (const rule of rules) {
-          if (isWeekend && (rule.includes("주말") || rule.includes("공휴일"))) {
-            targetRule = rule;
-            break;
-          }
-          if (!isWeekend && rule.includes("평일")) {
-            targetRule = rule;
-            break;
-          }
-          if (
-            rule.includes("매일") ||
-            !rule.match(/[일월화수목금토]요일|[일월화수목금토]/) // 요일 언급이 없는 경우 기본값으로 간주
-          ) {
-            targetRule = rule;
-            // break하지 않고 더 구체적인게 있는지 볼 수도 있지만, 보통 마지막에 둠
-          }
-        }
-      }
-
-      // 휴무일 체크
-      if (!targetRule || targetRule.includes("휴무")) {
+      // 1. 휴무일 체크 (보수적 접근)
+      // "월요일 휴무", "매주 월요일 휴무", "둘째주 일요일 휴무" 등이 포함되어 있으면 일단 휴무 가능성 높음
+      // 단, "월~금" 같은 범위 표현과 헷갈리지 않게 "휴무"라는 단어와 함께 있는지 체크
+      if (
+        timeString.includes(`${todayShort}요일 휴무`) ||
+        timeString.includes(`${todayShort}요일휴무`)
+      ) {
+        // (심화: 여기서 "둘째 주" 등을 체크하려면 날짜 계산 로직이 추가로 필요함.
+        // 현재는 텍스트에 '오늘요일 휴무'가 있으면 일단 CLOSED로 처리)
         return { status: "CLOSED", todayStr: "금일 휴무" };
       }
 
-      // 🔥 3. 시간 파싱 로직 개선 (~, - 둘 다 허용)
-      const timeMatch = targetRule.match(
+      // 2. 시간 파싱 (HH:MM ~ HH:MM 패턴 찾기)
+      // 문자열 어디에 있든 시간 패턴을 찾아냄
+      const timeMatch = timeString.match(
         /(\d{1,2}:\d{2})\s*[~\-]\s*(\d{1,2}:\d{2})/,
       );
-      if (!timeMatch) return { status: "CLOSED", todayStr: targetRule };
+
+      // 시간이 없으면 판단 불가 -> 일단 정보 띄우고 CLOSED (혹은 24시간 영업일 수도 있으나 안전하게 처리)
+      if (!timeMatch) return { status: "CLOSED", todayStr: timeString };
 
       const [_, openStr, closeStr] = timeMatch;
       const openMin = parseTime(openStr);
       let closeMin = parseTime(closeStr);
 
-      // 종료 시간이 시작 시간보다 작으면 다음날 새벽으로 간주 (예: 18:00 ~ 02:00)
+      // 종료 시간이 시작 시간보다 작으면 다음날 새벽으로 간주 (예: 11:00 ~ 02:00)
       if (closeMin < openMin) closeMin += 24 * 60;
 
-      // 🔥 4. 새벽 야간 영업 처리 (현재 시각이 0~새벽 시간대인 경우)
-      // 예: 영업시간 17:00 ~ 02:00(26:00), 현재 시각 01:00(60)
-      // 현재 시각(60)이 오픈 시간(1020)보다 작고, (종료시간 - 24시간)보다 작으면
-      // 현재 시각을 '어제의 연장선'으로 보아 24시간을 더해줌 (01:00 -> 25:00)
+      // 3. 새벽 야간 영업 처리 (현재 시각이 0~새벽 시간대인 경우)
+      // 예: 영업시간 17:00 ~ 02:00(26:00), 현재 시각 01:00(60) -> 25:00(1500)으로 보정하여 비교
       let adjustedCurrent = currentMinutes;
       if (currentMinutes < openMin && closeMin >= 24 * 60) {
         // 단, 현재 시각이 '전날 마감 시간' 이내여야 함
@@ -560,7 +501,8 @@ function RestaurantPageContent() {
         }
       }
 
-      // 브레이크 타임 체크
+      // 4. 브레이크 타임 체크
+      // 예: "15:00~17:00 브레이크타임" 패턴이 있는지 확인
       const breakMatch = timeString.match(
         /(\d{1,2}:\d{2})\s*[~\-]\s*(\d{1,2}:\d{2}).*(브레이크|break)/i,
       );
@@ -573,7 +515,7 @@ function RestaurantPageContent() {
         }
       }
 
-      // 최종 상태 판단
+      // 5. 최종 상태 판단
       if (adjustedCurrent >= openMin && adjustedCurrent < closeMin) {
         return { status: "OPEN", todayStr: `${openStr} ~ ${closeStr}` };
       }
